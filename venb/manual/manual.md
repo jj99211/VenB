@@ -124,7 +124,7 @@ Al marcar una pieza, su contador vuelve a cero en esa fecha. Cada bici muestra l
 
 ## Brevets
 
-Aquí se registran las pruebas oficiales, aparte de tus actividades: un brevet no se distingue de una salida larga solo por los datos de Garmin. La página tiene cinco bloques plegables: Resumen, Kilómetros de brevet por año, Mejor tiempo por distancia, Registrar un brevet e Historial.
+Aquí se registran las pruebas oficiales, aparte de tus actividades: un brevet no se distingue de una salida larga solo por los datos de Garmin. La página tiene cinco bloques plegables: Resumen, Kilómetros de brevet por año, Mejor tiempo por tipo de prueba, Registrar un brevet e Historial.
 
 ![Página Brevets: totales y kilómetros de brevet por año](img/brevets.jpg)
 
@@ -143,7 +143,7 @@ También puedes registrar cualquier prueba a mano. Los campos son:
 
 Una prueba grabada en una sola actividad se registra con la fecha de salida y su tiempo total. Si está **partida en varias actividades** (una de varios días, o una que se cortó), registra una fila por actividad con sus km y su tiempo reales y el tipo de la prueba entera, y llámalas igual con el número de etapa al final: «PBP2019_Etapa01», «PBP2019_Etapa02»… Si faltan kilómetros porque no se grabaron, añade otra fila con el resto y el nombre terminado en «_SinGPS». Así los km son los reales y no se cuentan dos veces. En el resumen, el número de pruebas, los tramos por distancia, el R5000 y el R10000 cuentan cada prueba una sola vez, aunque tenga varias etapas.
 
-La página muestra además los totales, los kilómetros por año, el mejor tiempo por distancia y el historial, en una caja que se desplaza por dentro, con los botones **Editar** y **Borrar** en cada fila. El nombre de cada prueba (↗) abre en Garmin Connect su actividad: la enlazada o, si no la hay, la salida en bici de distancia más parecida de ese día, el anterior o el siguiente.
+La página muestra además los totales, los kilómetros por año, el mejor tiempo por tipo de prueba (cada distancia de BRM, las SR, cada superbrevet y las Flechas; las pruebas por etapas, con su tiempo total de la primera salida a la última llegada) y el historial, en una caja que se desplaza por dentro, con los botones **Editar** y **Borrar** en cada fila. El nombre de cada prueba (↗) abre en Garmin Connect su actividad: la enlazada o, si no la hay, la salida en bici de distancia más parecida de ese día, el anterior o el siguiente.
 
 ## Histórico
 

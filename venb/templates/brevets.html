@@ -25,11 +25,12 @@
 </details>{% endif %}
 
 {% if st and st.mejores %}<details class="plegable" id="mejores" open>
-<summary><h2>Mejor tiempo por distancia</h2></summary>
+<summary><h2>Mejor tiempo por tipo de prueba</h2></summary>
 <section class="panel">
+  <p class="suave">Cada prueba cuenta una vez. Las registradas por etapas compiten con su tiempo total, de la salida de la primera actividad al final de la última (paradas y noches incluidas); las que tienen km sin grabar o quedaron incompletas cuentan, pero no compiten.</p>
   <div class="tabla"><table>
-    <tr><th>Distancia</th><th class="num">Pruebas</th><th class="num">Mejor tiempo</th><th>Prueba</th><th>Fecha</th></tr>
-    {% for m in st.mejores %}<tr><td>{{ m.distancia|n }} km</td><td class="num">{{ m.n }}</td><td class="num">{{ m.horas|tiempo }}</td><td>{{ m.nombre or '–' }}</td><td class="f">{{ m.fecha|iso_fecha }}</td></tr>{% endfor %}
+    <tr><th>Categoría</th><th class="num">Pruebas</th><th class="num">Mejor tiempo</th><th>Prueba</th><th class="num">km</th><th>Fecha</th></tr>
+    {% for m in st.mejores %}<tr><td>{{ m.categoria }}</td><td class="num">{{ m.n }}</td><td class="num">{{ m.horas|tiempo }}</td><td>{{ m.nombre or '–' }}{% if m.etapas > 1 %} <span class="suave">({{ m.etapas }} etapas)</span>{% endif %}</td><td class="num">{{ m.km|n }}</td><td class="f">{{ m.fecha|iso_fecha }}</td></tr>{% endfor %}
   </table></div>
 </section>
 </details>{% endif %}

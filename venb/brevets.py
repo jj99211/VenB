@@ -266,24 +266,62 @@ def pruebas(fs=None):
         for c in ('r5000', 'r10000', 'homologacion'):
             g[c] = next((b[c] for b in fl if b[c]), '')
         g['etapas'] = len(fl)
+        g['actividades'] = [b['actividad'] for b in fl]
+        g['sin_gps'] = any(b['actividad'] == 'manual' or (b['nombre'] or '').endswith('_SinGPS') for b in fl)
     return grupos
 
 
-def estadisticas():
-    """Cifras, kilómetros por año y tramo, y mejor tiempo por distancia, contando cada prueba una vez aunque esté
-    registrada por etapas (los km son siempre los de las filas, sin duplicar)."""
+def categoria(p):
+    """(orden, texto) de la categoría en la que compite una prueba por el mejor tiempo: cada distancia de BRM, las SR,
+    cada superbrevet por sus siglas (PBP, LEL, MGM…), las Flechas y, el resto, por tipo y distancia."""
+    d = p['nominal']
+    if p['tipo'] == 'BRM':
+        return (0, d, ''), f'BRM {d:g} km'
+    if p['tipo'] == 'SR':
+        return (1, 0, ''), 'SR'
+    if p['tipo'] == 'SB':
+        m = re.match(r'[A-Za-zÀ-ÿ]+', p['nombre'] or '')
+        sigla = m.group().upper() if m else 'SB'
+        return (2, 0, sigla), f'SB {sigla}' if sigla != 'SB' else 'SB'
+    if p['tipo'] == 'Flecha':
+        return (3, 0, ''), 'Flecha'
+    return (4, d, p['tipo']), f'{p["tipo"]} {d:g} km'
+
+
+def tiempo_total(p, hist):
+    """Horas de una prueba: la de su fila o, si está por etapas, de la salida de la primera actividad al final de la última
+    (con paradas y noches, como un tiempo oficial). None si falta algún dato, tiene km sin grabar o quedó incompleta
+    (no llega a una distancia homologable, como la LEL2025 suspendida en el km 926)."""
+    if p['etapas'] == 1:
+        return p['horas']
+    if p['sin_gps'] or p['nominal'] not in DISTANCIAS or hist is None or not len(hist):   # km sin grabar o incompleta
+        return None
+    sel = hist[hist.id.astype(str).isin([str(a) for a in p['actividades']])]
+    if len(sel) != p['etapas'] or sel.fin.isna().any():
+        return None
+    return round((sel.fin.max() - sel.fecha.min()).total_seconds() / 3600, 4)
+
+
+def estadisticas(hist=None):
+    """Cifras, kilómetros por año y tramo, y mejor tiempo por categoría, contando cada prueba una vez aunque esté
+    registrada por etapas (los km son siempre los de las filas, sin duplicar). Con hist (historial de actividades),
+    las pruebas por etapas compiten con su tiempo total (ver tiempo_total)."""
     fs = todos()
     if not fs:
         return None
     ps = pruebas(fs)
     anios = list(range(min(b['anio'] for b in fs), max(b['anio'] for b in fs) + 1))
     series = [{'n': n, 'v': [sum(p['distancia'] for p in ps if p['anio'] == a and lo <= p['distancia'] < hi) for a in anios]} for n, lo, hi in rutas.ajustes()['tramos_brevet']]
-    mejores = []
-    for d in sorted({p['nominal'] for p in ps}):
-        con = [p for p in ps if p['nominal'] == d and p['horas']]
-        if con:
-            m = min(con, key=lambda p: p['horas'])
-            mejores.append({'distancia': d, 'horas': m['horas'], 'nombre': m['nombre'], 'fecha': m['fecha'], 'n': sum(1 for p in ps if p['nominal'] == d)})
+    cats = {}
+    for p in ps:
+        orden, texto = categoria(p)
+        c = cats.setdefault(orden, {'categoria': texto, 'n': 0, 'mejor': None})
+        c['n'] += 1
+        h = tiempo_total(p, hist)
+        if h and (c['mejor'] is None or h < c['mejor'][0]):
+            c['mejor'] = (h, p)
+    mejores = [{'categoria': c['categoria'], 'n': c['n'], 'horas': c['mejor'][0], 'nombre': c['mejor'][1]['nombre'], 'fecha': c['mejor'][1]['fecha'],
+                'km': c['mejor'][1]['distancia'], 'etapas': c['mejor'][1]['etapas']} for o, c in sorted(cats.items()) if c['mejor']]
     return {'n': len(ps), 'km': sum(b['distancia'] for b in fs), 'r5000': sum(1 for p in ps if p['r5000']), 'r10000': sum(1 for p in ps if p['r10000']),
             'pendientes': sum(1 for p in ps if not p['homologacion']), 'anios': anios, 'series': series, 'mejores': mejores}
 
