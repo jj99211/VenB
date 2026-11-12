@@ -1,6 +1,8 @@
 """Publica en GitHub la versión ya empaquetada (scripts/empaquetar.py): sube la rama y la etiqueta vX.YZ y crea la
 versión (Release) con los dos ZIP, el manual de usuario y las guías de instalación en PDF. Las notas salen del apartado
-«## X.YZ» de CAMBIOS.md. VenB y VenB Rutas buscan sus ZIP en la última versión publicada (venb/actualizaciones.py).
+«## X.YZ» de CAMBIOS.md. Los PDF van también con nombre fijo (FIJOS), para que la web pueda enlazarlos para siempre
+con https://github.com/jj99211/VenB/releases/latest/download/<nombre>. Los ZIP llevan siempre la versión: el botón
+«Actualizar» los busca por ese nombre. VenB y VenB Rutas buscan sus ZIP en la última versión publicada (venb/actualizaciones.py).
 Uso: python scripts/publicar.py [--borrador]
 Necesita gh (GitHub CLI) con sesión iniciada y el remoto «origin». Fuera del ZIP (export-ignore).
 VenB © José A. Jiménez (https://www.vivirenbici.es). Licencia CC BY-NC-SA 4.0."""
@@ -12,6 +14,21 @@ import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from empaquetar import RAIZ, git  # noqa: E402
+
+
+FIJOS = {'Manual_VenB-{v}.pdf': 'Manual_VenB.pdf', 'Instalar_VenB-{v}.pdf': 'Instalar_VenB.pdf',
+         'Instalar_VenB_Rutas-{v}.pdf': 'Instalar_VenB_Rutas.pdf'}
+
+
+def subir_fijos(version, carpeta):
+    """Sube (o sustituye) en la versión publicada las copias con nombre fijo de los PDF."""
+    import shutil
+    with tempfile.TemporaryDirectory() as tmp:
+        copias = []
+        for origen, fijo in FIJOS.items():
+            shutil.copy(os.path.join(carpeta, origen.format(v=version)), os.path.join(tmp, fijo))
+            copias.append(os.path.join(tmp, fijo))
+        subprocess.run(['gh', 'release', 'upload', f'v{version}', *copias, '--clobber'], check=True, cwd=RAIZ)
 
 
 def notas(version):
@@ -51,7 +68,11 @@ def main():
         subprocess.run(orden, check=True, cwd=RAIZ)
     finally:
         os.remove(f.name)
+    subir_fijos(version, carpeta)
 
 
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) == 3 and sys.argv[1] == '--solo-fijos':   # versión ya publicada: solo las copias con nombre fijo
+        subir_fijos(sys.argv[2], os.path.dirname(RAIZ))
+    else:
+        main()
