@@ -5,7 +5,47 @@ VenB Rutas es la edición de VenB (Vivir en Bici) para clubes y organizadores: s
 ## Qué necesitas
 
 - Un ordenador con **Windows 10 u 11** o **Linux**, y conexión a internet (para instalar y para descargar mapas y datos del terreno).
-- **Python 3.10 o posterior**. Si no lo tienes, el instalador lo detecta y te ayuda: en Windows ofrece instalarlo en ese momento (responde `S`); en Linux muestra la orden exacta para tu distribución, por ejemplo `sudo apt install python3 python3-venv python3-pip curl` en Ubuntu, Linux Mint o Debian.
+- **Python 3.10 o posterior**. El instalador de VenB lo comprueba y, si falta o es antiguo, ayuda a instalarlo; el apartado siguiente explica cómo hacerlo a mano.
+
+## Python: comprobarlo e instalarlo
+
+VenB está escrito en Python y necesita **Python 3.10 o posterior** en el ordenador. Python es libre y gratuito, y solo se instala una vez: las versiones nuevas de VenB lo siguen usando. El instalador de VenB comprueba si está y, si falta o es antiguo, avisa y ayuda a instalarlo: en Windows ofrece instalar Python en ese momento (responde `S` y sigue solo; si no puede, abre la página de descarga) y en Linux muestra la orden exacta para tu distribución. Si prefieres hacerlo a mano, sigue estos pasos.
+
+### Comprobar si ya lo tienes
+
+- **Windows**: pulsa la tecla Windows, escribe `cmd` y pulsa Intro. En la ventana negra escribe `py --version` y pulsa Intro.
+- **Linux**: abre una terminal y escribe `python3 --version`.
+
+Si responde `Python 3.10` o un número mayor (por ejemplo, `Python 3.15.2`), ya lo tienes: pasa a «Descargar». Si dice que no reconoce la orden, o la versión es menor, sigue leyendo.
+
+### Windows
+
+1. Entra en [https://www.python.org/downloads/](https://www.python.org/downloads/) y pulsa el botón **Download Python** de la versión más reciente. Descárgalo solo de esa web oficial.
+2. Abre el fichero descargado. Según la versión, será el **instalador de Python** o el **Python install manager** (administrador de instalaciones). Los dos sirven.
+3. Con el **instalador de Python**, antes de nada marca abajo la casilla **Add python.exe to PATH** y pulsa **Install Now**. Si al final aparece **Disable path length limit**, púlsalo también.
+4. Con el **Python install manager**, acepta lo que propone. Si pregunta si quieres instalar ya la última versión de Python, responde que sí (`Y` e Intro).
+5. Cierra todas las ventanas de `cmd` abiertas, abre una nueva y comprueba la versión con `py --version`.
+
+### Linux
+
+Casi todas las distribuciones traen Python 3. Aun así, conviene asegurarse de que están el módulo para crear entornos (`venv`), `pip` y `curl`, que el instalador de VenB usa para descargar sus componentes. En una terminal, según tu distribución:
+
+| Distribución | Orden |
+|---|---|
+| Ubuntu, Linux Mint, Debian | `sudo apt install python3 python3-venv python3-pip curl` |
+| Fedora | `sudo dnf install python3 python3-pip curl` |
+| openSUSE | `sudo zypper install python3 python3-pip curl` |
+| Arch, Manjaro | `sudo pacman -S python python-pip curl` |
+
+Te pedirá tu contraseña. Si tu distribución es antigua y trae una versión de Python menor que la 3.10 (por ejemplo, Ubuntu 20.04), lo más sencillo es actualizar la distribución.
+
+
+### Si algo falla
+
+- **Windows dice que falta Python aunque lo has instalado.** Seguramente no se marcó **Add python.exe to PATH**. Vuelve a abrir el instalador de Python, elige **Modify**, pulsa **Next**, marca **Add Python to environment variables** y pulsa **Install**. Después, cierra y vuelve a abrir la ventana.
+- **Al escribir `python` se abre la Microsoft Store.** Windows trae un acceso directo que suplanta a Python. Desactívalo en **Configuración → Aplicaciones → Configuración avanzada de aplicaciones → Alias de ejecución de aplicaciones**, apagando los de `python.exe` y `python3.exe`.
+- **En Linux, el instalador de VenB falla al crear el entorno.** Instala los paquetes de la tabla anterior (sobre todo `python3-venv` y `curl`) y repítelo.
+- **La versión es menor que la 3.10.** Instala la más reciente desde python.org (Windows) o actualiza la distribución (Linux).
 
 ## Descargar
 
@@ -61,9 +101,7 @@ Esas versiones buscaban las actualizaciones en Google Drive y no tienen el botó
 
 En **Ajustes > Copia de seguridad**, **Exportar** guarda en un solo fichero tus rutas, tus perfiles de club y tu configuración. Guárdalo fuera del ordenador de vez en cuando. **Importar** lo restaura, también en otro ordenador después de instalar VenB Rutas.
 
-## Si algo falla
+## Otros problemas
 
-- **Falta Python o es antiguo.** El instalador lo dice. En Windows, si después de instalarlo sigue sin encontrarlo, cierra la ventana y vuelve a ejecutar INSTALAR-EN-WINDOWS.
-- **Al escribir `python` se abre la Microsoft Store.** Desactiva los alias de `python.exe` y `python3.exe` en **Configuración > Aplicaciones > Configuración avanzada de aplicaciones > Alias de ejecución de aplicaciones**.
 - **El navegador no abre VenB Rutas.** Comprueba que la terminal sigue abierta y escribe en el navegador `http://127.0.0.1:8878`.
 - **Otra duda o un error**: escribe a [jj99211@gmail.com](mailto:jj99211@gmail.com) con tu sistema (Windows o Linux), la versión y, si puedes, una captura de la terminal.
