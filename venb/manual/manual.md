@@ -132,7 +132,7 @@ Para no escribir los datos a mano, VenB ofrece registrar las salidas en bici de 
 
 La página **Salidas largas por clasificar** (enlace al principio de Brevets) reúne todas las salidas largas que no están en la lista, sin límite de fechas: cada una tiene **Sí, es una prueba** (abre el formulario) y **No es prueba** (no vuelve a salir), y arriba **Marcar todas como no pruebas**, útil si tu historial tiene muchas salidas largas que no fueron pruebas. Abajo, en **Marcadas como no prueba**, se recupera una marcada por error. Si quedan salidas anteriores sin clasificar, Inicio lo dice en un solo aviso. Al importar ficheros, VenB pregunta al terminar por cada salida larga importada. La distancia y los días se cambian en **Ajustes**.
 
-También puedes registrar cualquier prueba a mano. Los campos son:
+También puedes registrar una prueba a mano en el bloque **Registrar un brevet**, que empieza plegado. Una prueba registrada así no queda enlazada con ninguna actividad: si la ruta está grabada (también una SB o una SR de varios días), promuévela desde el Histórico o desde Salidas largas por clasificar, una vez por etapa, en lugar de crearla a mano, o sus kilómetros se contarán dos veces. El formulario es para las pruebas que no se grabaron y para los km que faltan sin GPS. Los campos son:
 
 - **Tipo:** BRM (brevet), SB (superbrevet, de 1.200 km o más), SR (Super Randonnée), Flecha u Otro.
 - **Fecha** y **distancia**, obligatorias, junto con el **nombre**.

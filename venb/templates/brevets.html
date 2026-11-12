@@ -35,10 +35,12 @@
 </section>
 </details>{% endif %}
 
-<details class="plegable" id="formulario" open{% if e %} data-abrir{% endif %}>
+<details class="plegable" id="formulario" data-sin-memoria{% if e %} open data-abrir{% endif %}>
 <summary><h2>{% if e and e.id %}Editar brevet{% else %}Registrar un brevet{% endif %}</h2></summary>
 <section class="panel">
-  {% if e and not e.id %}<p class="suave">Datos tomados de tu actividad de Garmin{% if e.km_reales %} ({{ e.km_reales|n(1) }} km grabados; se propone la distancia homologable, {{ e.distancia|n }} km){% endif %}. Revisa el tipo y la distancia, completa la homologación y los clubes y pulsa Guardar. Si la prueba quedó partida en varias actividades, pon la distancia y el tiempo totales desde la salida: VenB no preguntará por las demás etapas.</p>{% endif %}
+  {% if e and not e.id %}<p class="suave">Datos tomados de tu actividad de Garmin{% if e.km_reales %} ({{ e.km_reales|n(1) }} km grabados; se propone la distancia homologable, {{ e.distancia|n }} km){% endif %}. Revisa el tipo y la distancia, completa la homologación y los clubes y pulsa Guardar. Si la prueba quedó partida en varias actividades, registra cada una por separado (desde el Histórico) con el nombre de la prueba y el número de etapa: «PBP2019_Etapa01», «PBP2019_Etapa02»… con sus km y su tiempo reales y el tipo de la prueba entera.</p>
+  {% else %}<div class="aviso medio">Lo que registras aquí a mano <b>no queda enlazado con ninguna actividad de Garmin</b>, y si la ruta ya está entre tus actividades sus kilómetros se contarán dos veces.
+    <small>Si la prueba está grabada (también una SB o una SR de varios días), no la crees aquí: búscala en el <a href="{{ url_for('historico') }}">Histórico</a> o en <a href="{{ url_for('brevets_por_clasificar') }}">Salidas largas por clasificar</a> y pulsa <b>«Incluir en la lista de brevets»</b> (o «Sí, es una prueba») para promoverla a brevet, una vez por cada etapa. Usa este formulario solo para pruebas que no se grabaron o para los km que faltan sin GPS («…_SinGPS»).</small></div>{% endif %}
   <form method="post" action="{{ url_for('brevet_guardar') }}">
     {% if e and e.id %}<input type="hidden" name="id" value="{{ e.id }}">{% endif %}
     {% if e and e.actividad %}<input type="hidden" name="actividad" value="{{ e.actividad }}">{% endif %}

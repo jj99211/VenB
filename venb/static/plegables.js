@@ -1,5 +1,5 @@
 // Secciones plegables (details.plegable con id): VenB recuerda en este navegador, página a página, cuáles dejaste
-// abiertas o plegadas; un enlace a #sección (o una tarjeta) la abre aunque estuviera plegada.
+// abiertas o plegadas (salvo las marcadas data-sin-memoria); un enlace a #sección (o una tarjeta) la abre aunque estuviera plegada.
 (() => {
   const secciones = [...document.querySelectorAll('details.plegable[id]')];
   if (!secciones.length) return;
@@ -7,6 +7,7 @@
   let g = {};
   try { g = JSON.parse(localStorage.getItem(clave) || '{}'); } catch (e) { /* solo es una comodidad */ }
   secciones.forEach(d => {
+    if (d.hasAttribute('data-sin-memoria')) return;   // empieza siempre como dice la página (p. ej., Registrar un brevet, plegado)
     if (d.id in g && !d.hasAttribute('data-abrir')) d.open = g[d.id];
     d.addEventListener('toggle', () => { g[d.id] = d.open; try { localStorage.setItem(clave, JSON.stringify(g)); } catch (e) {} });
   });

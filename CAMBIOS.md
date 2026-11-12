@@ -6,6 +6,7 @@ Novedades de cada versión de VenB y VenB Rutas (las dos ediciones comparten nú
 
 - **Brevets:** el historial va en una caja con scroll (unas 15 filas a la vista) con la cabecera fija; los botones **Editar** y **Borrar** son más grandes y claros.
 - Las pruebas registradas por etapas («PBP2019_Etapa01», «…_SinGPS» para los km no grabados) cuentan como una sola prueba en el resumen, en los kilómetros por tramo y en el R5000/R10000; los km siguen siendo los reales, sin duplicar.
+- **Registrar un brevet** empieza plegado y avisa de que lo registrado a mano no se enlaza con Garmin: las pruebas grabadas (también las SB) se promueven desde el Histórico, una vez por etapa, para no duplicar km.
 - El filtro «Actividad» ya no cuenta como enlazadas las filas de km sin grabar.
 - **Mejor tiempo por tipo de prueba:** una fila por cada distancia de BRM, las SR, cada superbrevet (PBP, LEL, MGM…) y las Flechas. Las pruebas por etapas compiten con su tiempo total, de la primera salida a la última llegada; las incompletas o con km sin grabar cuentan, pero no compiten.
 - Guías rápidas de instalación de una página.
