@@ -27,9 +27,6 @@ MARCADOR_INDICE = '%%INDICE%%'
 # documentos: título de portada, nombre del fichero ({v}: versión) y fuentes; solo el manual lleva índice
 DOCUMENTOS = {
     'usuario': {'titulo': 'Manual de usuario', 'fichero': 'Manual_VenB-{v}', 'fuentes': ['manual.md', 'garmin.md'], 'indice': True},
-    # guías cortas de instalación y actualización, una por edición (se publican con cada versión en GitHub)
-    'instalar': {'titulo': 'Instalar y actualizar VenB', 'fichero': 'Instalar_VenB-{v}', 'fuentes': ['instalar.md'], 'indice': False},
-    'instalar_rutas': {'titulo': 'Instalar y actualizar VenB Rutas', 'fichero': 'Instalar_VenB_Rutas-{v}', 'fuentes': ['instalar_rutas.md'], 'indice': False},
 }
 ANCHO_IMG = {'infografia.jpg': 470}     # px a 96 ppp en el HTML; el resto, 640 (16,9 cm)
 ANCHO_CM = {'infografia.jpg': 12000}   # ancho final en el documento (1/100 mm); el resto, 16,5 cm
@@ -395,7 +392,7 @@ def revisar(pdf, imagenes, movibles, desplazar, limites):
 # ------------------------------------------------------------------
 
 def generar(version, salida, borrar_anteriores=False, doc='usuario'):
-    """Crea el documento (Manual_VenB-<versión>, Instalar_VenB-<versión>…) en ODT y PDF en la carpeta salida.
+    """Crea el documento (Manual_VenB-<versión>) en ODT y PDF en la carpeta salida.
     Devuelve sus rutas y escribe los avisos."""
     from datetime import date
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

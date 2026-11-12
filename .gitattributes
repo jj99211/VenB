@@ -9,6 +9,7 @@ scripts/graficos.py export-ignore
 scripts/validar_garmin.py export-ignore
 scripts/empaquetar.py export-ignore
 scripts/manual.py export-ignore
+scripts/guia.py export-ignore
 scripts/publicar.py export-ignore
 .github/ export-ignore
 CAMBIOS.md export-ignore

@@ -1,7 +1,7 @@
 """Genera el ZIP instalable de VenB a partir de la versión etiquetada en git, en la carpeta que contiene el repositorio.
 Uso: python scripts/empaquetar.py [--con-datos] [--sin-manual]
-Junto al ZIP deja el manual de usuario y las guías de instalación de VenB y VenB Rutas en ODT y PDF (scripts/manual.py),
-con el mismo texto que la Ayuda, y borra los de versiones anteriores. Para publicarlos: scripts/publicar.py.
+Junto al ZIP deja el manual de usuario en ODT y PDF (scripts/manual.py), con el mismo texto que la Ayuda, y las guías
+rápidas de instalación de VenB y VenB Rutas en PDF (scripts/guia.py), y borra los de versiones anteriores. Para publicarlos: scripts/publicar.py.
 Solo entra lo que está en git, salvo lo marcado export-ignore. Con --con-datos añade tus datos e
 informes en datos_iniciales/, nunca secretos: es un ZIP privado. El instalador los copia a VenB-datos sin sobrescribir."""
 import hashlib
@@ -60,10 +60,10 @@ def main():
         import empaquetar_rutas
         print(empaquetar_rutas.empaquetar(version))
     if not con_datos and '--sin-manual' not in sys.argv:
-        import manual     # manual de usuario y guías de instalación de las dos ediciones (se publican con la versión)
-        for doc in manual.DOCUMENTOS:
-            for r in manual.generar(version, os.path.dirname(RAIZ), borrar_anteriores=True, doc=doc):
-                print(r)
+        import guia       # guías rápidas de instalación de las dos ediciones (una página cada una)
+        import manual     # manual de usuario
+        for r in (*manual.generar(version, os.path.dirname(RAIZ), borrar_anteriores=True), *guia.generar(version, os.path.dirname(RAIZ))):
+            print(r)
 
 
 if __name__ == '__main__':
