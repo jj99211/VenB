@@ -2,6 +2,13 @@
 
 Novedades de cada versión de VenB y VenB Rutas (las dos ediciones comparten número de versión).
 
+## 3.41
+
+- **Brevets:** el historial va en una caja con scroll (unas 15 filas a la vista) con la cabecera fija; los botones **Editar** y **Borrar** son más grandes y claros.
+- Las pruebas registradas por etapas («PBP2019_Etapa01», «…_SinGPS» para los km no grabados) cuentan como una sola prueba en el resumen, en los kilómetros por tramo y en el R5000/R10000; los km siguen siendo los reales, sin duplicar.
+- El filtro «Actividad» ya no cuenta como enlazadas las filas de km sin grabar.
+- Guías rápidas de instalación de una página.
+
 ## 3.40
 
 - **Actualización con un clic.** Las versiones se publican en GitHub. VenB avisa en Inicio (VenB Rutas, en el Planificador) y, con **Actualizar ahora**, descarga la versión nueva, comprueba el fichero, se cierra, se instala junto a tus datos y se vuelve a abrir. En **Ayuda > Acerca de** se ve la última comprobación y se puede buscar en el momento. Desde la 3.39 o anteriores hay que instalar esta versión a mano una vez.

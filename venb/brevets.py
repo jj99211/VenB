@@ -7,6 +7,7 @@ import csv
 import json
 import math
 import os
+import re
 import sys
 import uuid
 from datetime import date, datetime
@@ -234,21 +235,57 @@ def actividades(fs, hist):
     return salida
 
 
+# Etapas de una prueba de varios días (o grabada en varias actividades): «PBP2019_Etapa01», «BRM600 Demanda_SinGPS»
+ETAPA = re.compile(r'_(Etapa\d+|SinGPS)$')
+
+
+def pruebas(fs=None):
+    """Brevets agrupados por prueba: las filas «<nombre>_EtapaXX» y «<nombre>_SinGPS» del mismo tipo y separadas menos
+    de 10 días forman una sola prueba, con la suma de sus km (los reales) y la distancia homologable que les corresponde.
+    Cada prueba: {'nombre', 'tipo', 'fecha', 'anio', 'distancia', 'nominal', 'horas' (solo si es de una fila),
+    'r5000', 'r10000', 'homologacion', 'etapas'}."""
+    fs = sorted(todos() if fs is None else fs, key=lambda b: b['fecha'])
+    grupos, abiertos = [], {}
+    for b in fs:
+        base = ETAPA.sub('', b['nombre'] or '')
+        clave = (base, b['tipo']) if base != (b['nombre'] or '') else None
+        g = abiertos.get(clave) if clave else None
+        if g and datetime.fromisoformat(b['fecha']).toordinal() - datetime.fromisoformat(g['fecha']).toordinal() < 10:
+            g['filas'].append(b)
+            continue
+        g = {'nombre': base if clave else b['nombre'], 'tipo': b['tipo'], 'fecha': b['fecha'], 'anio': b['anio'], 'filas': [b]}
+        grupos.append(g)
+        if clave:
+            abiertos[clave] = g
+    for g in grupos:
+        fl = g.pop('filas')
+        g['distancia'] = round(sum(b['distancia'] for b in fl), 1)
+        nom = distancia_nominal(g['distancia'])   # una prueba incompleta (LEL2025, 926 km) conserva sus km reales
+        g['nominal'] = fl[0]['distancia'] if len(fl) == 1 else (nom if nom >= g['distancia'] * 0.9 else round(g['distancia']))
+        g['horas'] = fl[0]['horas'] if len(fl) == 1 else None    # la suma de etapas no es el tiempo de la prueba
+        for c in ('r5000', 'r10000', 'homologacion'):
+            g[c] = next((b[c] for b in fl if b[c]), '')
+        g['etapas'] = len(fl)
+    return grupos
+
+
 def estadisticas():
-    """Cifras, kilómetros por año y tramo, y mejor tiempo por distancia."""
+    """Cifras, kilómetros por año y tramo, y mejor tiempo por distancia, contando cada prueba una vez aunque esté
+    registrada por etapas (los km son siempre los de las filas, sin duplicar)."""
     fs = todos()
     if not fs:
         return None
+    ps = pruebas(fs)
     anios = list(range(min(b['anio'] for b in fs), max(b['anio'] for b in fs) + 1))
-    series = [{'n': n, 'v': [sum(b['distancia'] for b in fs if b['anio'] == a and lo <= b['distancia'] < hi) for a in anios]} for n, lo, hi in rutas.ajustes()['tramos_brevet']]
+    series = [{'n': n, 'v': [sum(p['distancia'] for p in ps if p['anio'] == a and lo <= p['distancia'] < hi) for a in anios]} for n, lo, hi in rutas.ajustes()['tramos_brevet']]
     mejores = []
-    for d in sorted({b['distancia'] for b in fs}):
-        con = [b for b in fs if b['distancia'] == d and b['horas']]
+    for d in sorted({p['nominal'] for p in ps}):
+        con = [p for p in ps if p['nominal'] == d and p['horas']]
         if con:
-            m = min(con, key=lambda b: b['horas'])
-            mejores.append({'distancia': d, 'horas': m['horas'], 'nombre': m['nombre'], 'fecha': m['fecha'], 'n': sum(1 for b in fs if b['distancia'] == d)})
-    return {'n': len(fs), 'km': sum(b['distancia'] for b in fs), 'r5000': sum(1 for b in fs if b['r5000']), 'r10000': sum(1 for b in fs if b['r10000']), 'pendientes': sum(1 for b in fs if not b['homologacion']),
-            'anios': anios, 'series': series, 'mejores': mejores}
+            m = min(con, key=lambda p: p['horas'])
+            mejores.append({'distancia': d, 'horas': m['horas'], 'nombre': m['nombre'], 'fecha': m['fecha'], 'n': sum(1 for p in ps if p['nominal'] == d)})
+    return {'n': len(ps), 'km': sum(b['distancia'] for b in fs), 'r5000': sum(1 for p in ps if p['r5000']), 'r10000': sum(1 for p in ps if p['r10000']),
+            'pendientes': sum(1 for p in ps if not p['homologacion']), 'anios': anios, 'series': series, 'mejores': mejores}
 
 
 def _cli():

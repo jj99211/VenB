@@ -47,7 +47,7 @@
     let cuantas = 0, km = 0;
     filas.forEach(tr => { const ok = pasa(tr); tr.hidden = !ok; if (ok) { cuantas++; km += parseFloat(tr.dataset.km) || 0; } });
     const activos = campos.some(e => e.type === 'checkbox' ? e.checked : e.value);
-    recuento.textContent = `${activos ? 'Se ven' : 'En total'}: ${cuantas} ${cuantas === 1 ? 'prueba' : 'pruebas'}, ${n(km)} km` + (activos ? ` (de ${filas.length})` : '') + '.';
+    recuento.textContent = `${activos ? 'Se ven' : 'En total'}: ${cuantas} ${cuantas === 1 ? 'registro' : 'registros'}, ${n(km)} km` + (activos ? ` (de ${filas.length})` : '') + '.';
     const g = {};
     campos.forEach(e => { g[e.name] = e.type === 'checkbox' ? e.checked : e.value; });
     g._mas = !mas.hidden;

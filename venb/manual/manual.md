@@ -141,9 +141,9 @@ También puedes registrar cualquier prueba a mano. Los campos son:
 - **Club organizador** y **club de inscripción**.
 - **R5000** y **R10000**, para marcar las pruebas que cuentan para esos reconocimientos.
 
-Cada prueba tiene una sola fecha: una de varios días se registra con la de salida y su tiempo total.
+Una prueba grabada en una sola actividad se registra con la fecha de salida y su tiempo total. Si está **partida en varias actividades** (una de varios días, o una que se cortó), registra una fila por actividad con sus km y su tiempo reales y el tipo de la prueba entera, y llámalas igual con el número de etapa al final: «PBP2019_Etapa01», «PBP2019_Etapa02»… Si faltan kilómetros porque no se grabaron, añade otra fila con el resto y el nombre terminado en «_SinGPS». Así los km son los reales y no se cuentan dos veces. En el resumen, el número de pruebas, los tramos por distancia, el R5000 y el R10000 cuentan cada prueba una sola vez, aunque tenga varias etapas.
 
-La página muestra además los totales, los kilómetros por año, el mejor tiempo por distancia y el historial, donde puedes editar y borrar. El nombre de cada prueba (↗) abre en Garmin Connect su actividad: la enlazada o, si no la hay, la salida en bici de distancia más parecida de ese día, el anterior o el siguiente.
+La página muestra además los totales, los kilómetros por año, el mejor tiempo por distancia y el historial, en una caja que se desplaza por dentro, con los botones **Editar** y **Borrar** en cada fila. El nombre de cada prueba (↗) abre en Garmin Connect su actividad: la enlazada o, si no la hay, la salida en bici de distancia más parecida de ese día, el anterior o el siguiente.
 
 ## Histórico
 
