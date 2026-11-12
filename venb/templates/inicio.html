@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% block titulo %}VenB: Inicio{% endblock %}
+{% block cuerpo %}
+<script>document.body.dataset.rango = 3;</script>
+{% include '_nueva_version.html' %}
+{% if avisos %}<section class="bloque" aria-label="Avisos">
+  {% for a in avisos %}<div class="aviso {{ a.nivel }}">{% if a.clave %}<form class="cerrar-aviso" method="post" action="{{ url_for('aviso_cerrar') }}"><input type="hidden" name="clave" value="{{ a.clave }}"><button class="discreto" title="Cerrar este aviso" aria-label="Cerrar este aviso">×</button></form>{% endif %}{{ a.texto }}{% if a.accion or a.enlace %}<small>{{ a.accion }}{% if a.enlace %} <a href="{{ a.enlace[1] }}"{% if a.enlace[1].startswith('http') %} target="_blank" rel="noopener"{% endif %}>{{ a.enlace[0] }}{% if a.enlace[1].startswith('http') %} ↗{% endif %}</a>{% endif %}</small>{% endif %}</div>{% endfor %}
+</section>{% else %}<div class="aviso">No hay nada pendiente.</div>{% endif %}
+
+{% if m %}<section class="panel">
+  <h2>Tu estado</h2>
+  <div class="cifras cinco">
+    <div class="cifra"><h3>Forma (CTL)</h3><b>{{ m.CTL|n }}</b><svg class="spark" aria-hidden="true" data-v='{{ sp.ctl|tojson }}'></svg><span>{{ m.dCTL|signo }} en 7 días</span></div>
+    <div class="cifra"><h3>Fatiga (ATL)</h3><b>{{ m.ATL|n }}</b><svg class="spark" aria-hidden="true" data-v='{{ sp.atl|tojson }}'></svg><span>Carga de los últimos 7 días</span></div>
+    <div class="cifra"><h3>Frescura (TSB)</h3><b>{{ m.TSB|signo }}</b><svg class="spark" aria-hidden="true" data-v='{{ sp.tsb|tojson }}'></svg><span>Forma menos fatiga</span></div>
+    <div class="cifra"><h3>Horas esta semana</h3><b>{{ sem.h|hm }}</b><svg class="spark" aria-hidden="true" data-v='{{ sp.horas|tojson }}'></svg><span>{{ sem.km|n }} km. La anterior: {{ ant.h|hm }}</span></div>
+    <div class="cifra"><h3>Km este mes</h3><b>{{ m.km|n }} km</b><svg class="spark" aria-hidden="true" data-v='{{ sp.km_mes|tojson }}'></svg><span>En {{ m.mes_ant }}: {{ m.km_ant|n }} km</span></div>
+    {% if s %}
+    <div class="cifra"><h3>Sueño</h3><b>{{ s.h|hm }}</b><svg class="spark" aria-hidden="true" data-v='{{ sp.sueno|tojson }}'></svg><span>Media de 7 días</span></div>
+    <div class="cifra"><h3>VFC</h3><b>{{ s.vfc|n }} ms</b><svg class="spark" aria-hidden="true" data-v='{{ sp.vfc|tojson }}'></svg><span>Media de 7 días</span></div>
+    <div class="cifra"><h3>FC en reposo</h3><b>{{ s.fc|n }} ppm</b><svg class="spark" aria-hidden="true" data-v='{{ sp.fc|tojson }}'></svg><span>Media de 7 días</span></div>
+    {% endif %}
+    <div class="cifra"><h3>Potencia de 20 min</h3><b>{% if m.p20 %}{{ m.p20|n }} W{% else %}–{% endif %}</b><svg class="spark" aria-hidden="true" data-v='{{ sp.potencia|tojson }}'></svg><span>Mejor de los últimos {{ m.dias }} días{% if m.p20_fecha %} ({{ m.p20_fecha|fecha }}){% endif %}</span></div>
+    <div class="cifra"><h3>Peso</h3><b>{% if peso %}{{ peso[1]|n(1) }} kg{% else %}–{% endif %}</b><svg class="spark" aria-hidden="true" data-v='{{ sp.peso|tojson }}'></svg><span>{% if peso %}Anotado el {{ peso[0]|fecha }}{% else %}Sin anotar{% endif %}</span></div>
+  </div>
+  <p class="suave">Las líneas muestran las últimas 12 semanas; las de km y potencia, los últimos 12 meses (potencia: el mejor valor de cada mes); la de peso, las últimas 12 anotaciones.</p>
+</section>
+<section class="panel">
+  <h2>Forma y fatiga, últimos 3 meses</h2>
+  <div class="graf" id="g-carga" data-grafica></div>
+  <details class="ver"><summary>Ver datos</summary><div class="tabla"></div></details>
+  <p><a href="{{ url_for('graficas') }}">Ver todas las gráficas</a></p>
+</section>{% elif error_carga %}<div class="aviso">Tu carga de entrenamiento aparecerá aquí cuando haya actividades: de Garmin (<a href="{{ url_for('ayuda', capitulo='garmin') }}">cómo incorporarlas</a>) o <a href="{{ url_for('importar') }}">subidas en ficheros GPX, FIT o TCX</a>.</div>{% endif %}
+
+<div class="rejilla bloque">
+  {% if consejo %}<section class="panel">
+    <h2>Último consejo</h2>
+    <p>{{ consejo.lectura }}</p>
+    <ol>{% for p in consejo.plan %}<li>{{ p }}</li>{% endfor %}</ol>
+    <p class="suave">De la revisión {{ consejo.carpeta }}.</p>
+  </section>{% endif %}
+  <section class="panel">
+    <h2>Próximos eventos</h2>
+    {% if prox %}<ul class="lista">{% for e in prox %}<li><b>{{ e.fecha|fecha }}</b>: {{ e.nombre }}</li>{% endfor %}</ul>{% else %}<p class="suave">Sin eventos próximos.</p>{% endif %}
+    <p><a href="{{ url_for('calendario') }}">Abrir el calendario</a></p>
+    <h2>Anotar peso</h2>
+    {% if error_peso %}<p class="aviso medio">Peso guardado en VenB, pero no se ha podido enviar a Garmin Connect. {{ error_peso }}</p>{% elif peso_enviado %}<p class="suave">Peso guardado y enviado a Garmin Connect.</p>{% endif %}
+    <form class="linea" method="post" action="{{ url_for('peso') }}">
+      <label>Fecha <input name="fecha" value="{{ hoy }}" placeholder="DD/MM/AAAA" pattern="\d{2}/\d{2}/\d{4}" size="11" required></label>
+      <label>Kilos <input name="kg" inputmode="decimal" size="6" placeholder="70,0" required></label>
+      <button>Guardar</button>
+    </form>
+    <p class="suave">Lo que anotas aquí manda sobre el peso de Garmin de ese día{% if peso_desde_garmin %} y se envía también a Garmin Connect{% endif %}.</p>
+  </section>
+</div>
+
+{% macro fila(a) %}<tr><td class="f">{{ a['Fecha']|fecha }}</td><td>{{ a['Título'] }} <a class="suave" href="{{ url_for('actividad_nombre', aid=a['id']|string|replace('.0', ''), volver=url_for('inicio')) }}" title="Cambiar el nombre">✎</a></td><td class="num">{{ a['Distancia']|n(1) }}</td><td class="num">{{ a['h']|hm }}</td><td class="num">{{ a['tss']|n }}{% if not a['tss_real'] and a['tss'] > 0 %}*{% endif %}</td></tr>{% endmacro %}
+{% if ultimas or garmin_listo %}<section class="panel" id="ultimas">
+  <h2>Últimas actividades</h2>
+  {% if garmin_listo %}<div class="linea-campos" id="garmin-recientes" {% if recientes.en_curso %}data-en-curso="1"{% endif %}>
+    {% if recientes.en_curso %}<span class="aviso-espera"><span class="girando" aria-hidden="true">⟳</span> Conectando con Garmin Connect y trayendo lo nuevo (suele tardar menos de un minuto). Puedes seguir usando VenB; esta página se actualizará sola.</span>
+    {% else %}{% set fr = freno_garmin() %}<form method="post" action="{{ url_for('garmin_actualizar') }}" id="form-recientes"><button class="discreto" {% if fr.manual_hasta %}disabled title="Podrás volver a intentarlo a las {{ fr.manual_hasta.strftime('%H:%M') }}"{% endif %}>Traer lo nuevo de Garmin</button></form>
+      {% if aviso_garmin %}<span class="rojo">No se ha lanzado la descarga: {{ aviso_garmin }}</span>
+      {% elif recientes.resultado == 'mal' %}<span class="rojo">No se ha podido descargar de Garmin Connect ({{ recientes.inicio.strftime('%H:%M') }}): {{ recientes.motivo }} No se reintenta sola hasta que vuelvas a abrir VenB; tus datos anteriores siguen disponibles.</span>
+      {% elif recientes.resultado == 'bien' %}<span class="suave">Comprobado a las {{ recientes.inicio.strftime('%H:%M') }}: {% if recientes.nuevas %}{{ recientes.nuevas }} {{ 'actividad nueva' if recientes.nuevas == 1 else 'actividades nuevas' }}{% else %}no hay actividades nuevas{% endif %}.</span>{% endif %}{% endif %}
+  </div>{% endif %}
+  <div class="tabla"><table>
+    <tr><th>Fecha</th><th>Actividad</th><th class="num">km</th><th class="num">Horas</th><th class="num">TSS</th></tr>
+    {% for a in ultimas[:5] %}{{ fila(a) }}{% endfor %}
+  </table></div>
+  {% if ultimas|length > 5 %}<details class="ver"><summary>Ver las {{ ultimas[5:]|length }} anteriores</summary>
+  <div class="tabla"><table>
+    <tr><th>Fecha</th><th>Actividad</th><th class="num">km</th><th class="num">Horas</th><th class="num">TSS</th></tr>
+    {% for a in ultimas[5:] %}{{ fila(a) }}{% endfor %}
+  </table></div>
+  </details>{% endif %}
+  <p class="suave">* TSS estimado por duración. Pulsa ✎ para cambiar el nombre de una actividad. <a href="{{ url_for('historico') }}">Todas las actividades</a></p>
+</section>{% endif %}
+<script>
+(function () {
+  var f = document.getElementById('form-recientes');
+  if (f) f.addEventListener('submit', function () { var b = f.querySelector('button'); b.disabled = true; b.textContent = 'Conectando con Garmin Connect…'; });
+  var d = document.getElementById('garmin-recientes');
+  if (!d || !d.dataset.enCurso) return;
+  var t = setInterval(function () {
+    fetch('{{ url_for('garmin_estado') }}').then(function (r) { return r.json(); }).then(function (e) {
+      if (!e.en_curso) { clearInterval(t); location.reload(); }
+    }).catch(function () {});
+  }, 5000);
+})();
+</script>
+{% endblock %}

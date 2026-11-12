@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+{% block titulo %}VenB: {{ e.nombre or 'Planificador' }}{% endblock %}
+{% block cuerpo %}
+<p><a href="{{ url_for('planificador') }}">← Planificador</a></p>
+<h1>{{ (p.nombre if p else (a.nombre if a else e.nombre)) or 'Ruta' }}</h1>
+{% if e.evento %}{% set ev = evento_de_plan(e.evento) %}{% if ev %}<p class="suave">Prueba del calendario: <a href="{{ url_for('evento_editar', eid=ev.id) }}">{{ ev.nombre }}</a> ({{ ev.fecha|iso_fecha }}).</p>{% endif %}{% endif %}
+
+{% if e.fase == 'analizando' or (e.fase == 'error' and not a) %}
+<section class="panel" id="progreso" data-estado="{{ url_for('plan_estado', pid=e.id) }}">
+  {% if e.fase == 'analizando' %}
+  <h2>Analizando la ruta…</h2>
+  <p class="suave">Se leen la hoja y el track y se consultan las altitudes del terreno. Con una ruta nueva puede tardar uno o dos minutos; la página se actualiza sola.</p>
+  {% else %}
+  <h2>No se ha podido analizar la ruta</h2>
+  <div class="aviso alto">{{ e.error }}</div>
+  <p>Si el GPX no trae altitudes, VenB las toma del modelo del terreno por Internet: comprueba la conexión. Si el problema es la hoja de ruta (formato desconocido o PDF escaneado, sin texto), prepara una <b>hoja de cálculo sencilla</b> con los puntos que te interesan y vuelve a <a href="{{ url_for('planificador') }}">subir la ruta</a> con ella.</p>
+  {% include '_hoja_sencilla.html' %}
+  {% endif %}
+  <pre class="registro">{{ e.registro|join('\n') }}</pre>
+</section>
+{% else %}
+
+<script type="application/json" id="datos-plan">{{ {'a': a, 'p': p, 'reciente': reciente, 'reglas': reglas, 'fase': e.fase, 'urlGenerar': url_for('plan_generar', pid=e.id), 'urlPuntos': url_for('plan_puntos', pid=e.id), 'urlEstado': url_for('plan_estado', pid=e.id)}|tojson }}</script>
+
+{% if request.args.error %}<div class="aviso alto">{{ request.args.error }}</div>{% endif %}
+{% if a.avisos %}<div class="aviso medio"><b>Avisos:</b><ul class="lista">{% for x in a.avisos %}<li>{{ x }}</li>{% endfor %}</ul></div>{% endif %}
+
+<section class="panel">
+  <h2>Datos de la ruta</h2>
+  <div class="linea-campos">
+    <label>Nombre<input id="nombre" maxlength="80" size="28"></label>
+    <label>Subtítulo <span class="suave">(opcional)</span><input id="subtitulo" maxlength="120" size="28" placeholder="Madrid · Gijón · Madrid"></label>
+    <label>Salida<input id="salida" required></label>
+  </div>
+  <div class="linea-campos">
+    <label>Tipo de ruta<select id="modalidad">{% for k, t in modalidades.items() %}<option value="{{ k }}">{{ t }}</option>{% endfor %}</select></label>
+    <label id="campo-distancia">Distancia del brevet<select id="distancia-brm">{% for d, h in reglas.limites.items() %}<option value="{{ d }}">{{ d }} km ({{ h|tiempo }} h)</option>{% endfor %}</select></label>
+    <label><span id="etiqueta-limite">Tiempo límite (h)</span><input id="limite" inputmode="decimal" size="6" required></label>
+  </div>
+  <p class="suave" id="explica-modalidad"></p>
+  <p class="suave" id="origen-hoja">{{ a.puntos|length }} puntos de la hoja, {{ a.puntos|selectattr('control')|list|length }} controles.
+    {% if a.anclas %}Controles colocados con {{ a.anclas }} waypoints del GPX.{% endif %}
+    {% if a.salida %}La salida y el límite vienen de la hoja de ruta.{% else %}La hoja no trae salida ni límite: rellénalos.{% endif %}</p>
+</section>
+
+<section class="panel">
+  <h2>Velocidad y paradas</h2>
+  <div class="linea-campos">
+    <label>Velocidad media en movimiento (km/h)
+      <span class="ajuste"><input id="velocidad" inputmode="decimal" size="6">
+      <button type="button" class="discreto" id="ayuda-vel" aria-haspopup="dialog" title="Cómo se calcula la velocidad">?</button></span></label>
+    {% if reciente %}<button type="button" class="discreto" id="usar-reciente">Usar mi media reciente: {{ reciente.kmh|n(1) }} km/h</button>{% endif %}
+    <label>Parada en cada control (min)<input id="parada-comun" inputmode="numeric" size="5" value="{{ aj.plan_parada_min }}"></label>
+    <button type="button" id="rellenar">Rellenar todas las paradas con este valor</button>
+  </div>
+  {% if reciente %}<p class="suave">Tu media reciente sale de {{ reciente.n }} salidas en exterior de {{ reciente.km_min }} km o más del último año (tiempo en movimiento). La de partida es la de la tabla por defecto, según el perfil de esta ruta.</p>{% endif %}
+</section>
+
+<section class="panel">
+  <h2>Previsión</h2>
+  <div class="cifras" id="resumen"></div>
+  <div class="graf" id="perfil" aria-label="Perfil de la ruta"></div>
+  <div class="linea-campos">
+    <button type="button" class="discreto" id="ed-anadir">Añadir punto</button>
+    <button type="button" id="ed-guardar" disabled>Actualizar</button>
+    <span class="suave" id="ed-aviso" role="status"></span>
+    {% if a.editados and e.hoja %}<form method="post" action="{{ url_for('plan_puntos_hoja', pid=e.id) }}" onsubmit="return confirm('¿Descartar los cambios en los puntos y volver a los de la hoja de ruta? También se descartan las paradas.')"><button class="discreto">Volver a los puntos de la hoja</button></form>{% endif %}
+  </div>
+  <div class="tabla ver-alto" style="max-height:none">
+    <table id="puntos"><thead><tr>
+      <th title="Mostrar en el mapa y en las infografías">Mapa</th><th title="Es un control">Control</th><th>Punto</th><th class="num" title="Desde la salida, como en la hoja de ruta">km</th><th class="num">Alt.</th>
+      <th class="num" title="Desnivel positivo acumulado desde la salida">Desn. acum.</th><th class="num">Pend.</th><th class="num">km/h</th>
+      <th>Parada (min)</th><th>Tipo</th><th class="num">Llegada</th><th class="num" id="titulo-cierre">Cierre</th><th class="num">Margen</th><th></th>
+    </tr></thead><tbody></tbody></table>
+  </div>
+  <p class="suave">Las paradas, el tipo y «Mapa» se recalculan al momento. Para cambiar los puntos, edita su nombre o su km, marca o desmarca «Control», quita puntos o pulsa <b>Añadir punto</b>, y después <b>Actualizar</b>: VenB ordena los puntos por km, numera los controles desde C1 en la salida (o C0, si la hoja empieza así; los de letra, como CF, se conservan) y vuelve a calcular el desnivel y los tiempos. Los km son los de la hoja de ruta; se ajustan a la distancia del GPX.
+  {% if a.editados %}Los puntos están editados: mandan sobre la hoja de ruta.{% endif %}
+  «Mapa»: los controles marcados llevan caja en la infografía; los demás puntos marcados se rotulan en los mapas y llevan caja. Los controles se dibujan siempre.</p>
+</section>
+
+<section class="panel">
+  <h2>Documentos</h2>
+  <div class="explicacion">
+    <p>Marca lo que quieres y pulsa <b>Generar</b>. Los documentos aparecen debajo, en «Ficheros generados», cada uno con sus formatos para abrirlo o descargarlo por separado, o todos juntos en un ZIP. Siempre se genera además la <b>ruta con waypoints</b> (GPX).</p>
+    <ul class="lista">
+      <li><b>Tabla de tiempos:</b> hoja de cálculo con la hora de paso, el cierre y el margen en cada punto.</li>
+      <li><b>Infografías:</b> el mapa de la ruta con una caja por control (horas, km y margen) y el perfil con los días. El fondo es, por defecto, el topográfico del IGN; en «Mapa de las infografías» puedes elegir otro. Los del IGN solo cubren España: si la ruta sale de España, se usa el topográfico de OpenStreetMap.</li>
+      <li><b>Mapas ilustrados</b> (Al-Ballut, personal y «Juego de Tronos»): mapas dibujados para imprimir o publicar, con pueblos, ríos y sierras.</li>
+      <li><b>Página interactiva:</b> un mapa para abrir en el navegador o el móvil, en el que se cambian la hora de salida y las paradas.</li>
+    </ul>
+    <p class="suave">Generar lleva tiempo: unos segundos si la zona ya se usó antes, pero en una zona nueva los mapas y los datos geográficos se descargan la primera vez y puede tardar de 10 a 15 minutos. Puedes seguir usando VenB mientras tanto.</p>
+  </div>
+  <fieldset><legend>Generar</legend>
+    {% for k, t in salidas.items() %}<label class="casilla"><input type="checkbox" name="salida" value="{{ k }}" {% if k in aj.plan_salidas %}checked{% endif %}> {{ t }}</label>{% endfor %}
+  </fieldset>
+  <div class="linea-campos">
+    {% if rutas %}<label>Club u organizador (marca de los documentos)<select id="club"><option value="">— Solo VenB —</option>{% for c in clubes %}<option value="{{ c.id }}">{{ c.nombre }}</option>{% endfor %}</select>
+      <a class="suave" href="{{ url_for('ajustes', _anchor='clubes') }}">Gestionar los perfiles de club</a></label>{% endif %}
+    <label>Mapa de las infografías<select id="estilo-infografia">{% for k, t in estilos.items() %}<option value="{{ k }}" {% if k == aj.plan_mapa_base %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></label>
+    <label>Colores del mapa personal<select id="paleta">{% for x in paletas %}<option>{{ x }}</option>{% endfor %}</select></label>
+    <label class="casilla"><input type="checkbox" id="auto-lugares" checked> Rotular también otras localidades bien repartidas</label>
+    <label class="casilla"><input type="checkbox" id="track-pendiente"> Colorear el track de la infografía según la pendiente</label>
+  </div>
+  <p><button type="button" id="generar">Generar</button> <span class="suave" id="aviso-generar"></span></p>
+  <div id="progreso-generar" {% if e.fase != 'generando' %}hidden{% endif %}>
+    <p><b>Generando…</b> <span class="suave">Mapas, teselas y datos de OpenStreetMap se descargan la primera vez: en una zona nueva puede tardar varios minutos.</span></p>
+    <pre class="registro"></pre>
+  </div>
+  {% if e.error and e.fase != 'generando' %}<div class="aviso alto">No se ha podido generar: {{ e.error }}</div>{% endif %}
+  {% if ficheros %}
+  <h2 style="margin-top:16px">Ficheros generados{% if e.generado %} <span class="suave">({{ e.generado[8:10] }}/{{ e.generado[5:7] }}/{{ e.generado[:4] }} {{ e.generado[11:16] }})</span>{% endif %}</h2>
+  <p><a href="{{ url_for('plan_zip', pid=e.id) }}">Descargar todo (ZIP)</a></p>
+  {% for grupo in [documentos|selectattr('imagen')|list, documentos|rejectattr('imagen')|list] %}{% if grupo %}
+  <div class="documentos{% if not grupo[0].imagen %} documentos-pequenos{% endif %}">{% for d in grupo %}
+    <article class="documento{% if d.gpx %} documento-gpx{% endif %}">
+      <h3>{{ d.titulo }}</h3>
+      {% if d.imagen %}<a class="vista" href="{{ url_for('plan_fichero', pid=e.id, nombre=d.imagen) }}" target="_blank" rel="noopener" title="Abrir a tamaño completo"><img loading="lazy" src="{{ url_for('plan_fichero', pid=e.id, nombre=d.imagen) }}" alt="{{ d.titulo }}"></a>{% endif %}
+      {% if d.gpx %}<p class="suave">El track de la ruta con todos sus puntos, también los que has añadido a mano (se actualiza al pulsar «Actualizar» en la Previsión), como waypoints con los tipos del creador de rutas de Garmin Connect: control, salida, llegada y genérico. Se importa en Garmin Connect, en el GPS o en otras aplicaciones.</p>
+      <p><a class="boton" href="{{ url_for('plan_fichero', pid=e.id, nombre=d.ficheros[0][1], descargar=1) }}">Descargar el GPX con waypoints</a></p>
+      <p class="suave">{{ d.ficheros[0][1] }}</p>
+      {% else %}<p class="formatos">{% for fmt, f in d.ficheros %}<span class="formato"><b>{{ fmt }}</b>
+        {% if fmt != 'Excel' %}<a href="{{ url_for('plan_fichero', pid=e.id, nombre=f) }}" target="_blank" rel="noopener">Abrir</a> · {% endif %}<a href="{{ url_for('plan_fichero', pid=e.id, nombre=f, descargar=1) }}">Descargar</a></span>{% endfor %}</p>{% endif %}
+    </article>{% endfor %}
+  </div>{% endif %}{% endfor %}
+  {% endif %}
+</section>
+
+<dialog id="dialogo-vel" aria-labelledby="titulo-vel">
+  <h2 id="titulo-vel">Cómo se calcula la velocidad</h2>
+  <p>Cada tramo entre dos puntos de la hoja tiene una <b>pendiente media</b> = ascenso del tramo / distancia del tramo. Según esa pendiente se toma una velocidad de la tabla. Después se aplica la <b>fatiga</b>: se pierde un porcentaje de velocidad por cada parte de la ruta recorrida, hasta un máximo.</p>
+  <p>La <b>velocidad media</b> que escribes escala toda la tabla por igual: si la tabla da 20 km/h de media en esta ruta y escribes 22, todas las velocidades suben un 10 %. Los valores por defecto proceden de la experiencia en brevets del autor de VenB: ajústalos a tu ritmo.</p>
+  <div class="tabla"><table id="tabla-vel"><thead><tr><th>Pendiente menor que (%)</th><th>km/h</th><th></th></tr></thead><tbody></tbody></table></div>
+  <p class="suave">La última fila incluye su propio límite (≤). Por encima de ella:</p>
+  <div class="linea-campos">
+    <label>Resto (km/h)<input id="vel-resto" inputmode="decimal" size="5"></label>
+    <button type="button" class="discreto" id="vel-anadir">Añadir tramo</button>
+  </div>
+  <fieldset><legend>Fatiga</legend>
+    <label>Se pierde (%)<input id="fat-pct" inputmode="decimal" size="4"></label>
+    <label>cada (% de ruta)<input id="fat-cada" inputmode="decimal" size="4"></label>
+    <label>hasta un máximo de (%)<input id="fat-max" inputmode="decimal" size="4"></label>
+  </fieldset>
+  <p class="suave" id="vel-resultado"></p>
+  <p><button type="button" id="vel-cerrar">Aplicar</button> <button type="button" class="discreto" id="vel-defecto">Valores por defecto</button></p>
+</dialog>
+{% endif %}
+{% endblock %}
+{% block guiones %}<script src="{{ url_for('static', filename='fecha_hora.js') }}"></script>
+<script src="{{ url_for('static', filename='planificador.js') }}"></script>{% endblock %}

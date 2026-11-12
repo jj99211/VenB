@@ -1,0 +1,62 @@
+{
+    "db": {
+        "type": "sqlite",
+        "_comment_postgresql": "set 'type' to 'postgresql' and uncomment user/password/host/port/database to use a Postgres backend; each idbutils.DB lands in its own schema inside the named database",
+        "_user": "",
+        "_password": "",
+        "_host": "127.0.0.1",
+        "_port": 5432,
+        "_database": ""
+    },
+    "garmin": {
+        "domain": "garmin.com"
+    },
+    "credentials": {
+        "user": "",
+        "secure_password": false,
+        "password": "",
+        "password_file": null
+    },
+    "data": {
+        "weight_start_date": "01/01/2025",
+        "sleep_start_date": "01/01/2025",
+        "rhr_start_date": "01/01/2025",
+        "hrv_start_date": "01/01/2025",
+        "monitoring_start_date": "01/01/2025",
+        "download_latest_activities": 25,
+        "download_all_activities": 1000
+    },
+    "directories": {
+        "relative_to_home": true,
+        "base_dir": ".venb/HealthData",
+        "mount_dir": "/Volumes/GARMIN"
+    },
+    "enabled_stats": {
+        "monitoring": false,
+        "steps": false,
+        "itime": false,
+        "sleep": true,
+        "rhr": true,
+        "hrv": true,
+        "weight": false,
+        "activities": true
+    },
+    "course_views": {
+        "steps": []
+    },
+    "modes": {},
+    "activities": {
+        "display": []
+    },
+    "settings": {
+        "metric": true,
+        "default_display_activities": [
+            "walking",
+            "running",
+            "cycling"
+        ]
+    },
+    "checkup": {
+        "look_back_days": 90
+    }
+}

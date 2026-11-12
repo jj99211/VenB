@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% from '_iconos.html' import icono %}
+{% block titulo %}VenB: Informes{% endblock %}
+{% block cuerpo %}
+<h1>Informes</h1>
+<nav class="tarjetas-seccion" aria-label="Secciones de Informes">
+  {% for a, ic, t, d in [('nota','nota','Escribir una nota','Tus sensaciones, en texto libre'),('notas','diario','Notas','Lo que has ido escribiendo'),
+                         ('informes','informes','Informes','PDF y gráficas de cada revisión'),('revisiones','revisiones','Revisiones','Resumen de cada revisión')] %}
+  <a class="tarjeta-seccion t-{{ ic }}" href="#{{ a }}">
+    <span class="tarjeta-icono">{{ icono(ic) }}</span>
+    <span class="tarjeta-texto"><b>{{ t }}</b><small>{{ d }}</small></span>
+    <span class="tarjeta-flecha" aria-hidden="true">↓</span>
+  </a>{% endfor %}
+</nav>
+
+<details class="plegable" id="nota" open>
+  <summary><h2>{% if e %}Editar nota{% else %}Escribir una nota{% endif %}</h2></summary>
+  <section class="panel">
+    <form method="post" action="{{ url_for('diario_guardar') }}">
+      {% if e %}<input type="hidden" name="id" value="{{ e.id }}">{% endif %}
+      <div class="linea-campos">
+        <label>Fecha <input name="fecha" value="{{ e.fecha|iso_fecha if e else hoy }}" placeholder="DD/MM/AAAA" pattern="\d{2}/\d{2}/\d{4}" size="11" required></label>
+      </div>
+      <label>Nota <textarea class="nota" name="texto" rows="6" maxlength="20000" required>{{ e.texto if e else '' }}</textarea></label>
+      <p><button>Guardar</button>{% if e %} <a href="{{ url_for('informes') }}">Cancelar</a>{% endif %}</p>
+    </form>
+  </section>
+</details>
+
+<details class="plegable" id="notas" open>
+  <summary><h2>Notas</h2></summary>
+  <section class="panel">
+    {% for n in notas %}<article class="nota-diario">
+      <div class="nota-cab"><b class="f">{{ n.fecha|iso_fecha }}</b>
+        <span class="acciones"><a href="?editar={{ n.id }}#nota">Editar</a><form method="post" action="{{ url_for('diario_borrar', nid=n.id) }}" onsubmit="return confirm('¿Borrar esta nota?')"><button class="discreto">Borrar</button></form></span></div>
+      <p>{{ n.texto }}</p>
+    </article>{% else %}<p class="suave">Todavía no hay notas. Es opcional: escribe solo cuando quieras.</p>{% endfor %}
+  </section>
+</details>
+
+<details class="plegable" id="informes" open>
+  <summary><h2>Informes</h2></summary>
+  {% for i in informes %}<section class="panel">
+    <h3>{{ i.carpeta }}</h3>
+    {% for p in i.pdf %}<p><a href="/informes/{{ i.carpeta }}/{{ p }}">Abrir {{ p }}</a></p>{% endfor %}
+    {% if i.svg %}<details><summary>Gráficas</summary><div class="graficas">
+      {% for s in i.svg %}<a href="/informes/{{ i.carpeta }}/{{ s }}"><img loading="lazy" src="/informes/{{ i.carpeta }}/{{ s }}" alt="Gráfica {{ s }}"></a>{% endfor %}
+    </div></details>{% endif %}
+  </section>{% else %}<p class="suave">Todavía no hay informes.</p>{% endfor %}
+</details>
+
+<details class="plegable" id="revisiones" open>
+  <summary><h2>Revisiones</h2></summary>
+  {% for r in estados %}<details class="panel" {% if loop.first %}open{% endif %}><summary>{{ r.titulo }}</summary>
+    <ul class="lista">{% for p in r.puntos %}<li>{{ p }}</li>{% endfor %}</ul>
+  </details>{% else %}<p class="suave">Todavía no hay revisiones.</p>{% endfor %}
+</details>
+{% endblock %}
+{% block guiones %}
+{% endblock %}

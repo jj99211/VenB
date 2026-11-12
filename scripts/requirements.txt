@@ -1,0 +1,12 @@
+pandas
+numpy
+fitparse
+flask
+markdown
+matplotlib
+reportlab
+openpyxl
+shapely
+requests
+scipy
+pdfplumber

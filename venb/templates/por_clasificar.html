@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block titulo %}VenB: Salidas por clasificar{% endblock %}
+{% block cuerpo %}
+<h1>Salidas largas por clasificar</h1>
+<section class="panel">
+  <p>Salidas en bici de {{ km|n }} km o más que no están en la lista de <a href="{{ url_for('brevets') }}">Brevets</a> (ni son etapas de una prueba registrada). Para cada una: <b>Sí, es una prueba</b> abre el formulario de Brevets relleno con sus datos; <b>No es prueba</b> la quita de esta lista y de los avisos de Inicio. Se puede deshacer abajo, en «Marcadas como no prueba».</p>
+  <p class="suave">El mínimo de km se cambia en Ajustes.</p>
+  {% if filas %}
+  <form method="post" action="{{ url_for('brevets_no_prueba') }}" onsubmit="return confirm('¿Marcar las {{ filas|length }} salidas como «No es prueba»? Se puede deshacer una a una.')">
+    <input type="hidden" name="todas" value="1"><button class="discreto">Marcar todas ({{ filas|length }}) como no pruebas</button>
+  </form>
+  <div class="tabla"><table>
+    <tr><th>Fecha</th><th>Título</th><th class="num">km</th><th class="num">Tiempo</th><th>¿Fue una prueba?</th></tr>
+    {% for a in filas %}<tr>
+      <td class="f">{{ a.fecha|fecha }}</td>
+      <td>{% if a.id|string is match_local %}{{ a.titulo }}{% else %}<a href="{{ url_garmin.format(a.id) }}" target="_blank" rel="noopener" title="Abrir en Garmin Connect">{{ a.titulo }} ↗</a>{% endif %}</td>
+      <td class="num">{{ a.km|n(1) }}</td><td class="num">{{ a.h|hm }}</td>
+      <td class="nowrap"><a class="boton-enlace" href="{{ url_for('brevets', actividad=a.id) }}#formulario">Sí, es una prueba</a>
+        <form class="en-linea" method="post" action="{{ url_for('brevets_no_prueba') }}"><input type="hidden" name="id" value="{{ a.id }}"><button class="discreto">No es prueba</button></form></td>
+    </tr>{% endfor %}
+  </table></div>
+  {% else %}<p><b>No queda ninguna salida por clasificar.</b></p>{% endif %}
+</section>
+<details class="plegable" id="marcadas">
+<summary><h2>Marcadas como no prueba ({{ marcadas|length }})</h2></summary>
+<section class="panel">
+  {% if marcadas %}<div class="tabla"><table>
+    <tr><th>Fecha</th><th>Título</th><th class="num">km</th><th></th></tr>
+    {% for a in marcadas %}<tr><td class="f">{{ a.fecha|fecha }}</td><td>{{ a.titulo }}</td><td class="num">{{ a.km|n(1) }}</td>
+      <td><form class="en-linea" method="post" action="{{ url_for('brevets_recuperar') }}"><input type="hidden" name="id" value="{{ a.id }}"><button class="discreto" title="Vuelve a la lista de salidas por clasificar">Recuperar</button></form></td></tr>{% endfor %}
+  </table></div>{% else %}<p class="suave">Ninguna.</p>{% endif %}
+</section>
+</details>
+{% endblock %}

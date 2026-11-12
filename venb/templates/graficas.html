@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% from '_iconos.html' import tarjetas_analisis %}
+{% block titulo %}VenB: Análisis{% endblock %}
+{% macro grafica(id, titulo, nota='') %}
+<section class="panel">
+  <h2 id="t-{{ id }}">{{ titulo }}</h2>
+  {% if nota %}<p class="suave">{{ nota }}</p>{% endif %}
+  <div class="graf" id="g-{{ id }}" data-grafica></div>
+  <details class="ver"><summary>Ver datos</summary><div class="tabla"></div></details>
+</section>
+{% endmacro %}
+{% block cuerpo %}
+{{ tarjetas_analisis('graficas') }}
+<h1>Gráficas</h1>
+<div class="rango" role="group" aria-label="Periodo">
+  {% for m, t in [(3,'3 meses'),(6,'6 meses'),(12,'1 año'),(36,'3 años'),(0,'Todo')] %}<button type="button" data-meses="{{ m }}">{{ t }}</button>{% endfor %}
+</div>
+<h2 class="seccion">Entrenamiento</h2>
+{{ grafica('carga', 'Forma y fatiga', 'La forma (CTL) es la carga de 42 días; la fatiga (ATL), la de 7. Sin potencia, el TSS se estima por duración.') }}
+{{ grafica('tsb', 'Frescura (TSB)', 'Por encima de cero llegas descansado; por debajo, cargado.') }}
+{{ grafica('horas', 'Horas de bici', 'La semana o el mes en curso están incompletos. Una prueba de varios días cuenta entera en la fecha de salida.') }}
+{{ grafica('potencia', 'Mejor potencia de 20 minutos por mes', 'En las actividades que registran potencia. Los cortes de señal pueden rebajar un mes con pocas sesiones.') }}
+<h2 class="seccion">Salud y peso</h2>
+<div class="rejilla dos bloque">
+  {{ grafica('sueno', 'Sueño', 'Horas por noche, media de 7 días.') }}
+  {{ grafica('vfc', 'VFC', 'Milisegundos, media de 7 días.') }}
+  {{ grafica('fc', 'FC en reposo', 'Pulsaciones por minuto, media de 7 días.') }}
+  {{ grafica('peso', 'Peso', 'Kilos anotados.') }}
+</div>
+<p class="suave">Los kilómetros por año, los acumulados, los de cada mes y las salidas según su distancia están en el <a href="{{ url_for('historico') }}">Histórico</a>.</p>
+{% endblock %}

@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+{% block titulo %}VenB: Ajustes{% endblock %}
+{% block cuerpo %}
+<h1>Ajustes</h1>
+<p class="suave">Tus datos y tu configuración están en la carpeta <code>VenB-datos</code>, junto a la del programa. Una versión nueva de VenB no los sobrescribe.</p>
+{% macro numero(nombre, etiqueta, ayuda='', min=0, max=1000, paso=1, unidad='') %}
+  <div class="campo"><label for="c-{{ nombre }}">{{ etiqueta }}</label>
+    <span class="control"><input id="c-{{ nombre }}" name="{{ nombre }}" value="{{ a[nombre] }}" type="number" min="{{ min }}" max="{{ max }}" step="{{ paso }}">{% if unidad %} <span class="suave">{{ unidad }}</span>{% endif %}</span>
+    {% if ayuda %}<span class="ayuda">{{ ayuda }}</span>{% endif %}</div>
+{% endmacro %}
+<form method="post" id="form-ajustes">
+<div class="ajustes-rejilla">
+{% if not rutas %}
+  <section class="panel">
+    <h2>Temporada y bicis</h2>
+    <div class="campo"><label for="c-mes">La temporada empieza en</label>
+      <span class="control"><select id="c-mes" name="mes_inicio_temporada">{% for m in meses %}<option value="{{ loop.index }}" {% if a.mes_inicio_temporada == loop.index %}selected{% endif %}>{{ m }}</option>{% endfor %}</select></span>
+      <span class="ayuda">Los km de las bicis y sus piezas se cuentan por temporadas.</span></div>
+    <div class="campo"><label for="c-rodillo">Bici del rodillo</label>
+      <span class="control"><select id="c-rodillo" name="bici_rodillo"><option value="">Ninguna</option>{% for b in bicis %}<option value="{{ b.id }}" {% if a.bici_rodillo == b.id %}selected{% endif %}>{{ b.nombre }}</option>{% endfor %}</select></span></div>
+    <div class="campo"><label for="c-manda">En rodillo, esta bici manda sobre la de Garmin Connect</label>
+      <span class="control"><input id="c-manda" type="checkbox" name="rodillo_manda" value="1" {% if a.rodillo_manda %}checked{% endif %}></span></div>
+    {{ numero('cierre_dia_inicio', 'Recordar el cierre del mes desde el día', min=15, max=28) }}
+    {{ numero('cierre_dia_fin', 'hasta el día del mes siguiente', min=1, max=14) }}
+  </section>
+{% endif %}
+{% if not rutas %}
+  <section class="panel">
+    <h2>Avisos de Inicio</h2>
+    {{ numero('dias_sin_actividad', 'Avisar tras días sin actividades', min=1, max=365, unidad='días') }}
+    {{ numero('dias_sin_salud', 'Avisar tras días sin datos de salud', min=1, max=365, unidad='días') }}
+    {{ numero('dias_sin_peso', 'Avisar tras días sin anotar peso', min=1, max=365, unidad='días') }}
+    {{ numero('sueno_referencia_h', 'Referencia de sueño', min=1, max=12, paso=0.5, unidad='h') }}
+  </section>
+{% endif %}
+{% if not rutas %}
+  <section class="panel">
+    <h2>Sensores</h2>
+    {{ numero('sensores_pct_aviso', 'Avisar si falta un sensor durante más del', ayuda='Porcentaje del tiempo de la sesión con el sensor sin datos o congelado (pulsómetro, potencia, cadencia, velocidad, GPS).', min=1, max=100, unidad='%') }}
+    {{ numero('sensores_dias_aviso', 'Revisar las sesiones de los últimos', min=1, max=60, unidad='días') }}
+    <div class="campo"><span class="etiqueta-campo">Sensores que se vigilan</span>
+      <span class="control casillas">{% for k, t in sensores.items() %}<label class="casilla"><input type="checkbox" name="sensores_vigilar" value="{{ k }}" {% if k in a.sensores_vigilar %}checked{% endif %}> {{ t }}</label>{% endfor %}</span></div>
+  </section>
+{% endif %}
+{% if not rutas %}
+  <section class="panel">
+    <h2>Brevets e Histórico</h2>
+    {{ numero('km_aviso_prueba', 'Preguntar por las salidas de más de', ayuda='Las salidas en bici de esta distancia o más que no están en Brevets se ofrecen para registrarlas.', min=50, max=2000, unidad='km') }}
+    {{ numero('dias_aviso_prueba', 'Preguntar en Inicio por las de los últimos', ayuda='Las anteriores, en «Salidas largas por clasificar».', min=1, max=3650, unidad='días') }}
+    {{ numero('km_enlace_garmin', 'Enlazar a Garmin Connect las actividades de más de', ayuda='En el Histórico, el título abre la actividad en Garmin Connect. 0: todas.', min=0, max=10000, unidad='km') }}
+  </section>
+{% endif %}
+{% if not rutas %}
+  <section class="panel">
+    <h2>Descargas de Garmin</h2>
+    {{ numero('horas_descarga_garmin', 'Traer lo nuevo de Garmin cada', ayuda='Mientras VenB está abierta, al abrir Inicio. Además, al arrancar y con el botón «Traer lo nuevo de Garmin».', min=1, max=48, unidad='h') }}
+  </section>
+{% endif %}
+  <section class="panel">
+    <h2>Planificador</h2>
+    <div class="campo"><label for="c-base">Mapa de las infografías</label>
+      <span class="control"><select id="c-base" name="plan_mapa_base">{% for k, t in estilos_infografia.items() %}<option value="{{ k }}" {% if a.plan_mapa_base == k %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></span></div>
+    {{ numero('plan_parada_min', 'Parada en cada control', min=0, max=600, unidad='min') }}
+    <div class="campo"><span class="etiqueta-campo">Documentos marcados al generar</span>
+      <span class="control casillas">{% for k, t in salidas_plan.items() %}<label class="casilla"><input type="checkbox" name="plan_salidas" value="{{ k }}" {% if k in a.plan_salidas %}checked{% endif %}> {{ t }}</label>{% endfor %}</span>
+      <span class="ayuda">Valores con los que empieza cada ruta nueva; en cada ruta se pueden cambiar.</span></div>
+  </section>
+{% if not rutas %}
+  <section class="panel">
+    <h2>Peso</h2>
+    {% if error_peso %}<div class="aviso medio">No se ha podido cambiar la configuración de la descarga de Garmin. El origen del peso sigue como estaba.</div>{% endif %}
+    <div class="campo"><label for="c-peso">Origen del peso</label>
+      <span class="control"><select id="c-peso" name="origen_peso" {% if not garmindb or not usar_garmin %}disabled{% endif %}>
+        <option value="mano" {% if not peso_garmin %}selected{% endif %}>A mano</option>
+        <option value="garmin" {% if peso_garmin %}selected{% endif %}>Garmin</option></select></span>
+      <span class="ayuda">{% if not usar_garmin %}Garmin Connect está desactivado (ver abajo): el peso se anota a mano en Inicio.
+      {% elif garmindb %}Con «Garmin», el peso registrado en Garmin Connect llega con la siguiente descarga. Lo que anotes a mano en Inicio tiene prioridad ese día. Volver a «A mano» no borra los pesos ya descargados.
+      {% else %}Para traer el peso de Garmin, antes hay que <a href="{{ url_for('ayuda', capitulo='garmin') }}">instalar la descarga automática</a>.{% endif %}</span></div>
+  </section>
+{% endif %}
+{% if not rutas %}
+  <section class="panel">
+    <h2>Calendario</h2>
+    <div class="campo"><label for="c-cal">Mi calendario de Google (dirección iCal)</label>
+      <span class="control"><input id="c-cal" type="password" name="calendario_url" size="24" maxlength="500" autocomplete="off" placeholder="{{ 'Déjala en blanco para no cambiarla' if conectado else 'https://…ics' }}"></span>
+      <span class="ayuda">{% if conectado %}Añadido. {% endif %}En Google Calendar: <b>Configuración</b>, elige el calendario y copia su dirección en formato iCal (termina en <code>.ics</code>; no sirve el enlace para compartir). Es secreta: no la compartas. Se guarda solo en esta instalación y no entra en las copias.</span></div>
+    {% if conectado %}<div class="campo"><label for="c-quitar">Quitar el mío</label><span class="control"><input id="c-quitar" type="checkbox" name="calendario_quitar"></span></div>{% endif %}
+    <div class="campo"><label for="c-rand">Mostrar las pruebas de «{{ a.calendario_defecto_nombre }}»</label>
+      <span class="control"><input id="c-rand" type="checkbox" name="calendario_defecto_ver" {% if a.calendario_defecto_ver %}checked{% endif %}></span>
+      <span class="ayuda">También se ocultan o muestran en la propia página Calendario.</span></div>
+  </section>
+{% endif %}
+</div>
+  <p class="botones"><button>Guardar ajustes</button>
+    <button type="submit" class="discreto" formaction="{{ url_for('ajustes_defecto') }}" onclick="return confirm('¿Volver a los valores por defecto de estos apartados? No cambia la temporada, la bici del rodillo, tu calendario, el origen del peso ni la cuenta de Garmin.')">Valores por defecto</button></p>
+</form>
+{% if rutas %}
+<section class="panel" id="clubes">
+  <h2>Perfiles de club u organizador</h2>
+  <p>Cada perfil guarda el nombre, la web, el texto de la marca y uno o varios logotipos de un club u organizador. Al generar los documentos de una ruta, en el Planificador, eliges el club: su marca va en los mapas, las infografías y la página interactiva, siempre junto a la de VenB.</p>
+  {% if error_club %}<div class="aviso medio">{{ error_club }}</div>{% endif %}
+  {% if clubes %}<div class="tabla"><table>
+    <tr><th>Club</th><th>Web</th><th>Logotipos</th><th></th></tr>
+    {% for c in clubes %}<tr><td><b>{{ c.nombre }}</b>{% if c.texto %}<br><span class="suave">{{ c.texto }}</span>{% endif %}</td><td>{{ c.web }}</td>
+      <td>{% for l in c.logos %}<img class="logo-club" src="{{ url_for('club_logo', cid=c.id, nombre=l) }}" alt="Logotipo de {{ c.nombre }}">{% endfor %}</td>
+      <td class="nowrap"><a class="boton-enlace" href="{{ url_for('ajustes', club=c.id, _anchor='clubes') }}">Editar</a>
+        <form class="en-linea" method="post" action="{{ url_for('club_borrar', cid=c.id) }}" onsubmit="return confirm('¿Borrar el perfil de {{ c.nombre }}? Los documentos ya generados no cambian.')"><button class="discreto">Borrar</button></form></td></tr>{% endfor %}
+  </table></div>{% else %}<p class="suave">Todavía no hay ningún perfil.</p>{% endif %}
+  {% set c = club_editar %}
+  <h3>{{ 'Editar «' ~ c.nombre ~ '»' if c else 'Nuevo perfil' }}</h3>
+  <form method="post" action="{{ url_for('club_guardar') }}" enctype="multipart/form-data">
+    {% if c %}<input type="hidden" name="id" value="{{ c.id }}">{% endif %}
+    <div class="campo"><label for="c-club-nombre">Nombre del club u organizador</label><span class="control"><input id="c-club-nombre" name="nombre" value="{{ c.nombre if c else '' }}" maxlength="80" size="28" required></span></div>
+    <div class="campo"><label for="c-club-web">Página web</label><span class="control"><input id="c-club-web" name="web" value="{{ c.web if c else '' }}" maxlength="200" size="28" placeholder="https://"></span></div>
+    <div class="campo"><label for="c-club-texto">Texto de la marca</label><span class="control"><input id="c-club-texto" name="texto" value="{{ c.texto if c else '' }}" maxlength="120" size="28"></span>
+      <span class="ayuda">Opcional. Sin texto, los documentos ponen «Nombre - web». Siempre se añade «VenB: vivirenbici.es».</span></div>
+    <div class="campo"><label for="c-club-logos">Logotipos (PNG con fondo transparente, mejor)</label><span class="control"><input id="c-club-logos" type="file" name="logos" accept=".png,.jpg,.jpeg,.webp" multiple></span>
+      <span class="ayuda">Hasta 4. Van seguidos, en el orden en que se suben, y después el logotipo de VenB, más pequeño.</span></div>
+    {% if c and c.logos %}<div class="campo"><span class="etiqueta-campo">Quitar logotipos</span><span class="control casillas">{% for l in c.logos %}<label class="casilla"><input type="checkbox" name="quitar_logo" value="{{ l }}"> <img class="logo-club" src="{{ url_for('club_logo', cid=c.id, nombre=l) }}" alt="Logotipo {{ loop.index }}"></label>{% endfor %}</span></div>{% endif %}
+    <p class="botones"><button>{{ 'Guardar cambios' if c else 'Crear el perfil' }}</button>{% if c %} <a href="{{ url_for('ajustes', _anchor='clubes') }}">Cancelar</a>{% endif %}</p>
+  </form>
+</section>
+{% endif %}
+{% if not rutas %}
+<section class="panel" id="garmin">
+  <h2>Garmin Connect</h2>
+  {% if error_garmin %}<div class="aviso medio">{{ error_garmin }}</div>{% endif %}
+  {% if ok_garmin %}<div class="aviso">{{ ok_garmin }}</div>{% endif %}
+  {% if remoto %}<p>{{ 'Se usa Garmin Connect.' if usar_garmin else 'Garmin Connect está desactivado: solo actividades subidas a mano.' }}</p>
+  {% else %}<form method="post" action="{{ url_for('garmin_usar') }}" class="linea">
+    <label class="casilla"><input type="checkbox" name="usar_garmin" value="si" {% if usar_garmin %}checked{% endif %} onchange="this.form.submit()"> Usar Garmin Connect</label>
+    <noscript><button class="discreto">Aplicar</button></noscript>
+  </form>{% endif %}
+  <p class="suave">Desmarcada, VenB funciona sin Garmin: no descarga nada (también se detiene la descarga diaria), no envía el peso ni los nombres y no lee las bicis de Garmin. Las actividades se suben a mano en <a href="{{ url_for('importar') }}">Análisis &gt; Importar</a> (GPX, FIT o TCX), algo que también puedes hacer con ella marcada. Lo ya descargado de Garmin se conserva y sigue contando.</p>
+  {% if usar_garmin %}
+  <h3>Cuenta</h3>
+  {% if not instalado %}<p>La descarga automática no está instalada. Ejecuta de nuevo el instalador y responde <b>s</b> a la pregunta sobre Garmin; después vuelve aquí.</p>
+  {% elif remoto %}<p>{{ 'Conectada como ' ~ usuario_garmin ~ '.' if usuario_garmin else 'Sin cuenta configurada.' }}</p><p class="suave">Solo desde el ordenador donde está instalada VenB.</p>
+  {% else %}
+  <form method="post" action="{{ url_for('garmin_cuenta') }}">
+    <div class="linea-campos">
+      <label>Correo <input name="usuario" type="email" size="30" maxlength="200" autocomplete="off" value="{{ usuario_garmin }}" required></label>
+      <label>Contraseña <input name="clave" type="password" size="20" maxlength="200" autocomplete="new-password" placeholder="{{ 'Déjala en blanco para no cambiarla' if usuario_garmin else '' }}" {% if not usuario_garmin %}required{% endif %}></label>
+      <button>Guardar y conectar</button>
+    </div>
+  </form>
+  <p class="suave">Se guardan donde los lee la descarga de Garmin (garmindb), en la carpeta oculta <code>.venb</code> de tu carpeta personal, sin cifrar y solo en este ordenador. No entran en las copias de seguridad. VenB nunca te muestra la contraseña.</p>
+  {% if usuario_garmin %}
+  {% set fr = freno_garmin() %}
+  {% if fr.fallos %}<div class="aviso alto">{{ aviso_freno_garmin() }}</div>{% endif %}
+  {% if fr.manual_hasta %}<p class="suave">Para no provocar un bloqueo de Garmin, los botones de conexión están desactivados hasta las {{ fr.manual_hasta.strftime('%H:%M') }} (como mucho 3 intentos por hora, y ninguno mientras Garmin tenga bloqueada la conexión).</p>{% endif %}
+  <div class="linea-campos">
+    <form method="post" action="{{ url_for('garmin_probar') }}"><button class="discreto" {% if fr.manual_hasta %}disabled{% endif %}>Comprobar la conexión</button></form>
+    {% if descarga.en_curso %}<span>Descarga completa en curso desde las {{ descarga.inicio.strftime('%H:%M') }}. Puede tardar horas; puedes seguir usando VenB.</span>
+    {% else %}<form method="post" action="{{ url_for('garmin_descargar') }}" onsubmit="return confirm('La descarga completa puede tardar horas. ¿Empezar ahora?')"><button {% if fr.manual_hasta %}disabled{% endif %}>Descargar todo ahora</button></form>{% endif %}
+  </div>
+  {% if descarga.resultado == 'bien' %}<p>La descarga completa ha terminado bien.</p>{% elif descarga.resultado == 'mal' %}<div class="aviso medio">La descarga completa ha fallado. Los detalles están en <code>{{ descarga.log }}</code>.</div>{% endif %}
+  <p class="suave"><b>Descargar todo ahora</b> trae hasta 1.000 actividades y tus datos de salud: hazlo la primera vez. Después, VenB trae solo lo nuevo al abrirse, cada pocas horas y con el botón de Inicio.</p>
+  {% endif %}
+  {% endif %}
+  {% endif %}
+</section>
+{% endif %}
+<section class="panel" id="copia">
+  <h2>Copia de seguridad e importación</h2>
+  {% if remoto %}<p class="suave">Solo desde el ordenador donde está instalada VenB.</p>{% else %}
+  {% if error_copia %}<div class="aviso medio">{{ error_copia }} No se ha cambiado nada.</div>{% endif %}
+  {% if importado %}<div class="aviso">
+    {% if importado.tipo == 'copia' %}Copia del {{ importado.fecha[:10] | iso_fecha }} restaurada: {{ importado.datos }} ficheros de datos, {{ importado.actividades }} actividades de Garmin añadidas; base de salud: {{ importado.db }}.
+    {% else %}Exportación de Garmin importada: {{ importado.actividades | n }} actividades y {{ importado.pesos | n }} pesos.{% endif %}
+    <small>El estado anterior se ha guardado en <code>{{ importado.previa }}</code>.</small></div>{% endif %}
+  <form method="post" action="{{ url_for('copia_exportar') }}">
+    <p><button>Descargar copia de seguridad</button></p>
+  </form>
+  <p class="suave">Un ZIP con todo <code>VenB-datos</code> y, de la descarga de Garmin, los resúmenes de actividades y los datos de salud. Se comprueba al crearlo. Guárdalo fuera de este ordenador. No incluye tu contraseña de Garmin ni la dirección de tu calendario.</p>
+  <form method="post" action="{{ url_for('copia_importar') }}" enctype="multipart/form-data">
+    <div class="linea-campos">
+      <label>ZIP <input type="file" name="zip" accept=".zip,application/zip"></label>
+      <button>Importar</button>
+    </div>
+  </form>
+  <p class="suave">Sirve para dos cosas: <b>restaurar una copia de VenB</b>, que sustituye tus datos por los de la copia, o <b>importar la exportación de tu cuenta de Garmin</b>, que añade tu historial completo (ver <a href="{{ url_for('ayuda', capitulo='garmin') }}">Ayuda</a>). Antes de cambiar nada, VenB guarda el estado actual en <code>VenB-datos/copias/</code>. Puede tardar varios minutos con ficheros grandes.</p>
+{% endif %}
+</section>
+{% if not remoto %}
+<section class="panel" id="red">
+  <h2>Acceso desde el móvil o la tablet</h2>
+  {% if error_red %}<div class="aviso medio">{{ error_red }}</div>{% endif %}
+  {% if red.reiniciar %}<div class="aviso medio">Cierra VenB y vuelve a abrirla para aplicar el cambio.</div>{% endif %}
+  <p>Permite abrir VenB desde otros equipos conectados a tu misma red (la wifi de casa), con una clave. Solo funciona mientras VenB está abierta en este ordenador.</p>
+  <form method="post" action="{{ url_for('red_ajustes') }}">
+    <div class="linea-campos">
+      <label class="casilla"><input type="checkbox" name="red_local" value="si" {% if red.pedido %}checked{% endif %}> Permitir el acceso desde la red local</label>
+      <label>Clave de acceso <input name="clave" type="password" size="16" minlength="{{ red.min }}" maxlength="100" autocomplete="new-password" placeholder="{{ 'Déjala en blanco para no cambiarla' if red.tiene_clave else 'Al menos ' ~ red.min ~ ' caracteres' }}"></label>
+      <button>Guardar</button>
+    </div>
+  </form>
+  <p>Dirección para el móvil o la tablet: {% if red.direccion %}<b><code>{{ red.direccion }}</code></b>{% else %}la IP de este ordenador seguida de <code>:{{ a.puerto }}</code> (no se ha podido averiguar la IP){% endif %}
+  <br><span class="suave">{% if red.abierta and not red.reiniciar %}Acceso abierto: ya puedes usarla.{% elif red.pedido %}Funcionará cuando cierres VenB y vuelvas a abrirla.{% else %}Funcionará cuando actives el acceso y reinicies VenB.{% endif %} Es la IP de este momento: si el router se la cambia al ordenador, aquí aparecerá la nueva.</span></p>
+  <p class="suave">Desde otro equipo se puede consultar y anotar todo, pero no cerrar VenB, cambiar la cuenta de Garmin, hacer copias ni cambiar este apartado. Tras 5 claves erróneas seguidas, la entrada se bloquea 10 minutos. No lo actives en redes públicas: la conexión no va cifrada. Al cambiar la clave, los equipos que ya habían entrado tendrán que escribirla de nuevo.</p>
+</section>
+{% endif %}
+<script>
+(function () {
+  // Esperas largas: el botón dice qué está pasando mientras VenB habla con Garmin
+  document.querySelectorAll('#garmin form').forEach(function (f) {
+    f.addEventListener('submit', function () {
+      var b = f.querySelector('button');
+      if (b && !f.querySelector('input[type=checkbox]')) { b.disabled = true; b.textContent = 'Conectando con Garmin Connect…'; }
+    });
+  });
+  {% if saltar %}var s = document.getElementById('{{ saltar }}'); if (s) s.scrollIntoView();{% endif %}
+})();
+</script>
+{% endblock %}

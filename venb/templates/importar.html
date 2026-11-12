@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block titulo %}VenB: Importar{% endblock %}
+{% block cuerpo %}
+<h1>Importar actividades</h1>
+<p class="suave">Sube actividades grabadas con cualquier dispositivo o aplicación, sin pasar por Garmin Connect: ficheros {{ extensiones }} (también comprimidos en .gz). Puedes elegir muchos a la vez.</p>
+{% if error %}<div class="aviso alto">{{ error }}</div>{% endif %}
+<section class="panel">
+  <form method="post" enctype="multipart/form-data" class="linea">
+    <label>Ficheros <input type="file" name="ficheros" multiple required accept=".gpx,.fit,.tcx,.gz"></label>
+    <button>Leer los ficheros</button>
+  </form>
+  <ul class="lista">
+    <li>Antes de guardar nada verás una tabla para revisarlas: tipo de actividad, título y bici de cada una.</li>
+    <li>Si una actividad coincide en el tiempo con otra que ya está en VenB (de Garmin o subida antes), aparece desmarcada para no duplicarla.</li>
+    <li>De cada fichero salen la fecha y hora, la distancia, el tiempo en movimiento y total, el desnivel y, si los trae, la frecuencia cardiaca y la potencia. Un track planificado, sin horas, no sirve.</li>
+    <li>VenB guarda el fichero original en <code>VenB-datos/actividades/</code>, que entra en las copias de seguridad.</li>
+  </ul>
+</section>
+{% endblock %}

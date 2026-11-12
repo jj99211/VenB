@@ -1,0 +1,31 @@
+{# Iconos de línea (24×24, color del texto) para el menú y las tarjetas de Análisis #}
+{# Tarjetas de acceso a las secciones de Análisis; en el Histórico, la suya se cambia por el Planificador #}
+{% macro tarjetas_analisis(actual='') -%}
+<nav class="tarjetas-seccion" aria-label="Secciones de Análisis">
+  {% for r, t, d in [('brevets','Brevets','Homologaciones, series y estadísticas'),
+                     ('planificador','Planificador de rutas','Horarios, mapas e infografías de una ruta') if actual == 'historico' else ('historico','Histórico','Todas tus actividades desde el principio'),
+                     ('importar','Importar','Actividades de ficheros GPX, FIT o TCX'),('bicis','Bicis','Kilómetros, piezas y mecánico'),('informes','Informes','Diario, informes y revisiones')] %}
+  <a class="tarjeta-seccion t-{{ r }}" href="{{ url_for(r) }}">
+    <span class="tarjeta-icono">{{ icono(r) }}</span>
+    <span class="tarjeta-texto"><b>{{ t }}</b><small>{{ d }}</small></span>
+    <span class="tarjeta-flecha" aria-hidden="true">→</span>
+  </a>{% endfor %}
+</nav>
+{%- endmacro %}
+{% macro icono(nombre, clase='icono') -%}
+<svg class="{{ clase }}" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+{%- if nombre == 'brevets' -%}<circle cx="12" cy="15" r="6"/><path d="M8.5 9.8 5 2h5l2 4.5M15.5 9.8 19 2h-5l-1.2 2.7"/><path d="m12 12.3.9 1.8 2 .3-1.45 1.4.35 2-1.8-.95-1.8.95.35-2-1.45-1.4 2-.3z"/>
+{%- elif nombre == 'historico' -%}<path d="M3 12a9 9 0 1 0 2.6-6.4"/><path d="M3 3v4.5h4.5"/><path d="M12 7v5l3.5 2"/>
+{%- elif nombre == 'graficas' -%}<path d="M3 3v18h18"/><path d="m7 15 4-5 3 3 5-7"/>
+{%- elif nombre == 'planificador' -%}<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>
+{%- elif nombre == 'importar' -%}<path d="M12 15V3M7 8l5-5 5 5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/>
+{%- elif nombre == 'bicis' -%}<circle cx="5.5" cy="16.5" r="3.8"/><circle cx="18.5" cy="16.5" r="3.8"/><path d="M5.5 16.5 9 9h7l2.5 7.5M9 9l3 7.5h-6.5M16 9l-4 7.5M14.5 6H17l-1 3M8 6h3"/>
+{%- elif nombre == 'informes' -%}<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 18v-3M12 18v-6M16 18v-4"/>
+{%- elif nombre == 'diario' -%}<path d="M5 3h11a3 3 0 0 1 3 3v15H8a3 3 0 0 1-3-3z"/><path d="M5 18a3 3 0 0 1 3-3h11"/><path d="M9 7h6M9 10.5h4"/>
+{%- elif nombre == 'nota' -%}<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="M13.5 6.5l4 4"/><path d="M12 20h8"/>
+{%- elif nombre == 'revisiones' -%}<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v2h6V3"/><path d="M8.5 11l1.5 1.5 3-3M8.5 16.5l1.5 1.5 3-3M15 11h1M15 16.5h1"/>
+{%- elif nombre == 'ayuda' -%}<path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H11a2 2 0 0 1 1 .3 2 2 0 0 1 1-.3h5.5A1.5 1.5 0 0 1 20 4.5V18h-6.5a1.5 1.5 0 0 0-1.5 1.5 1.5 1.5 0 0 0-1.5-1.5H4z"/><path d="M12 3.5v16"/>
+{%- elif nombre == 'acerca' -%}<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><circle cx="12" cy="7.8" r=".6" fill="currentColor"/>
+{%- endif -%}
+</svg>
+{%- endmacro %}

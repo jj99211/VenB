@@ -1,0 +1,21 @@
+# Secretos
+config/local/
+GarminConnectConfig.json
+garmin_tokens.json
+# Ficheros personales de contexto
+/CLAUDE.md
+/README.md
+config/systemd/
+# Datos personales
+datos/
+informes/
+estado/
+venb/datos/
+# Ruta local a VenB-datos en desarrollo
+.ruta_datos
+# Generados
+venb/VERSION
+__pycache__/
+*.pyc
+*.log
+venb/generador/cache/

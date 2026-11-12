@@ -1,0 +1,15 @@
+<p>Basta con tres columnas, con estos títulos en la primera fila:</p>
+<ul class="lista">
+  <li><b>Control</b>: «Sí» (o «X») si el punto es un control; vacía si no. También vale el número del control: «C1», «C2»…</li>
+  <li><b>Ubicación</b>: el nombre del lugar.</li>
+  <li><b>km</b>: el punto kilométrico desde la salida, según la hoja del organizador.</li>
+</ul>
+<div class="tabla"><table class="ejemplo">
+  <tr><th>Control</th><th>Ubicación</th><th class="num">km</th></tr>
+  <tr><td>Sí</td><td>Algete</td><td class="num">0</td></tr>
+  <tr><td></td><td>El Casar</td><td class="num">17</td></tr>
+  <tr><td>Sí</td><td>Tamajón</td><td class="num">66,7</td></tr>
+  <tr><td></td><td>Puerto de la Quesera</td><td class="num">98,5</td></tr>
+  <tr><td>Sí</td><td>Algete</td><td class="num">202,4</td></tr>
+</table></div>
+<p>Descarga un modelo para rellenar: <a href="{{ url_for('static', filename='plantilla_hoja_ruta.ods') }}" download>ODS (LibreOffice)</a> · <a href="{{ url_for('static', filename='plantilla_hoja_ruta.xlsx') }}" download>XLSX (Excel)</a> · <a href="{{ url_for('static', filename='plantilla_hoja_ruta.csv') }}" download>CSV</a>. El primer punto es la salida y el último, la meta. En un brevet, VenB calcula la apertura y el cierre de los controles con la tabla de Randonneurs Mondiaux; la salida y el tipo de ruta se eligen después de subirla.</p>

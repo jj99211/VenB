@@ -1,0 +1,15 @@
+*.sh text eol=lf
+*.bat text eol=crlf
+# Fuera del ZIP instalable: contexto personal y ficheros propios de este ordenador
+venb/README.md export-ignore
+.gitignore export-ignore
+.gitattributes export-ignore
+scripts/informe_semanal.py export-ignore
+scripts/graficos.py export-ignore
+scripts/validar_garmin.py export-ignore
+scripts/empaquetar.py export-ignore
+scripts/manual.py export-ignore
+scripts/publicar.py export-ignore
+.github/ export-ignore
+CAMBIOS.md export-ignore
+scripts/empaquetar_rutas.py export-ignore

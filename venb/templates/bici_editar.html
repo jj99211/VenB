@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block titulo %}VenB: {{ 'Editar bici' if b else 'Nueva bici' }}{% endblock %}
+{% block cuerpo %}
+<h1>{% if b %}Editar {{ b.nombre }}{% else %}Dar de alta una bici{% endif %}</h1>
+<section class="panel">
+  <form method="post">
+    <div class="linea-campos">
+      <label>Nombre <input name="nombre" value="{{ b.nombre if b else '' }}" maxlength="60" size="26" required></label>
+      <label>Km iniciales <input name="km_base" value="{{ '%g'|format(b.km_base) if b else '0' }}" inputmode="decimal" size="8"></label>
+      <label>Nº de serie <input name="serie" value="{{ b.serie if b else '' }}" maxlength="40" size="18"></label>
+      {% if b %}<label class="casilla"><input type="checkbox" name="activa" {% if b.activa %}checked{% endif %}> En uso</label>{% endif %}
+    </div>
+    <fieldset><legend>Piezas que quieres seguir</legend>
+      {% for p in piezas %}<label class="casilla"><input type="checkbox" name="pieza" value="{{ p }}" {% if not b or p in elegidas %}checked{% endif %}> {{ p }}</label>{% endfor %}
+    </fieldset>
+    <div class="linea-campos">
+      <label>Otras piezas, separadas por comas <input name="otras" value="{{ otras }}" maxlength="200" size="40" placeholder="Bielas, pedales..."></label>
+      <label>Juegos de ruedas, separados por comas <input name="juegos" value="{{ b.juegos|join(', ') if b else '' }}" maxlength="120" size="30" placeholder="gravel, carretera"></label>
+    </div>
+    <p class="suave">Km iniciales: lo que ya lleva la bici al darla de alta, por ejemplo 5.000. {% if not b %}Las piezas elegidas empiezan a contar desde esa cifra hasta que anotes su primer cambio.{% else %}Cambiarlos no altera el contador de las piezas.{% endif %}</p>
+    <p class="suave">Con juegos de ruedas, los kilómetros se anotan por separado y cada juego lleva sus cubiertas. Un juego ya creado no se puede quitar.</p>
+    <div class="linea-campos">
+      <label>Platos <input name="platos" value="{{ b.platos|join('-') if b else '' }}" placeholder="34-50" pattern="[\d\- ]*" size="14"></label>
+      <label>Piñones <input name="pinones" value="{{ pinones }}" placeholder="11-13-15-17-19-21-24-28" pattern="[\d\- ]*" size="36"></label>
+      <button>Guardar</button> <a href="{{ url_for('bicis') }}">Cancelar</a>
+    </div>
+  </form>
+  {% if b %}<p class="suave">Una pieza nueva empieza a contar desde este mes. Quitar una pieza deja su historial intacto. Para retirar una bici con historial, desmarca «En uso»: seguirá en las gráficas.</p>
+  <form method="post" action="{{ url_for('bici_borrar', bid=b.id) }}" onsubmit="return confirm('¿Borrar esta bici?')"><button class="discreto">Borrar bici sin historial</button></form>{% endif %}
+</section>
+{% endblock %}

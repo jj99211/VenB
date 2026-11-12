@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>VenB: Entrar</title>
+<link rel="icon" href="{{ url_for('static', filename='logo.png') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='estilo.css') }}"></head>
+<body><main style="max-width:420px">
+<section class="panel">
+  <h1>VenB</h1>
+  <p>Escribe la clave de acceso que pusiste en <b>Ajustes</b>, en el ordenador donde está instalada VenB.</p>
+  {% if error %}<div class="aviso medio">{{ error }}</div>{% endif %}
+  <form method="post">
+    <input type="hidden" name="siguiente" value="{{ siguiente }}">
+    <p><label>Clave <input name="clave" type="password" autocomplete="current-password" required autofocus></label></p>
+    <p><button>Entrar</button></p>
+  </form>
+  <p class="suave">Este navegador recordará la clave durante 90 días.</p>
+</section>
+</main></body>
+</html>

@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block titulo %}VenB: Ayuda{% endblock %}
+{% block cuerpo %}
+<p>
+  <a href="{{ url_for('ayuda') }}">Manual de usuario</a> ·
+  <a href="{{ url_for('ayuda', capitulo='garmin') }}">Importar datos de Garmin</a> ·
+  <a href="{{ url_for('acerca') }}">Acerca de</a>
+</p>
+{% if indice %}<details class="panel" open><summary>Índice</summary>{{ indice|safe }}</details>{% endif %}
+<section class="panel manual">{{ contenido|safe }}</section>
+{% endblock %}

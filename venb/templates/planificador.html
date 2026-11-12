@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block titulo %}VenB: Planificador{% endblock %}
+{% block cuerpo %}
+{% if rutas %}{% include '_nueva_version.html' %}{% endif %}
+<h1>Planificador</h1>
+<p class="suave">Sube el track y la hoja de ruta de una prueba: VenB calcula a qué hora pasarás por cada punto según la pendiente de cada tramo y tus paradas, y genera la tabla de tiempos, las infografías, los mapas ilustrados y una página interactiva.</p>
+{% if error %}<div class="aviso alto">{{ error }}</div>{% endif %}
+<section class="panel">
+  <h2>Nueva ruta</h2>
+  <form class="linea" method="post" action="{{ url_for('plan_nuevo') }}" enctype="multipart/form-data">
+    <label>Track (GPX)<input type="file" name="gpx" accept=".gpx" required></label>
+    <label>Hoja de ruta (PDF, ODT, ODS, XLSX o CSV; opcional)<input type="file" name="hoja" accept="{{ ext_hoja|replace(' ', '') }}"></label>
+    <button>Subir y analizar</button>
+  </form>
+  <details class="ver"><summary>¿Qué hoja de ruta sirve?</summary>
+    <ul class="lista">
+      <li>La <b>hoja del organizador</b> de un brevet en PDF u ODT: tablas con columnas como LOCALIDADES, KM TOTAL, ABIERTO y CERRADO (también el impreso del ACP en inglés o francés: LOCATION / LOCALITES, TOTAL, OPEN / Ouverture, CLOSE / Fermeture) o líneas del tipo «km LOCALIDAD abre cierra». De ella salen también la fecha y hora de salida, la distancia y el tiempo límite.</li>
+      <li>Si el GPX trae waypoints de control («C1 ALGETE», «C2_AYLLON»…), los controles se colocan donde dicen; si no, los km de la hoja se ajustan a la distancia del GPX.</li>
+      <li>El PDF debe tener texto: una imagen escaneada no se puede leer.</li>
+      <li>Sin hoja, o si VenB no consigue leerla, el plan empieza con la salida y la meta del track y añades los puntos a mano en la tabla de Previsión de la página del plan. Allí también puedes añadir, quitar o corregir puntos de cualquier hoja.</li>
+      <li>Si tienes muchos puntos, quizá te resulte más cómodo una <b>hoja de cálculo sencilla</b> (XLSX, ODS o CSV):
+      {% include '_hoja_sencilla.html' %}</li>
+    </ul>
+  </details>
+  <details class="ver"><summary>Tiempos límite de los brevets (Randonneurs Mondiaux)</summary>
+    <div class="tabla"><table class="ejemplo">
+      <tr><th>Distancia</th>{% for d in reglas.limites %}<th class="num">{{ d }} km</th>{% endfor %}<th class="num">SR 600</th></tr>
+      <tr><td>Tiempo límite</td>{% for h in reglas.limites.values() %}<td class="num">{{ h|tiempo }} h</td>{% endfor %}<td class="num">{{ reglas.sr600 }}:00 h</td></tr>
+    </table></div>
+    <p>Los controles abren a la velocidad máxima (34 km/h hasta el km 200, 32 hasta el 400, 30 hasta el 600, 28 hasta el 1000 y 26 después) y cierran a la mínima (15 km/h hasta el km 600, 11,428 hasta el 1000 y 13,333 del 1000 al 1300). No es una errata que la mínima suba después del km 1000: así un 1200 cierra en 90 h (75 h hasta el km 1000 más 200 km a 13,333 km/h). Hasta el km 60 el cierre es a 20 km/h más una hora, y la salida cierra una hora después de empezar. La meta cierra siempre en el tiempo límite oficial, aunque la ruta sea algo más larga o la hoja diga otra cosa (VenB lo avisa). En los demás controles, si la hoja del organizador trae las horas, mandan las suyas.</p>
+    <p>Las pruebas de más de 1300 km tienen otras medias mínimas para toda la prueba (12 km/h hasta 1899 km, 10 km/h hasta 2499 km y 200 km por día a partir de 2500 km) y VenB no las incluye entre los brevets: elige «Libre» y pon el tiempo límite del organizador. Reglamentos: <a href="https://www.randonneursmondiaux.org/files/Rules_2019.pdf" target="_blank" rel="noopener">Randonneurs Mondiaux</a> (pruebas de 1200 km o más) y <a href="https://www.audax-club-parisien.com/wp-content/uploads/2026/02/Rules-for-organizer-2026.pdf" target="_blank" rel="noopener">Audax Club Parisien</a> (BRM de hasta 1000 km, reglas para organizadores; en inglés).</p>
+    <p>Después de subir la ruta puedes elegir si es un brevet (con su distancia), una Super Randonnée o un recorrido libre, para el que indicas tú el tiempo que quieres emplear.</p>
+  </details>
+</section>
+<section class="panel">
+  <h2>Tus rutas</h2>
+  {% if planes %}<div class="tabla"><table>
+    <thead><tr><th>Ruta</th><th>Salida</th><th class="num">km</th><th class="num">Desnivel</th><th>Estado</th><th></th></tr></thead>
+    <tbody>{% for x in planes %}<tr>
+      <td><a href="{{ url_for('plan_ver', pid=x.id) }}">{{ x.nombre or 'Ruta' }}</a><br><span class="suave">{{ x.hoja_original }}</span></td>
+      <td class="f">{% if x.salida %}{{ x.salida[8:10] }}/{{ x.salida[5:7] }}/{{ x.salida[:4] }} {{ x.salida[11:16] }}{% else %}–{% endif %}</td>
+      <td class="num">{{ x.total_km|n }}</td><td class="num">{% if x.total_asc %}{{ x.total_asc|n }} m{% else %}–{% endif %}</td>
+      <td>{{ {'analizando': 'Analizando…', 'listo': 'Por generar', 'generando': 'Generando…', 'hecho': 'Generada', 'error': 'Error'}[x.fase] or x.fase }}</td>
+      <td class="acciones"><form method="post" action="{{ url_for('plan_borrar', pid=x.id) }}" onsubmit="return confirm('¿Borrar esta ruta y todo lo generado?')"><button class="discreto">Borrar</button></form></td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="suave">Todavía no has planificado ninguna ruta.</p>{% endif %}
+</section>
+{% endblock %}

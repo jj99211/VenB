@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block titulo %}VenB: Acerca de{% endblock %}
+{% block cuerpo %}
+<h1>Acerca de {{ nombre_app }}</h1>
+<section class="panel">
+  {% if rutas %}<p>VenB Rutas es la edición de VenB (Vivir en Bici) para clubes y organizadores: solo el Planificador, que calcula los horarios de paso de una ruta y genera su tabla de tiempos, infografías, mapas ilustrados, página interactiva y track con waypoints, con la marca del club. Se actualiza a la vez que VenB, con el mismo número de versión.</p>
+  {% else %}<p>VenB (Vivir en Bici) es una aplicación para seguir tu entrenamiento de ciclismo, tus bicis, tus brevets y tu calendario.</p>{% endif %}
+  <p><b>Autor:</b> José A. Jiménez, <a href="https://www.vivirenbici.es">www.vivirenbici.es</a></p>
+  <p><b>Soporte:</b> <a href="mailto:jj99211@gmail.com">jj99211@gmail.com</a></p>
+  <p><b>Licencia:</b> <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.es">Creative Commons Atribución-NoComercial-CompartirIgual 4.0 Internacional</a>. Puedes distribuirla y modificarla citando al autor y con esta misma licencia, pero no con fines comerciales. El logotipo, creado por el autor, está incluido en la licencia.{% if rutas %} Los logotipos de los clubes pertenecen a cada club y no forman parte de la aplicación. La marca de VenB va siempre en los documentos generados.{% endif %} Tus datos personales no forman parte de la aplicación.</p>
+</section>
+<section class="panel" id="versiones">
+  <h2>Versión</h2>
+  <p>Tienes la versión <b>{{ version }}</b>.{% if act.pagina %} Las versiones se publican en <a href="{{ act.pagina }}" target="_blank" rel="noopener">GitHub ↗</a>, con sus novedades y el manual de instalación.{% endif %}</p>
+  {% set n = nueva_version() %}
+  {% if not act.activo %}<p class="suave">La búsqueda de versiones nuevas está desactivada.</p>
+  {% elif act.buscando %}<p><span class="girando" aria-hidden="true">⟳</span> Buscando versiones nuevas… <script>setTimeout(() => location.reload(), 2500);</script></p>
+  {% else %}<p>{% if n %}Hay una versión nueva: la <b>{{ n.version }}</b>.{% elif act.comprobado and not act.error %}No hay ninguna versión más reciente.{% endif %}
+    {% if act.comprobado %}<span class="suave">Comprobado el {{ fecha_hora(act.comprobado) }}{% if act.error %}, sin respuesta de GitHub (¿sin conexión?){% endif %}.</span>{% endif %}</p>
+  {% if not remoto %}<form method="post" action="{{ url_for('actualizaciones_buscar') }}" class="en-linea"><button class="discreto">Buscar ahora</button></form>{% endif %}
+  {% if n %}{% include '_nueva_version.html' %}{% endif %}{% endif %}
+</section>
+{% endblock %}

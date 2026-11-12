@@ -1,0 +1,5 @@
+{# Aviso de versión nueva con el botón «Actualizar» (Inicio en VenB; Planificador en VenB Rutas). #}
+{% set n = nueva_version() %}{% if n %}<div class="aviso medio" id="version-nueva">Hay una versión nueva de {{ nombre_app }}: la {{ n.version }} (tienes la {{ version }}).
+  <small>{% if remoto %}Para actualizar, usa el ordenador donde está instalada.{% elif no_actualizable() %}No se puede actualizar sola: {{ no_actualizable() }}. Descárgala y ejecuta su instalador.{% else %}Se descarga, se instala junto a tus datos (que no se tocan) y {{ nombre_app }} se vuelve a abrir; tarda uno o dos minutos.{% endif %}
+  <a href="{{ n.pagina }}" target="_blank" rel="noopener">Novedades ↗</a></small>
+  {% if not remoto and not no_actualizable() %}<form method="post" action="{{ url_for('actualizar') }}" class="en-linea"><button>Actualizar ahora</button></form>{% endif %}</div>{% endif %}

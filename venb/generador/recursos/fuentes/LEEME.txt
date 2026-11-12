@@ -1,0 +1,3 @@
+Fuentes de los mapas e infografías del Planificador, todas con licencia SIL Open Font License 1.1
+(https://openfontlicense.org): Barlow Condensed (Jeremy Tribby), Amatic SC (Vernon Adams), Poppins (Indian Type Foundry),
+IM FELL English (Igino Marini) y Noto Emoji (Google).

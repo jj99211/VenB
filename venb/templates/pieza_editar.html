@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block titulo %}VenB: Editar pieza{% endblock %}
+{% block cuerpo %}
+<h1>Editar pieza o trabajo</h1>
+<section class="panel">
+  <form method="post">
+    <div class="linea-campos">
+      <label>Fecha <input name="fecha" value="{{ fecha }}" placeholder="DD/MM/AAAA" pattern="\d{2}/\d{2}/\d{4}" size="11" required></label>
+      <label>Bici <select name="bici"><option value="">Sin asignar</option>{% for b in bicis %}<option value="{{ b.id }}" {% if b.id == p.bici %}selected{% endif %}>{{ b.nombre }}</option>{% endfor %}</select></label>
+      <label>Quién <select name="visita">{% for k, v in visitas.items() %}<option value="{{ k }}" {% if k == p.visita %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>
+      <label>Taller <input name="taller" value="{{ p.taller }}" maxlength="80" size="18"></label>
+      <label>Coste (€) <input name="coste" value="{{ p.coste }}" inputmode="decimal" size="7"></label>
+    </div>
+    <div class="linea-campos">
+      <label>Pieza o trabajo <input name="pieza" value="{{ p.pieza }}" list="lista-piezas" maxlength="120" size="34" required></label>
+      <datalist id="lista-piezas">{% for n in lista_piezas %}<option value="{{ n }}">{% endfor %}</datalist>
+      <label>Notas <input name="notas" value="{{ p.notas }}" maxlength="300" size="40"></label>
+      <button>Guardar</button> <a href="{{ url_for('bicis') }}">Cancelar</a>
+    </div>
+  </form>
+  {% if p.origen == 'importado' %}<p class="suave">Este registro es importado: editarlo corrige el historial, pero no altera el contador de la pieza.</p>{% endif %}
+</section>
+{% endblock %}

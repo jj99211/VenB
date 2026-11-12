@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+{% block titulo %}VenB: Bicis{% endblock %}
+{% block cuerpo %}
+<h1>Bicis</h1>
+<p><a href="{{ url_for('bici_nueva') }}">Dar de alta una bici</a></p>
+{% if not resumen %}
+<div class="aviso">Todavía no hay bicis. Da de alta la primera para llevar sus kilómetros y sus piezas.</div>
+{% else %}
+{% if activas %}<section class="panel" id="mes">
+  <h2>{% if cerrado %}Editar{% elif cerrable %}Cerrar{% else %}Anotar{% endif %} {{ mes_txt }}{% if cerrado %} <span class="etiqueta">Cerrado</span>{% endif %}</h2>
+  <p class="suave">Las actividades registran en este mes {{ garmin.exterior|n }} km en exterior y {{ garmin.rodillo|n }} km en rodillo.{% if asignadas %} Ya tienen bici asignada: {% for n, km in asignadas %}{{ n }}, {{ km|n }} km{% if not loop.last %}; {% endif %}{% endfor %}{% if auto %} (en las casillas, sin guardar todavía){% endif %}.{% endif %}{% if rodillo_nombre %} El rodillo sin bici asignada aparece en {{ rodillo_nombre }}.{% endif %} Vaciar una casilla elimina ese dato.</p>
+  <form class="linea" method="post" action="{{ url_for('bicis_mes') }}" id="form-mes">
+    <input type="hidden" name="mes" value="{{ mes }}">
+    {% for b in activas %}
+      {% if b.juegos %}{% for j in b.juegos %}
+      <label>{{ b.nombre }}, {{ j }} <span class="ajuste"><button type="button" class="discreto paso" data-paso="-5" aria-label="Restar 5 km">−</button><input name="km|{{ b.id }}|{{ loop.index0 }}" data-clave="{{ b.id }}|{{ j }}" data-nombre="{{ b.nombre }}, {{ j }}" value="{{ mes_km.get((b.id, j), '') }}"{% if (b.id, j) in auto %} data-auto="{{ auto[(b.id, j)] }}"{% endif %} inputmode="decimal" size="7"><button type="button" class="discreto paso" data-paso="5" aria-label="Sumar 5 km">+</button></span></label>
+      {% endfor %}{% else %}
+      <label>{{ b.nombre }} <span class="ajuste"><button type="button" class="discreto paso" data-paso="-5" aria-label="Restar 5 km">−</button><input name="km|{{ b.id }}|" data-clave="{{ b.id }}|" data-nombre="{{ b.nombre }}" value="{{ mes_km.get((b.id, ''), '') }}"{% if (b.id, '') in auto %} data-auto="{{ auto[(b.id, '')] }}"{% endif %} inputmode="decimal" size="7"><button type="button" class="discreto paso" data-paso="5" aria-label="Sumar 5 km">+</button></span></label>
+      {% endif %}
+    {% endfor %}
+    <button>{% if cerrable and not cerrado %}Guardar y cerrar el mes{% else %}Guardar{% endif %}</button>
+  </form>
+  <div class="cuadro" id="reparto" data-total="{{ (garmin.exterior + garmin.rodillo - fuera)|round(0) }}" data-propuesta='{{ propuesta|tojson }}'>
+    <p><b>Total del mes: {{ (garmin.exterior + garmin.rodillo - fuera)|n }} km</b> ({{ garmin.exterior|n }} en exterior y {{ garmin.rodillo|n }} en rodillo{% if fuera >= 0.5 %}, sin contar {{ fuera|n }} km con otras bicis o con bicis retiradas{% endif %}). Asignado: <b id="asignado">–</b>. Pendiente de asignar: <b id="pendiente">–</b>.</p>
+    <p class="suave">Ajusta tú los km de cada bici, escribiéndolos o con − y + (de 5 en 5 km; manteniendo pulsado avanza solo). Lo más cómodo es indicar la bici de cada salida en la lista de abajo o en el Histórico: sus km pasan solos a su casilla. Puedes guardar aunque no cuadre con el total.</p>
+    {% if propuesta and libre_ext >= 0.5 %}<p><b>Estimación sin confirmar</b> para {{ libre_ext|n }} km de salidas sin bici, según cómo repartiste los meses anteriores: <span id="texto-propuesta"></span>.
+      <button type="button" class="discreto" id="aplicar-propuesta">Sumar la estimación</button></p>{% endif %}
+    {% if salidas %}<details class="ver" {% if libre_ext >= 0.5 %}open{% endif %}><summary>Salidas en exterior de {{ mes_txt }} ({{ salidas|length }})</summary>
+      <p class="suave">Al elegir la bici de una salida, la página se recarga con la nueva propuesta (se pierde lo escrito sin guardar).{% if cerrado %} Este mes está cerrado: sus km guardados no cambian solos; corrígelos tú si hace falta.{% endif %}</p>
+      <div class="tabla"><table>
+      <tr><th>Fecha</th><th>Actividad</th><th class="num">km</th><th>Bici</th></tr>
+      {% for x in salidas %}<tr><td class="f">{{ x.fecha|fecha }}</td><td>{{ x.titulo }}</td><td class="num">{{ x.km|n(1) }}</td>
+        <td>{% if x.id != 'nan' %}<select class="bici-actividad" data-url="{{ url_for('actividad_bici', aid=x.id) }}" data-recargar="1" aria-label="Bici de {{ x.titulo }}"><option value="">Sin asignar</option>{% for o in opciones_bici %}<option value="{{ o.valor }}" {% if o.valor == x.asignada %}selected{% endif %}>{{ o.texto }}</option>{% endfor %}</select> <span class="nota-bici aviso-linea" hidden></span>{% endif %}</td></tr>{% endfor %}
+    </table></div></details>{% endif %}
+  </div>
+  <p class="suave">Si este mes hubo alguna reparación, anótala abajo. VenB te lo recuerda del día {{ dia_inicio }} al día {{ dia_fin }} del mes siguiente.{% if sin_cerrar %} Meses sin cerrar: {% for m in sin_cerrar %}<a href="?mes={{ m }}#mes">{{ m }}</a>{% if not loop.last %}, {% endif %}{% endfor %}.{% endif %}</p>
+  <form class="linea" method="get"><label>Ver otro mes <input name="mes" placeholder="MM/AAAA" pattern="\d{2}/\d{4}" size="9" required></label><button class="discreto">Abrir</button></form>
+</section>{% endif %}
+
+{% if usar_garmin and (garmin_listo or equipo.bicis) %}<details class="panel" id="garmin" {% if error_equipo or (equipo.bicis and not equipo.correspondencia.values()|select|list) %}open{% endif %}><summary>Bicis de Garmin Connect</summary>
+  {% if error_equipo %}<div class="aviso medio">No se han podido leer las bicis de Garmin Connect: {{ error_equipo }}</div>{% endif %}
+  <p class="suave">Garmin Connect guarda la bici de cada actividad si la eliges en su «Equipo». Indica a qué bici de VenB corresponde cada una: sus actividades quedan asignadas a ella (lo que elijas tú en VenB manda). Una bici de Garmin sin correspondencia deja sus actividades pendientes de asignar.{% if equipo.fecha %} Leídas el {{ equipo.fecha[8:10] }}/{{ equipo.fecha[5:7] }}/{{ equipo.fecha[:4] }} a las {{ equipo.fecha[11:16] }}; VenB las vuelve a leer una vez al día al abrir esta página.{% endif %}{% if leyendo_equipo %} <b>Leyendo ahora de Garmin Connect…</b>{% endif %}</p>
+  {% if equipo.bicis %}<form method="post" action="{{ url_for('bicis_garmin_corresponder') }}"><div class="tabla"><table>
+    <tr><th>Bici en Garmin Connect</th><th class="num">Actividades</th><th>Bici de VenB</th></tr>
+    {% for g in equipo.bicis %}<tr><td>{{ g.nombre }}{% if g.modelo %} <span class="suave">({{ g.modelo }})</span>{% endif %}{% if g.retirada %} <span class="suave">retirada</span>{% endif %}</td><td class="num">{{ g.n|n }}</td>
+      <td><select name="gear_{{ g.uuid }}"><option value="">Sin correspondencia (pendiente)</option>{% for o in opciones_bici %}<option value="{{ o.valor }}" {% if equipo.correspondencia.get(g.uuid) == o.valor %}selected{% endif %}>{{ o.texto }}</option>{% endfor %}</select></td></tr>{% endfor %}
+  </table></div><button>Guardar</button></form>{% endif %}
+  {% if garmin_listo %}<form method="post" action="{{ url_for('bicis_garmin_leer') }}"><button class="discreto">Leer ahora de Garmin Connect</button></form>{% endif %}
+</details>{% endif %}
+
+{% if hist_mes %}<details class="panel"><summary>Registros mensuales</summary>
+  <div class="tabla ver-alto"><table>
+    <tr><th>Mes</th>{% for b in activas %}<th class="num">{{ b.nombre }}</th>{% endfor %}<th>Estado</th><th></th></tr>
+    {% for m in hist_mes %}<tr><td class="f">{{ m.txt }}</td>{% for v in m.bicis %}<td class="num">{{ v|n }}</td>{% endfor %}<td>{% if m.cerrado %}Cerrado{% endif %}</td><td><a href="?mes={{ m.txt }}#mes">Editar</a></td></tr>{% endfor %}
+  </table></div>
+</details>{% endif %}
+
+{% if activas %}<section class="panel" id="pieza">
+  <h2>Anotar mecánico o pieza cambiada</h2>
+  <form method="post" action="{{ url_for('bicis_pieza') }}">
+    <div class="linea-campos">
+      <label>Fecha <input name="fecha" value="{{ hoy }}" placeholder="DD/MM/AAAA" pattern="\d{2}/\d{2}/\d{4}" size="11" required></label>
+      <label>Bici <select name="bici" id="elige-bici">{% for b in activas %}<option value="{{ b.id }}">{{ b.nombre }}</option>{% endfor %}</select></label>
+      <label>Quién <select name="visita"><option value="mecanico">Mecánico</option><option value="propia">Yo mismo</option></select></label>
+      <label>Taller <input name="taller" maxlength="80" size="18"></label>
+      <label>Coste (€) <input name="coste" inputmode="decimal" size="7"></label>
+    </div>
+    <fieldset><legend>Piezas cambiadas</legend>
+      {% for b in activas %}{% for c in b.componentes %}<label class="casilla" data-bici="{{ b.id }}"><input type="checkbox" name="pieza" value="{{ c.nombre }}"> {{ c.nombre }}</label>{% endfor %}{% endfor %}
+    </fieldset>
+    <div class="linea-campos">
+      <label>Otra pieza o trabajo <input name="otra" maxlength="120" size="30" placeholder="Revisión, ruedas, bielas..."></label>
+      <label>Notas <input name="notas" maxlength="300" size="40"></label>
+      <button>Guardar</button>
+    </div>
+  </form>
+  <p class="suave">Si eliges una pieza, su contador vuelve a cero en esa fecha.</p>
+</section>
+<script>
+(function () {
+  var r = document.getElementById('reparto'), f = document.getElementById('form-mes');
+  if (!r || !f) return;
+  var total = parseFloat(r.dataset.total) || 0, prop = JSON.parse(r.dataset.propuesta || '{}');
+  var casillas = Array.prototype.slice.call(f.querySelectorAll('input[data-clave]'));
+  function num(v) { v = v.trim(); if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(v)) v = v.replace(/\./g, ''); return parseFloat(v.replace(',', '.')) || 0; }
+  function fmt(x) { return Math.round(x).toLocaleString('es-ES') + ' km'; }
+  // reciben estimación las casillas vacías y las rellenadas con las actividades asignadas que no has tocado
+  function vacias() { return casillas.filter(function (c) { return !c.value.trim() || c.value === c.dataset.auto; }); }
+  function reparto() {
+    // Lo pendiente se reparte entre esas casillas en la proporción de los meses anteriores
+    var asignado = casillas.reduce(function (s, c) { return s + num(c.value); }, 0), pend = Math.max(total - asignado, 0);
+    var v = vacias(), suma = v.reduce(function (s, c) { return s + (prop[c.dataset.clave] || 0); }, 0), salida = {};
+    var mayor = null, repartido = 0;
+    v.forEach(function (c) {
+      var k = c.dataset.clave, x = suma ? Math.round(pend * (prop[k] || 0) / suma) : 0;
+      salida[k] = x; repartido += x;
+      if (mayor === null || (prop[k] || 0) > (prop[mayor] || 0)) mayor = k;
+    });
+    if (suma && mayor !== null) salida[mayor] += Math.round(pend) - repartido;  // que el redondeo no deje restos
+    return { asignado: asignado, pend: total - asignado, salida: salida, v: v };
+  }
+  function pinta() {
+    var x = reparto();
+    document.getElementById('asignado').textContent = fmt(x.asignado);
+    document.getElementById('pendiente').textContent = x.pend < 0 ? fmt(-x.pend) + ' de más' : fmt(x.pend);
+    var t = document.getElementById('texto-propuesta');
+    if (t) t.textContent = x.v.length && x.pend > 0 ? x.v.filter(function (c) { return x.salida[c.dataset.clave]; }).map(function (c) { return c.dataset.nombre + ': +' + fmt(x.salida[c.dataset.clave]); }).join('; ') || 'sin datos para proponer' : 'no queda nada por repartir';
+  }
+  casillas.forEach(function (c) { c.addEventListener('input', pinta); });
+  // − y +: suman o restan 5 km sin pasar del pendiente ni bajar de 0; manteniendo pulsado se repite
+  function paso(btn) {
+    var c = btn.parentElement.querySelector('input'), d = parseFloat(btn.dataset.paso), v = num(c.value), pend = reparto().pend;
+    var nuevo = d > 0 ? v + Math.min(d, Math.max(pend, 0)) : Math.max(v + d, 0);
+    if (nuevo === v) return false;
+    nuevo = Math.round(nuevo * 10) / 10;
+    c.value = nuevo ? String(nuevo).replace('.', ',') : '';
+    pinta();
+    return true;
+  }
+  f.querySelectorAll('button.paso').forEach(function (btn) {
+    var t1, t2;
+    function para() { clearTimeout(t1); clearInterval(t2); }
+    btn.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      if (!paso(btn)) return;
+      t1 = setTimeout(function () { t2 = setInterval(function () { if (!paso(btn)) para(); }, 120); }, 450);
+    });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { btn.addEventListener(ev, para); });
+    btn.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); paso(btn); } });
+  });
+  var b = document.getElementById('aplicar-propuesta');
+  if (b) b.addEventListener('click', function () {
+    var x = reparto();
+    x.v.forEach(function (c) { if (x.salida[c.dataset.clave]) c.value = Math.round(num(c.value) + x.salida[c.dataset.clave]); });
+    pinta();
+  });
+  pinta();
+})();
+(function () {
+  var s = document.getElementById('elige-bici');
+  function filtra() {
+    document.querySelectorAll('label.casilla[data-bici]').forEach(function (l) {
+      var si = l.dataset.bici === s.value;
+      l.hidden = !si;
+      l.querySelector('input').disabled = !si;
+    });
+  }
+  s.addEventListener('change', filtra);
+  filtra();
+})();
+</script>{% endif %}
+
+<section class="panel">
+  <h2>Kilómetros por temporada</h2>
+  <p class="suave">{{ desc_temporada }}</p>
+  <div class="graf" id="g-temporadas" data-bicis></div>
+  <details class="ver"><summary>Ver datos</summary><div class="tabla"></div></details>
+</section>
+<div id="g-juegos"></div>
+
+<div class="rejilla dos bloque">
+{% for b in resumen if b.activa %}
+  <section class="panel">
+    <h2>{{ b.nombre }} <a class="editar-bici" href="{{ url_for('bici_editar', bid=b.id) }}">Editar</a></h2>
+    <p><b>{{ b.total|n }} km</b> en total, {{ b.temporada|n }} km esta temporada{% for j in b.km_juegos %}{% if loop.first %}. Por ruedas: {% else %}, {% endif %}{{ j.km|n }} km de {{ j.nombre }}{% endfor %}.</p>
+    {% if b.comps %}<div class="tabla"><table class="piezas">
+      <tr><th>Pieza</th><th class="num">km desde el cambio</th><th>Último cambio</th></tr>
+      {% for c in b.comps %}<tr><td>{{ c.nombre }}<div class="medidor"><i style="width:{{ c.pct }}%"></i></div></td><td class="num">{{ c.km|n }}</td><td class="f">{% if c.ultimo %}{{ c.ultimo|fecha_pieza }}{% else %}Sin registro{% endif %}</td></tr>{% endfor %}
+    </table></div>{% endif %}
+    <details class="ver"><summary>Ficha técnica</summary>
+      <p class="suave">Nº de serie: {{ b.serie or '–' }}. Platos: {{ b.platos|join('-') or '–' }}.{% for p in b.pinones %}<br>Piñones{% if p.nombre %} ({{ p.nombre }}){% endif %}: {{ p.dientes|join('-') }}.{% endfor %}</p>
+    </details>
+  </section>
+{% endfor %}
+</div>
+
+{% if piezas %}<section class="panel">
+  <h2>Historial de mecánico y piezas</h2>
+  <div class="tabla ver-alto"><table>
+    <tr><th>Fecha</th><th>Bici</th><th>Pieza o trabajo</th><th>Quién</th><th class="num">Coste</th><th>Notas</th><th></th></tr>
+    {% for p in piezas %}<tr><td class="f">{{ p|fecha_pieza }}</td><td>{{ nombres.get(p.bici, 'Sin asignar') }}</td><td>{{ p.pieza }}{% if p.km_cambio %} <span class="suave">({{ p.km_cambio|int|n }} km)</span>{% endif %}</td><td>{{ visitas.get(p.visita, '') }}{% if p.taller %}, {{ p.taller }}{% endif %}</td><td class="num">{% if p.coste %}{{ p.coste }} €{% endif %}</td><td>{{ p.notas }}</td>
+      <td class="acciones"><a href="{{ url_for('bicis_pieza_editar', pid=p.id) }}">Editar</a><form method="post" action="{{ url_for('bicis_pieza_borrar', pid=p.id) }}" onsubmit="return confirm('¿Borrar este registro?')"><button class="discreto" aria-label="Borrar {{ p.pieza }}">Borrar</button></form></td></tr>{% endfor %}
+  </table></div>
+  {% if hay_importados %}<p class="suave">Los registros importados solo indican el mes y pueden tener imprecisiones. Editarlos o borrarlos corrige el historial, no el contador de la pieza.</p>{% endif %}
+</section>{% endif %}
+
+{% set antiguas = resumen|rejectattr('activa')|list %}
+{% if antiguas %}<details class="panel"><summary>Bicis descatalogadas</summary>
+  <ul class="lista">{% for b in antiguas %}<li><b>{{ b.nombre }}</b>{% if b.total %}: {{ b.total|n }} km{% endif %}. Nº de serie: {{ b.serie or '–' }}{% if b.platos %}. Platos: {{ b.platos|join('-') }}{% endif %}{% for p in b.pinones %}. Piñones: {{ p.dientes|join('-') }}{% endfor %}. <a href="{{ url_for('bici_editar', bid=b.id) }}">Editar</a></li>{% endfor %}</ul>
+</details>{% endif %}
+{% endif %}
+<script src="{{ url_for('static', filename='bici_actividad.js') }}"></script>
+{% endblock %}

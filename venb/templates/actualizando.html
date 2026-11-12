@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{ nombre_app }}: actualizando</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='estilo.css') }}">
+<style>body { padding:48px 16px; text-align:center; } #estado { max-width:40em; margin:0 auto; }</style></head>
+<body><h1>Actualizando {{ nombre_app }} a la {{ n.version }}</h1>
+<p id="estado"><span class="girando" aria-hidden="true">⟳</span> Descargando…</p>
+<p class="suave" id="pie">No cierres esta pestaña: se abrirá la versión nueva cuando termine.</p>
+<script>
+(function () {
+  const est = document.getElementById('estado'), pie = document.getElementById('pie');
+  const girando = '<span class="girando" aria-hidden="true">⟳</span> ';
+  let instalando = false, inicio = 0;
+  function versionNueva() {   // VenB ya se ha cerrado: se espera a que la versión nueva responda
+    fetch('{{ url_for("actualizar_estado") }}', {cache: 'no-store'}).then(r => r.json()).then(d => {
+      if (d.version === '{{ n.version }}') { location.href = '{{ url_for("inicio") }}'; return; }
+      setTimeout(versionNueva, 2000);
+    }).catch(() => {
+      if (Date.now() - inicio > 10 * 60 * 1000) {
+        est.textContent = 'La instalación está tardando más de lo normal. Mira la ventana de la terminal; si ha terminado, abre {{ nombre_app }} con su icono.';
+        return;
+      }
+      setTimeout(versionNueva, 2000);
+    });
+  }
+  function seguir() {
+    fetch('{{ url_for("actualizar_estado") }}', {cache: 'no-store'}).then(r => r.json()).then(d => {
+      if (d.fase === 'error') {
+        est.textContent = 'No se ha podido actualizar: ' + d.error + '. Tu versión sigue igual.';
+        pie.innerHTML = '<a href="{{ url_for("inicio") }}">Volver</a> · <a href="{{ n.pagina }}" target="_blank" rel="noopener">Descargarla a mano ↗</a>';
+        return;
+      }
+      if (d.fase === 'instalando') {
+        instalando = true; inicio = Date.now();
+        est.innerHTML = girando + 'Instalando. Se ve el progreso en la ventana de la terminal{% if windows %} (se ha abierto una ventana nueva){% endif %}. Suele tardar uno o dos minutos.';
+        setTimeout(versionNueva, 4000);
+        return;
+      }
+      const pct = d.total ? Math.round(100 * d.hecho / d.total) : 0;
+      est.innerHTML = girando + (d.fase === 'descomprimiendo' ? 'Descomprimiendo…' : 'Descargando… ' + (pct ? pct + ' %' : ''));
+      setTimeout(seguir, 700);
+    }).catch(() => { if (!instalando) { instalando = true; inicio = Date.now(); setTimeout(versionNueva, 2000); } });
+  }
+  seguir();
+})();
+</script>
+</body>
+</html>

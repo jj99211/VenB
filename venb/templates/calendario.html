@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block titulo %}VenB: Calendario{% endblock %}
+{% block cuerpo %}
+<h1>Calendario</h1>
+{% if error %}<div class="aviso medio">{{ error }}</div>{% endif %}
+<section class="panel">
+  <h2>Calendarios</h2>
+  <div class="interruptores" id="interruptores">
+    {% for k, (color, nombre) in origenes.items() %}{% if k != 'Mío' or conectado %}
+    <form method="post" action="{{ url_for('calendario_ver') }}" class="en-linea">
+      <input type="hidden" name="origen" value="{{ k }}"><input type="hidden" name="ver" value="{{ '1' if k in sin_ver else '0' }}">
+      <button class="interruptor{% if k not in sin_ver %} activo{% endif %}" data-origen="{{ k }}" style="--color:{{ color }}" aria-pressed="{{ 'false' if k in sin_ver else 'true' }}" title="Mostrar u ocultar «{{ nombre }}»"><span class="punto" aria-hidden="true"></span>{{ nombre }}</button>
+    </form>{% endif %}{% endfor %}
+  </div>
+  <p class="suave">Pulsa un calendario para mostrarlo u ocultarlo. En cada prueba de los calendarios externos, <b>Copiar</b> la pasa a tu calendario de VenB (allí puedes editarla, adjuntar la hoja de ruta y el track y prepararla en el Planificador) y <b>Ocultar</b> la quita de la lista (se recupera abajo, en «Ocultos»). {% if not conectado %}Puedes añadir tu Google Calendar en <a href="{{ url_for('ajustes') }}">Ajustes</a>. {% endif %}Tu calendario de VenB se puede <a href="{{ url_for('calendario_ics') }}">descargar en formato iCal</a> para importarlo en el móvil o en Google Calendar.</p>
+</section>
+<details class="plegable" id="anadir">
+<summary><h2>Añadir un evento o una fecha clave</h2></summary>
+<section class="panel">
+  <h3>Evento en tu calendario de VenB</h3>
+  <form class="linea" method="post" action="{{ url_for('evento_nuevo') }}">
+    <label>Fecha <input name="fecha" value="{{ hoy }}" placeholder="DD/MM/AAAA" pattern="\d{2}/\d{2}/\d{4}" size="11" required></label>
+    <label>Nombre <input name="nombre" maxlength="150" size="30" placeholder="Nombre de la prueba" required></label>
+    <label>Notas <input name="notas" maxlength="300" size="24"></label>
+    <button>Añadir</button>
+  </form>
+  <h3>Fecha clave</h3>
+  <p class="suave">VenB te avisará en Inicio los días previos.</p>
+  <form class="linea" method="post" action="{{ url_for('fecha_clave_nueva') }}">
+    <label>Fecha <input name="fecha" value="{{ hoy }}" placeholder="DD/MM/AAAA" pattern="\d{2}/\d{2}/\d{4}" size="11" required></label>
+    <label>Qué ocurre <input name="texto" maxlength="200" size="40" placeholder="Abre la inscripción de una prueba" required></label>
+    <label>Avisar días antes <input name="dias_antes" value="14" type="number" min="0" max="365" size="4"></label>
+    <button>Añadir</button>
+  </form>
+</section>
+</details>
+{% for m in meses %}<details class="plegable" id="mes-{{ m.nombre|replace(' ', '-') }}"{% if loop.index <= 3 %} open{% endif %}>
+<summary><h2>{{ m.nombre|capitalize }} <span class="suave">({% if m.eventos %}{{ m.eventos|length }} {{ 'evento' if m.eventos|length == 1 else 'eventos' }}{% else %}sin eventos{% endif %})</span></h2></summary>
+<section class="panel mes">
+  {% if m.eventos %}<div class="tabla"><table class="eventos">
+    {% for e in m.eventos %}<tr data-origen="{{ e.origen }}" style="--color:{{ origenes[e.origen][0] if e.origen in origenes else '#777' }}" {% if e.origen in sin_ver %}hidden{% endif %}>
+      <td class="f"><span class="punto" aria-hidden="true"></span> {{ e.fecha|fecha }}</td>
+      <td>{% if e.origen == 'VenB' %}<a href="{{ url_for('evento_editar', eid=e.id) }}">{{ e.nombre }}</a>{% if e.plan %} <a class="etiqueta" href="{{ url_for('plan_ver', pid=e.plan) }}" title="Abrir su plan en el Planificador">Plan</a>{% endif %}{% if e.gpx %} <span class="etiqueta" title="Tiene track">GPX</span>{% endif %}{% else %}{{ e.nombre }}{% endif %}{% if e.notas %}<br><span class="suave">{{ e.notas }}</span>{% endif %}</td>
+      <td><span class="etiqueta">{{ origenes[e.origen][1] if e.origen in origenes else e.origen }}</span></td>
+      <td class="nowrap">{% if e.origen == 'VenB' %}<a class="boton-enlace" href="{{ url_for('evento_editar', eid=e.id) }}">Editar</a>
+        <form class="en-linea" method="post" action="{{ url_for('evento_borrar', eid=e.id) }}" onsubmit="return confirm('¿Borrar este evento{{ ' y sus ficheros adjuntos' if e.gpx or e.hoja else '' }}?')"><button class="discreto" aria-label="Borrar {{ e.nombre }}">Borrar</button></form>
+      {% elif e.origen == 'Fecha clave' %}<form method="post" action="{{ url_for('fecha_clave_borrar', fid=e.id) }}" onsubmit="return confirm('¿Borrar esta fecha clave?')"><button class="discreto" aria-label="Borrar {{ e.nombre }}">Borrar</button></form>
+      {% else %}{% if e.copiado %}<span class="suave" title="Ya está en tu calendario de VenB">Copiado</span>{% else %}<form class="en-linea" method="post" action="{{ url_for('calendario_copiar') }}">
+          <input type="hidden" name="uid" value="{{ e.uid }}"><input type="hidden" name="fecha" value="{{ e.fecha.isoformat() }}"><input type="hidden" name="nombre" value="{{ e.nombre }}"><input type="hidden" name="notas" value="{{ e.notas or '' }}"><input type="hidden" name="origen" value="{{ e.origen }}">
+          <button class="discreto" title="Pasarla a tu calendario de VenB">Copiar</button></form>{% endif %}
+        {% if e.uid %}<form class="en-linea" method="post" action="{{ url_for('calendario_ocultar') }}">
+          <input type="hidden" name="uid" value="{{ e.uid }}"><input type="hidden" name="fecha" value="{{ e.fecha.isoformat() }}"><input type="hidden" name="nombre" value="{{ e.nombre }}"><input type="hidden" name="origen" value="{{ e.origen }}">
+          <button class="discreto" title="No mostrar esta prueba (se recupera en «Ocultos»)">Ocultar</button></form>{% endif %}{% endif %}</td></tr>{% endfor %}
+  </table></div>{% else %}<p class="suave">Sin eventos.</p>{% endif %}
+</section>
+</details>{% endfor %}
+<details class="plegable" id="ocultos">
+<summary><h2>Ocultos <span class="suave">({{ ocultos|length }})</span></h2></summary>
+<section class="panel">
+  {% if ocultos %}<div class="tabla"><table>
+    {% for o in ocultos|sort(attribute='fecha') %}<tr><td class="f">{{ o.fecha|iso_fecha }}</td><td>{{ o.nombre }}</td><td><span class="etiqueta">{{ origenes[o.origen][1] if o.origen in origenes else o.origen }}</span></td>
+      <td><form method="post" action="{{ url_for('calendario_mostrar') }}"><input type="hidden" name="uid" value="{{ o.uid }}"><button class="discreto">Mostrar de nuevo</button></form></td></tr>{% endfor %}
+  </table></div>{% else %}<p class="suave">No has ocultado ninguna prueba.</p>{% endif %}
+</section>
+</details>
+<script>
+// Interruptores: se muestran u ocultan las filas al momento y se guarda la elección (Randonneurs, al activarse, recarga: hay que leerlo)
+document.querySelectorAll('#interruptores form').forEach(f => f.addEventListener('submit', ev => {
+  ev.preventDefault();
+  const b = f.querySelector('button'), origen = b.dataset.origen, ver = !b.classList.contains('activo');
+  fetch(f.action, { method: 'POST', headers: { 'X-Requested-With': 'fetch' }, body: new URLSearchParams({ origen, ver: ver ? '1' : '0' }) })
+    .then(r => {
+      if (!r.ok) throw new Error();
+      if (origen === 'Randonneurs' && ver) { location.reload(); return; }
+      b.classList.toggle('activo', ver); b.setAttribute('aria-pressed', ver);
+      f.querySelector('input[name=ver]').value = ver ? '0' : '1';
+      document.querySelectorAll(`tr[data-origen="${CSS.escape(origen)}"]`).forEach(tr => { tr.hidden = !ver; });
+    }).catch(() => f.submit());
+}));
+</script>
+{% endblock %}

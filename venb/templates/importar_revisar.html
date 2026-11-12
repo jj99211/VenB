@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block titulo %}VenB: Importar{% endblock %}
+{% block cuerpo %}
+<h1>Revisar antes de importar</h1>
+{% set validas = filas|rejectattr('error')|list %}
+<p class="suave">{{ filas|length }} ficheros leídos{% if filas|length != validas|length %}, {{ filas|length - validas|length }} con errores{% endif %}. Marca los que quieres importar y revisa su tipo, título y bici.</p>
+<section class="panel">
+  <form method="post" action="{{ url_for('importar_confirmar', lote=lote) }}" id="form-importar">
+    {% if validas %}<div class="linea-campos"><label>Bici para todas las de bici <select id="bici-todas"><option value="">–</option>{% for o in opciones_bici %}<option value="{{ o.valor }}">{{ o.texto }}</option>{% endfor %}</select></label></div>{% endif %}
+    <div class="tabla"><table>
+      <tr><th>Importar</th><th>Fecha</th><th>Título</th><th>Tipo</th><th class="num">km</th><th class="num">Horas</th><th class="num">Desnivel (m)</th><th class="num">FC media</th><th class="num">Potencia media</th><th>Bici</th></tr>
+      {% for x in filas %}{% if x.error %}<tr><td></td><td colspan="9"><b>{{ x.nombre }}</b>: <span class="rojo">{{ x.error }}</span></td></tr>
+      {% else %}<tr>
+        <td><input type="checkbox" name="importar_{{ x.n }}" value="1" {% if x.importar %}checked{% endif %} aria-label="Importar {{ x.nombre }}"></td>
+        <td class="f">{{ x.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
+        <td><input name="titulo_{{ x.n }}" value="{{ x.titulo }}" maxlength="100" size="24"><br><span class="suave">{{ x.nombre }}</span>{% if x.choca %}<br><span class="rojo">Coincide con {{ x.choca }}</span>{% endif %}</td>
+        <td><select name="tipo_{{ x.n }}" class="tipo">{% for t in tipos %}<option {% if t == x.tipo %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></td>
+        <td class="num">{{ x.km|n(1) }}</td><td class="num">{{ x.h|hm }}</td><td class="num">{{ x.desnivel|n if x.desnivel is not none else '–' }}</td>
+        <td class="num">{{ x.fc_media|n if x.fc_media else '–' }}</td><td class="num">{{ x.potencia_media|n if x.potencia_media else '–' }}</td>
+        <td><select name="bici_{{ x.n }}" class="bici"><option value="">–</option>{% for o in opciones_bici %}<option value="{{ o.valor }}">{{ o.texto }}</option>{% endfor %}</select></td>
+      </tr>{% endif %}{% endfor %}
+    </table></div>
+    {% if validas %}<p><button>Importar las marcadas</button></p>{% endif %}
+  </form>
+  <form method="post" action="{{ url_for('importar_descartar', lote=lote) }}"><button class="discreto">Descartar y volver</button></form>
+  <p class="suave">La bici solo cuenta en las actividades de ciclismo. «Ciclismo en sala» y «Ciclismo virtual» son rodillo. Las horas son las de este ordenador.</p>
+</section>
+<script>
+(function () {
+  var t = document.getElementById('bici-todas');
+  if (!t) return;
+  t.addEventListener('change', function () {
+    document.querySelectorAll('#form-importar tr').forEach(function (tr) {
+      var tipo = tr.querySelector('select.tipo'), b = tr.querySelector('select.bici');
+      if (tipo && b && tipo.value.indexOf('Ciclismo') === 0) b.value = t.value;
+    });
+  });
+})();
+</script>
+{% endblock %}

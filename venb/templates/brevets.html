@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% block titulo %}VenB: Brevets{% endblock %}
+{% block cuerpo %}
+<h1>Brevets</h1>
+<p class="suave"><a href="{{ url_for('brevets_por_clasificar') }}">Salidas largas por clasificar</a>: las salidas largas que aún no están en la lista ni marcadas como «No es prueba».</p>
+{% if aviso %}<div class="aviso alto" id="aviso-brevet" role="alert">{{ aviso }}</div>{% endif %}
+{% if st %}<details class="plegable" id="resumen" open>
+<summary><h2>Resumen</h2></summary>
+<section class="panel">
+  <div class="cifras">
+    <div class="cifra"><b>{{ st.n|n }}</b><span>Pruebas</span></div>
+    <div class="cifra"><b>{{ st.km|n }} km</b><span>En total</span></div>
+    <div class="cifra"><b>{{ st.r5000|n }}</b><span>Marcadas para R5000</span></div>
+    <div class="cifra"><b>{{ st.r10000|n }}</b><span>Marcadas para R10000</span></div>
+    <div class="cifra"><b>{{ st.pendientes|n }}</b><span>Sin número de homologación</span></div>
+  </div>
+</section>
+</details>
+<details class="plegable" id="por-anio" open>
+<summary><h2>Kilómetros de brevet por año</h2></summary>
+<section class="panel">
+  <div class="graf" id="g-brevets" data-bicis></div>
+  <details class="ver"><summary>Ver datos</summary><div class="tabla"></div></details>
+</section>
+</details>{% endif %}
+
+{% if st and st.mejores %}<details class="plegable" id="mejores" open>
+<summary><h2>Mejor tiempo por distancia</h2></summary>
+<section class="panel">
+  <div class="tabla"><table>
+    <tr><th>Distancia</th><th class="num">Pruebas</th><th class="num">Mejor tiempo</th><th>Prueba</th><th>Fecha</th></tr>
+    {% for m in st.mejores %}<tr><td>{{ m.distancia|n }} km</td><td class="num">{{ m.n }}</td><td class="num">{{ m.horas|tiempo }}</td><td>{{ m.nombre or '–' }}</td><td class="f">{{ m.fecha|iso_fecha }}</td></tr>{% endfor %}
+  </table></div>
+</section>
+</details>{% endif %}
+
+<details class="plegable" id="formulario" open{% if e %} data-abrir{% endif %}>
+<summary><h2>{% if e and e.id %}Editar brevet{% else %}Registrar un brevet{% endif %}</h2></summary>
+<section class="panel">
+  {% if e and not e.id %}<p class="suave">Datos tomados de tu actividad de Garmin{% if e.km_reales %} ({{ e.km_reales|n(1) }} km grabados; se propone la distancia homologable, {{ e.distancia|n }} km){% endif %}. Revisa el tipo y la distancia, completa la homologación y los clubes y pulsa Guardar. Si la prueba quedó partida en varias actividades, pon la distancia y el tiempo totales desde la salida: VenB no preguntará por las demás etapas.</p>{% endif %}
+  <form method="post" action="{{ url_for('brevet_guardar') }}">
+    {% if e and e.id %}<input type="hidden" name="id" value="{{ e.id }}">{% endif %}
+    {% if e and e.actividad %}<input type="hidden" name="actividad" value="{{ e.actividad }}">{% endif %}
+    <div class="linea-campos">
+      <label>Fecha <input name="fecha" value="{{ e.fecha_txt if e else hoy }}" placeholder="DD/MM/AAAA" pattern="\d{2}/\d{2}/\d{4}" size="11" required></label>
+      <label>Tipo <select name="tipo">{% for t in tipos %}<option value="{{ t }}" {% if e and e.tipo == t %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></label>
+      <label>Nombre <input name="nombre" value="{{ e.nombre if e else '' }}" maxlength="100" size="26"></label>
+      <label>Distancia (km) <input name="distancia" value="{{ '%g'|format(e.distancia) if e else '' }}" inputmode="decimal" size="7" required></label>
+      <label>Tiempo (H:MM) <input name="tiempo" value="{{ e.tiempo_txt if e else '' }}" placeholder="12:30" pattern="\d+(:[0-5]\d)?" size="7"></label>
+    </div>
+    <div class="linea-campos">
+      <label>Homologación <input name="homologacion" value="{{ e.homologacion if e else '' }}" maxlength="30" size="14"></label>
+      <label>Club organizador <input name="organizador" value="{{ e.organizador if e else '' }}" list="clubes" maxlength="80" size="24"></label>
+      <label>Club de inscripción <input name="inscripcion" value="{{ e.inscripcion if e else '' }}" list="clubes" maxlength="80" size="24"></label>
+      <label class="casilla"><input type="checkbox" name="r5000" {% if e and e.r5000 %}checked{% endif %}> R5000</label>
+      <label class="casilla"><input type="checkbox" name="r10000" {% if e and e.r10000 %}checked{% endif %}> R10000</label>
+      <button>Guardar</button>{% if e %} <a href="{{ url_for('brevets') }}">Cancelar</a>{% endif %}
+    </div>
+    <datalist id="clubes">{% for c in clubes %}<option value="{{ c }}">{% endfor %}</datalist>
+  </form>
+</section>
+</details>
+
+<details class="plegable" id="historial" open>
+<summary><h2>Historial</h2></summary>
+<section class="panel">
+  {% if filas %}
+  <form class="filtros" id="filtros" data-tramos='{{ tramos|tojson }}' onsubmit="return false">
+    <div class="fila-filtros">
+      <input type="search" name="q" placeholder="Buscar nombre…" aria-label="Buscar en el nombre" class="f-buscar">
+      <select name="anio" aria-label="Año"><option value="">Año</option>{% for a in anios %}<option>{{ a }}</option>{% endfor %}</select>
+      <select name="temp" aria-label="Temporada randonneur (noviembre a octubre)" title="Temporada randonneur: de noviembre a octubre"><option value="">Temporada</option>{% for t in temporadas %}<option value="{{ t }}">{{ t - 1 }}-{{ '%02d'|format(t % 100) }}</option>{% endfor %}</select>
+      <select name="tipo" aria-label="Tipo"><option value="">Tipo</option>{% for t in tipos_hechos %}<option>{{ t }}</option>{% endfor %}</select>
+      <select name="dist" aria-label="Distancia"><option value="">Distancia</option>{% for t in tramos %}<option value="{{ loop.index0 }}">{{ t[0] }}</option>{% endfor %}</select>
+      <select name="org" aria-label="Club organizador"><option value="">Organiza</option>{% for c in organizadores %}<option>{{ c }}</option>{% endfor %}</select>
+      <label class="casilla" title="Del 01/11/2026 al 30/06/2027"><input type="checkbox" name="pbp"> Válidas PBP 2027</label>
+      <button type="button" class="discreto" id="mas-filtros" aria-expanded="false">Más filtros ▾</button>
+      <button type="button" class="discreto" id="quitar-filtros">Quitar filtros</button>
+    </div>
+    <div class="fila-filtros" id="filtros-mas" hidden>
+      <select name="ins" aria-label="Inscripción"><option value="">Inscripción</option>{% for c in inscripciones %}<option>{{ c }}</option>{% endfor %}</select>
+      <select name="hom" aria-label="Homologación"><option value="">Homologación</option><option value="1">Con número</option><option value="0">Pendiente</option></select>
+      <select name="r5" aria-label="Cuenta para R5000"><option value="">R5000</option><option value="1">Cuenta</option><option value="0">No cuenta</option></select>
+      <select name="r10" aria-label="Cuenta para R10000"><option value="">R10000</option><option value="1">Cuenta</option><option value="0">No cuenta</option></select>
+      <select name="act" aria-label="Actividad de Garmin"><option value="">Actividad</option><option value="1">Enlazada</option><option value="0">Sin actividad</option></select>
+      <select name="pct" aria-label="Tiempo frente al límite oficial" title="Tiempo empleado frente al límite oficial de Randonneurs Mondiaux (solo BRM con tiempo anotado)"><option value="">Tiempo / límite</option><option value="-75">Holgado (≤75 %)</option><option value="75-90">Medio (75–90 %)</option><option value="90-">Justo (&gt;90 %)</option><option value="sin">Sin tiempo</option></select>
+      <label>Desde <input type="text" name="desde" placeholder="DD/MM/AAAA" size="10" inputmode="numeric"></label>
+      <label>Hasta <input type="text" name="hasta" placeholder="DD/MM/AAAA" size="10" inputmode="numeric"></label>
+    </div>
+    <p class="suave" id="recuento" aria-live="polite"></p>
+  </form>
+  <div class="tabla tabla-brevets"><table>
+    <thead><tr><th>Fecha</th><th>Tipo</th><th>Nombre</th><th class="num">km</th><th class="num">Tiempo</th><th title="Número de homologación">Homol.</th><th>Organiza</th><th title="Club donde te inscribiste">Inscr.</th><th title="Cuenta para el R5000">R5</th><th title="Cuenta para el R10000">R10</th><th></th></tr></thead>
+    <tbody>{% for b in filas %}<tr data-fecha="{{ b.fecha }}" data-tipo="{{ b.tipo }}" data-km="{{ b.distancia or 0 }}" data-org="{{ b.organizador }}" data-ins="{{ b.inscripcion }}" data-hom="{{ 1 if b.homologacion else 0 }}" data-r5="{{ 1 if b.r5000 else 0 }}" data-r10="{{ 1 if b.r10000 else 0 }}" data-act="{{ 1 if enlaces[b.id] or b.actividad else 0 }}" data-pct="{{ pct.get(b.id, '') }}" data-nombre="{{ b.nombre }}">
+      <td class="f">{{ b.fecha|iso_fecha }}</td><td>{{ b.tipo }}</td><td class="corta nombre" title="{{ b.nombre }}">{% if enlaces[b.id] %}<a href="{{ enlaces[b.id] }}" target="_blank" rel="noopener" title="{{ b.nombre }}: abrir la ruta en Garmin Connect (pestaña nueva)">{{ b.nombre or 'Ver en Garmin' }} ↗</a>{% else %}{{ b.nombre or '–' }}{% endif %}</td><td class="num">{{ b.distancia|n }}</td><td class="num">{{ b.horas|tiempo }}</td>
+      <td class="corta">{{ b.homologacion or '–' }}</td><td class="corta" title="{{ b.organizador }}">{{ b.organizador }}</td><td class="corta" title="{{ b.inscripcion }}">{{ b.inscripcion }}</td><td>{% if b.r5000 %}✓{% endif %}</td><td>{% if b.r10000 %}✓{% endif %}</td>
+      <td class="acciones"><a href="?editar={{ b.id }}#formulario" title="Editar" aria-label="Editar">✎</a><form method="post" action="{{ url_for('brevet_borrar', bid=b.id) }}" onsubmit="return confirm('¿Borrar este brevet?')"><button class="discreto" title="Borrar" aria-label="Borrar">×</button></form></td></tr>{% endfor %}</tbody>
+  </table></div>
+  <script src="{{ url_for('static', filename='brevets_filtros.js') }}"></script>
+  {% else %}<p class="suave">Todavía no hay brevets.</p>{% endif %}
+</section>
+</details>
+{% endblock %}

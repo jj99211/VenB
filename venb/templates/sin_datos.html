@@ -1,0 +1,5 @@
+{% extends 'base.html' %}
+{% block titulo %}VenB: sin datos{% endblock %}
+{% block cuerpo %}
+<div class="aviso">Todavía no hay actividades.<small><a href="{{ url_for('importar') }}">Sube tus actividades en GPX, FIT o TCX</a> o <a href="{{ url_for('ayuda', capitulo='garmin') }}">consulta en Ayuda cómo incorporar tus datos de Garmin</a>.</small></div>
+{% endblock %}

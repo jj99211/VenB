@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block titulo %}VenB: Importar{% endblock %}
+{% block cuerpo %}
+<h1>Actividades importadas</h1>
+<section class="panel">
+  {% if hechas %}<p>{{ hechas|length }} {{ 'actividad importada' if hechas|length == 1 else 'actividades importadas' }}.</p>
+  <div class="tabla"><table>
+    <tr><th>Fecha</th><th>Título</th><th>Tipo</th><th class="num">km</th><th>Bici</th></tr>
+    {% for aid, x in hechas %}<tr><td class="f">{{ x.fecha.strftime('%d/%m/%Y %H:%M') }}</td><td>{{ x.titulo }}</td><td>{{ x.tipo }}</td><td class="num">{{ x.km|n(1) }}</td><td>{{ nombres.get(bicis.get(x.n), '–') }}</td></tr>{% endfor %}
+  </table></div>
+  {% else %}<p>No se ha importado ninguna actividad.</p>{% endif %}
+  {% if ofertas %}<h2>Meses ya cerrados</h2>
+  <p class="suave">Estas actividades son de meses que ya cerraste en Bicis, y sus km no cambian solos. Si no los habías contado, súmalos:</p>
+  {% for o in ofertas %}<form method="post" action="{{ url_for('bicis_sumar') }}" class="linea">
+    <input type="hidden" name="mes" value="{{ o.mes }}"><input type="hidden" name="bici" value="{{ o.bici }}"><input type="hidden" name="km" value="{{ o.km }}">
+    <button>Sumar {{ o.km|n }} km a {{ o.nombre }} en {{ o.mes_txt }}</button>
+  </form>{% endfor %}{% endif %}
+  {% if largas %}<h2>¿Alguna fue una prueba?</h2>
+  <p class="suave">Estas salidas de {{ km_min|n }} km o más no están en la lista de Brevets. <b>Sí</b> abre el formulario de Brevets relleno con sus datos (en otra pestaña, para seguir con las demás); <b>No es prueba</b> la quita de los avisos.</p>
+  <div class="tabla"><table>
+    <tr><th>Fecha</th><th>Título</th><th class="num">km</th><th></th></tr>
+    {% for a in largas %}<tr><td class="f">{{ a.fecha|fecha }}</td><td>{{ a.titulo }}</td><td class="num">{{ a.km|n(1) }}</td>
+      <td class="nowrap"><a class="boton-enlace" href="{{ url_for('brevets', actividad=a.id) }}#formulario" target="_blank" rel="noopener">Sí, es una prueba</a>
+        <form class="en-linea" method="post" action="{{ url_for('brevets_no_prueba') }}"><input type="hidden" name="id" value="{{ a.id }}"><input type="hidden" name="volver" value="{{ url_for('brevets_por_clasificar') }}"><button class="discreto">No es prueba</button></form></td></tr>{% endfor %}
+  </table></div>
+  {% if largas|length > 1 %}<form method="post" action="{{ url_for('brevets_no_prueba') }}">{% for a in largas %}<input type="hidden" name="id" value="{{ a.id }}">{% endfor %}<button class="discreto">Ninguna es prueba</button></form>{% endif %}
+  <p class="suave">Todas las pendientes, también las de antes, están en <a href="{{ url_for('brevets_por_clasificar') }}">Salidas largas por clasificar</a>.</p>{% endif %}
+  <p><a href="{{ url_for('historico') }}">Ver el Histórico</a> · <a href="{{ url_for('importar') }}">Importar más</a></p>
+</section>
+{% endblock %}

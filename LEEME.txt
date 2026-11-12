@@ -1,0 +1,52 @@
+VenB (Vivir en Bici)
+Autor: José A. Jiménez (https://www.vivirenbici.es). Licencia CC BY-NC-SA 4.0 (venb/LICENSE.md), que incluye el logotipo.
+Soporte: jj99211@gmail.com
+Descargas, novedades y guías de instalación: https://github.com/jj99211/VenB/releases/latest
+
+Hay dos ediciones, con el mismo número de versión:
+- VenB (VenB-X.YZ.zip): entrenamiento, bicis, brevets, calendario, actividades de Garmin o de ficheros y Planificador de rutas.
+- VenB Rutas (VenB-X.YZ-Rutas.zip): solo el Planificador de rutas, con perfiles de club u organizador, para clubes y organizadores.
+Las dos se pueden instalar en el mismo ordenador y comparten la carpeta VenB-datos.
+
+INSTALAR (o actualizar), con internet:
+- WINDOWS: primero extrae el ZIP (botón derecho > Extraer todo). Luego, doble clic en INSTALAR-EN-WINDOWS.
+- LINUX: en una terminal abierta en esta carpeta, bash instalar-en-linux.sh
+Hace falta Python 3.10 o posterior. Si falta, el instalador lo dice y ayuda a instalarlo; el manual lo explica en el capítulo «Antes de instalar: Python».
+
+La primera vez, el instalador propone instalar VenB en Documentos\VenB (Windows) o ~/VenB (Linux); pulsa Intro para aceptar.
+Allí quedan el programa y, a su lado, VenB-datos, con tus datos y tu configuración. Ningún ZIP la contiene,
+así que una versión nueva no la sobrescribe. Al actualizar, el instalador encuentra solo tu instalación anterior.
+Al terminar, puedes borrar el ZIP y la carpeta donde lo descomprimiste.
+
+EMPEZAR
+- Ajustes: temporada, bici del rodillo, avisos, sensores, calendario de Google y opciones del Planificador.
+- Bicis: da de alta tus bicis, sus piezas y sus juegos de ruedas.
+- Calendario: tus pruebas, las de Randonneurs en España y, si lo añades, tu Google Calendar.
+- Brevets: registra tus pruebas.
+- Planificador: sube el track (GPX) y la hoja de ruta de una prueba y genera horarios, infografías, mapas y el track con waypoints.
+- Informes: tu diario y tus informes.
+
+ACTIVIDADES
+Puedes subir actividades en ficheros GPX, FIT o TCX de cualquier dispositivo en Análisis > Importar, sin Garmin.
+Si no usas Garmin Connect, desmarca «Usar Garmin Connect» en Ajustes.
+
+ACTIVIDADES DE GARMIN
+La página Ayuda de VenB incluye el manual de usuario y un capítulo sobre cómo incorporar tus datos de Garmin.
+También puedes leerlos en venb/manual/, en formato Markdown.
+- La descarga de Garmin (garmindb), que el instalador ofrece configurar, trae actividades recientes, sueño y VFC.
+  Tu correo y tu contraseña de Garmin se escriben en Ajustes > Garmin Connect.
+- La exportación de tu cuenta de Garmin añade todo tu historial: Ajustes > Copia de seguridad e importación.
+Si Garmin bloquea el acceso por demasiados intentos, VenB espera antes de volver a intentarlo (ver la Ayuda).
+Sin datos de Garmin ni ficheros importados, Bicis, Brevets, Calendario y Planificador funcionan, pero Inicio y Gráficas quedan casi vacíos.
+
+ACTUALIZAR
+VenB busca versiones nuevas en GitHub y lo avisa en Inicio. Pulsa «Actualizar ahora»: descarga la versión nueva, se cierra,
+la instala junto a tus datos (sin preguntas) y se vuelve a abrir. También en Ayuda > Acerca de, con «Buscar ahora».
+A mano: cierra VenB, descomprime el ZIP nuevo donde quieras y ejecuta su instalador. Desde la 3.39 o anteriores
+(sin el botón), actualiza así una vez. El instalador borra las versiones anteriores si no tienen nada añadido ni modificado, y te avisa de lo que conserva.
+En Linux, el aviso semanal pasa también a ejecutarse desde la versión nueva. En Windows no hay aviso semanal.
+
+ABRIR Y CERRAR
+Usa el icono de VenB. Se abre una terminal que espera mientras la aplicación está abierta, y el navegador en
+http://127.0.0.1:8877 (VenB Rutas, en http://127.0.0.1:8878: las dos pueden estar abiertas a la vez).
+Para cerrarla, usa el botón «Cerrar VenB» o pulsa Ctrl+C en la terminal.

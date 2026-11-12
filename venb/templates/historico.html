@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% from '_iconos.html' import tarjetas_analisis %}
+{% block titulo %}VenB: Histórico{% endblock %}
+{% block cuerpo %}
+<h1>Histórico</h1>
+<p class="suave">Del {{ primero|fecha }} al {{ ultimo|fecha }}. {{ dups|n }} grabaciones de bici solapadas descartadas: se conserva la más larga.</p>
+{{ tarjetas_analisis('historico') }}
+
+<details class="plegable" id="por-anio" open>
+  <summary><h2>Kilómetros de bici por año</h2></summary>
+  <section class="panel">
+    <p class="suave">El año en curso está incompleto. Pulsa un año para ver sus salidas.</p>
+    <div class="graf" id="g-anual" data-grafica></div>
+    <div class="tabla"><table>
+      <tr><th>Año</th><th class="num">Salidas</th><th class="num">km</th><th class="num">Horas</th><th class="num">Desnivel (m)</th><th class="num">Salida más larga (km)</th></tr>
+      {% for a in anual %}<tr><td><a href="?anio={{ a.fecha }}&tipo=bici#actividades">{{ a.fecha }}</a></td><td class="num">{{ a.n|n }}</td><td class="num">{{ a.km|n }}</td><td class="num">{{ a.h|hm }}</td><td class="num">{{ a.desnivel|n }}</td><td class="num">{{ a.maximo|n }}</td></tr>{% endfor %}
+    </table></div>
+  </section>
+</details>
+
+<details class="plegable" id="todo">
+  <summary><h2>Todo tu histórico</h2></summary>
+  <div class="rejilla dos bloque">
+    <section class="panel">
+      <h3>Kilómetros acumulados en el año</h3>
+      <p class="suave">El año actual frente al anterior; en gris, los tres previos.</p>
+      <div class="graf" id="g-acum" data-grafica></div>
+      <details class="ver"><summary>Ver datos</summary><div class="tabla"></div></details>
+    </section>
+    <section class="panel">
+      <h3>Salidas según su distancia</h3>
+      <p class="suave">Número de salidas de bici por tramo, en kilómetros.</p>
+      <div class="graf" id="g-dist" data-grafica></div>
+      <details class="ver"><summary>Ver datos</summary><div class="tabla"></div></details>
+    </section>
+  </div>
+</details>
+
+<details class="plegable" id="por-mes">
+  <summary><h2>Kilómetros por mes</h2></summary>
+  <section class="panel">
+    <p class="suave">Cuanto más oscuro, más kilómetros. Se ven de un vistazo tus temporadas.</p>
+    <div class="graf" id="g-mapa" data-grafica></div>
+  </section>
+</details>
+
+<details class="plegable" id="actividades" open{% if request.args %} data-abrir{% endif %}>
+  <summary><h2>Actividades</h2></summary>
+  <section class="panel">
+  <form class="linea" method="get" action="#actividades">
+    <label>Buscar en el título <input name="q" value="{{ q }}"></label>
+    <label>Año <select name="anio"><option value="">Todos</option>{% for a in anios %}<option {% if a|string == anio %}selected{% endif %}>{{ a }}</option>{% endfor %}</select></label>
+    <label>Tipo <select name="tipo"><option value="">Todos</option><option value="bici" {% if tipo == 'bici' %}selected{% endif %}>Toda la bici</option>{% for t in tipos %}<option {% if t == tipo %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></label>
+    <label>km mínimos <input name="minkm" value="{{ minkm }}" inputmode="decimal" size="6"></label>
+    <button>Filtrar</button>
+    <a href="?tipo=bici&minkm=200">Rutas de 200 km o más</a>
+  </form>
+  <p class="suave">Las salidas en bici de {{ km_prueba|n }} km o más que no están en la lista de brevets tienen el botón «Incluir en la lista de brevets»: abre el formulario de Brevets con la fecha, el nombre, la distancia y el tiempo de la actividad, y solo tienes que completar la homologación y los clubes.</p>
+  <p class="suave"><a href="{{ url_for('importar') }}">Importar actividades de ficheros GPX, FIT o TCX</a>. Las subidas a mano llevan la etiqueta «Fichero» y se pueden borrar.</p>
+  <p class="suave">En la columna <b>Bici</b> puedes indicar con qué bici hiciste cada salida: sus km se proponen solos al cerrar el mes en Bicis. «Según Garmin Connect» indica que la bici viene de Garmin (ver Bicis &gt; Bicis de Garmin Connect); lo que elijas aquí manda. Para BiciMAD, una bici alquilada o prestada, elige «Otra (no mía)»: cuenta como entrenamiento, pero no suma km a tus bicis. En un mes ya cerrado, los km guardados de las bicis no cambian.</p>
+  <p>{{ total|n }} actividades, {{ km|n }} km, {{ horas|hm }}{% if total > 500 %}. Se muestran las 500 más recientes.{% endif %}</p>
+  <div class="tabla"><table>
+    <tr><th>Fecha</th><th>Actividad</th><th>Tipo</th><th class="num">km</th><th class="num">Horas</th><th class="num">Desnivel (m)</th><th>Bici</th><th>Brevets</th><th><span class="oculto">Resumen</span></th></tr>
+    {% for a in filas %}<tr><td class="f">{{ a.fecha|fecha }}</td><td>{% if a.id|string is match_local %}{{ a.titulo }} <span class="etiqueta" title="Subida a mano desde un fichero">Fichero</span>{% elif km_enlace == 0 or a.km > km_enlace %}<a href="{{ url_garmin.format(a.id) }}" target="_blank" rel="noopener" title="Abrir la ruta en Garmin Connect (pestaña nueva)">{{ a.titulo }} ↗</a>{% else %}{{ a.titulo }}{% endif %} <a class="suave" href="{{ url_for('actividad_nombre', aid=a.id, volver=request.full_path) }}" title="Cambiar el nombre">✎</a>{% if a.id|string is match_local %} <form class="en-linea" method="post" action="{{ url_for('actividad_borrar', aid=a.id) }}" onsubmit="return confirm('¿Borrar esta actividad subida a mano y su fichero?')"><input type="hidden" name="volver" value="{{ request.full_path }}"><button class="discreto" title="Borrar la actividad subida a mano">Borrar</button></form>{% endif %}</td><td>{{ a.tipo }}</td><td class="num">{{ a.km|n(1) }}</td><td class="num">{{ a.h|hm }}</td><td class="num">{{ a.desnivel|n }}</td>
+      <td>{% if a.bici and a.id|string != 'nan' %}{% set v = asig.get(a.id|string) %}<select class="bici-actividad" data-url="{{ url_for('actividad_bici', aid=a.id) }}" aria-label="Bici de {{ a.titulo }}"><option value="">–</option>{% for o in opciones_bici %}<option value="{{ o.valor }}" {% if v and o.valor == v[0]|join('|') %}selected{% endif %}>{{ o.texto }}</option>{% endfor %}</select><span class="nota-bici aviso-linea" {% if not (v and v[1] == 'garmin') %}hidden{% endif %}>{% if v and v[1] == 'garmin' %}Según Garmin Connect{% endif %}</span>{% endif %}</td>
+      <td>{% if a.bici and a.km >= km_prueba %}{% if a.id|string in en_brevets %}<span class="etiqueta" title="Ya está en la lista de brevets (o es una etapa de una prueba registrada)">En la lista</span>{% else %}<a class="boton-enlace" href="{{ url_for('brevets', actividad=a.id) }}#formulario" title="Abre el formulario de Brevets con los datos de esta actividad">Incluir en la lista de brevets</a>{% endif %}{% endif %}</td>
+      <td>{% if a.id|string != 'nan' %}<button type="button" class="discreto ver-resumen" data-url="{{ url_for('actividad_resumen', aid=a.id) }}" title="Resumen: perfil y datos principales" aria-label="Resumen de {{ a.titulo or 'la actividad' }} del {{ a.fecha|fecha }}" aria-haspopup="dialog"><svg class="icono" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20h18"/><path d="m3 16 5-7 4 4 3-5 6 8"/></svg></button>{% endif %}</td></tr>{% endfor %}
+  </table></div>
+  </section>
+</details>
+<dialog id="resumen-actividad" aria-labelledby="ra-titulo">
+  <div class="ra-cab"><div><h2 id="ra-titulo"></h2><p class="suave" id="ra-sub"></p></div>
+    <form method="dialog"><button class="discreto ra-cerrar" aria-label="Cerrar">×</button></form></div>
+  <div id="ra-cuerpo"></div>
+</dialog>
+<script src="{{ url_for('static', filename='bici_actividad.js') }}"></script>
+<script src="{{ url_for('static', filename='actividad_resumen.js') }}"></script>
+{% endblock %}
