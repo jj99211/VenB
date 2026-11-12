@@ -1,8 +1,8 @@
 """Publica en GitHub la versión ya empaquetada (scripts/empaquetar.py): sube la rama y la etiqueta vX.YZ y crea la
 versión (Release) con los dos ZIP, el manual de usuario y las guías de instalación en PDF. Las notas salen del apartado
-«## X.YZ» de CAMBIOS.md. Los PDF van también con nombre fijo (FIJOS), para que la web pueda enlazarlos para siempre
-con https://github.com/jj99211/VenB/releases/latest/download/<nombre>. Los ZIP llevan siempre la versión: el botón
-«Actualizar» los busca por ese nombre. VenB y VenB Rutas buscan sus ZIP en la última versión publicada (venb/actualizaciones.py).
+«## X.YZ» de CAMBIOS.md. Los ZIP y los PDF van también con nombre fijo (FIJOS), para que la web pueda
+enlazarlos para siempre con https://github.com/jj99211/VenB/releases/latest/download/<nombre>. Los ZIP con versión
+deben seguir existiendo: el botón «Actualizar» los busca por ese nombre. VenB y VenB Rutas buscan sus ZIP en la última versión publicada (venb/actualizaciones.py).
 Uso: python scripts/publicar.py [--borrador]
 Necesita gh (GitHub CLI) con sesión iniciada y el remoto «origin». Fuera del ZIP (export-ignore).
 VenB © José A. Jiménez (https://www.vivirenbici.es). Licencia CC BY-NC-SA 4.0."""
@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from empaquetar import RAIZ, git  # noqa: E402
 
 
-FIJOS = {'Manual_VenB-{v}.pdf': 'Manual_VenB.pdf', 'Instalar_VenB-{v}.pdf': 'Instalar_VenB.pdf',
+FIJOS = {'VenB-{v}.zip': 'VenB.zip', 'VenB-{v}-Rutas.zip': 'VenB-Rutas.zip', 'Manual_VenB-{v}.pdf': 'Manual_VenB.pdf', 'Instalar_VenB-{v}.pdf': 'Instalar_VenB.pdf',
          'Instalar_VenB_Rutas-{v}.pdf': 'Instalar_VenB_Rutas.pdf'}
 
 
