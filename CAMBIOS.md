@@ -2,7 +2,7 @@
 
 Novedades de cada versión de VenB y VenB Rutas (las dos ediciones comparten número de versión).
 
-## Próxima versión (sin publicar)
+## 3.42
 
 - **Temporadas:** todas las cuentas anuales (km, horas, salidas y desnivel por año, acumulados y mapa por mes del Histórico, kilómetros de brevet y bicis) van por la temporada de Ajustes, que lleva el año en que se disputa: con inicio en noviembre, la temporada 2027 empezó el 01/11/2026. Al cambiar el mes se recalcula todo el historial.
 - El inicio de temporada se elige entre septiembre y abril (por defecto, noviembre); el mapa por mes empieza por ese mes y el filtro «Temporada» de Brevets lo sigue. Corregida la temporada de las bicis con inicio en primavera.
