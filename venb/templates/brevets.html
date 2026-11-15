@@ -17,7 +17,7 @@
 </section>
 </details>
 <details class="plegable" id="por-anio" open>
-<summary><h2>Kilómetros de brevet por año</h2></summary>
+<summary><h2>Kilómetros de brevet por {{ 'año' if temporada_txt == 'Año' else 'temporada' }}</h2></summary>
 <section class="panel">
   <div class="graf" id="g-brevets" data-bicis></div>
   <details class="ver"><summary>Ver datos</summary><div class="tabla"></div></details>
@@ -68,11 +68,11 @@
 <summary><h2>Historial</h2></summary>
 <section class="panel">
   {% if filas %}
-  <form class="filtros" id="filtros" data-tramos='{{ tramos|tojson }}' onsubmit="return false">
+  <form class="filtros" id="filtros" data-inicio="{{ inicio_temporada }}" data-tramos='{{ tramos|tojson }}' onsubmit="return false">
     <div class="fila-filtros">
       <input type="search" name="q" placeholder="Buscar nombre…" aria-label="Buscar en el nombre" class="f-buscar">
       <select name="anio" aria-label="Año"><option value="">Año</option>{% for a in anios %}<option>{{ a }}</option>{% endfor %}</select>
-      <select name="temp" aria-label="Temporada randonneur (noviembre a octubre)" title="Temporada randonneur: de noviembre a octubre"><option value="">Temporada</option>{% for t in temporadas %}<option value="{{ t }}">{{ t - 1 }}-{{ '%02d'|format(t % 100) }}</option>{% endfor %}</select>
+      {% if inicio_temporada != 1 %}<select name="temp" aria-label="Temporada" title="Temporada: {{ desc_temporada()|lower }}"><option value="">Temporada</option>{% for t in temporadas %}<option value="{{ t }}" title="{{ desc_temporada(t) }}">{{ t }}</option>{% endfor %}</select>{% endif %}
       <select name="tipo" aria-label="Tipo"><option value="">Tipo</option>{% for t in tipos_hechos %}<option>{{ t }}</option>{% endfor %}</select>
       <select name="dist" aria-label="Distancia"><option value="">Distancia</option>{% for t in tramos %}<option value="{{ loop.index0 }}">{{ t[0] }}</option>{% endfor %}</select>
       <select name="org" aria-label="Club organizador"><option value="">Organiza</option>{% for c in organizadores %}<option>{{ c }}</option>{% endfor %}</select>

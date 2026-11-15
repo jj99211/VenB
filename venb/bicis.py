@@ -353,19 +353,16 @@ def admite_cierre(mes, hoy=None):
 
 # ---------- Temporadas y resúmenes ----------
 def temporada(mes):
-    """Una temporada lleva el año en que termina. Si empieza en enero, es el año natural."""
-    inicio = rutas.ajustes()['mes_inicio_temporada']
-    a, m = int(mes[:4]), int(mes[5:7])
-    return a + 1 if inicio > 1 and m >= inicio else a
+    """Temporada (año nominal) de un mes AAAA-MM; ver rutas.temporada."""
+    return rutas.temporada(int(mes[:4]), int(mes[5:7]))
 
 
 def etiqueta_temporada(t):
-    return str(t) if rutas.ajustes()['mes_inicio_temporada'] == 1 else f'{str(t - 1)[2:]}-{str(t)[2:]}'
+    return str(t)
 
 
 def descripcion_temporada():
-    i = rutas.ajustes()['mes_inicio_temporada']
-    return 'Por año natural.' if i == 1 else f'De {MESES[i - 1]} a {MESES[i - 2]}.'
+    return rutas.descripcion_temporada()
 
 
 def _km_comp(bici, comp, filas, eventos):

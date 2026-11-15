@@ -18,8 +18,9 @@
     const q = v('q').trim().toLowerCase();
     if (q && !(d.nombre || '').toLowerCase().includes(q)) return false;
     if (v('anio') && fecha.slice(0, 4) !== v('anio')) return false;
-    if (v('temp')) {   // temporada randonneur: de noviembre del año anterior a octubre
-      const t = +fecha.slice(0, 4) + (+fecha.slice(5, 7) >= 11 ? 1 : 0);
+    if (f.elements.temp && v('temp')) {   // temporada (año nominal) según el mes de inicio de Ajustes; ver rutas.temporada
+      const i = +f.dataset.inicio || 1, a = +fecha.slice(0, 4), m = +fecha.slice(5, 7);
+      const t = i >= 9 ? a + (m >= i ? 1 : 0) : a - (m < i ? 1 : 0);
       if (String(t) !== v('temp')) return false;
     }
     if (v('tipo') && d.tipo !== v('tipo')) return false;

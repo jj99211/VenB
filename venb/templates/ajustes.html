@@ -14,8 +14,8 @@
   <section class="panel">
     <h2>Temporada y bicis</h2>
     <div class="campo"><label for="c-mes">La temporada empieza en</label>
-      <span class="control"><select id="c-mes" name="mes_inicio_temporada">{% for m in meses %}<option value="{{ loop.index }}" {% if a.mes_inicio_temporada == loop.index %}selected{% endif %}>{{ m }}</option>{% endfor %}</select></span>
-      <span class="ayuda">Los km de las bicis y sus piezas se cuentan por temporadas.</span></div>
+      <span class="control"><select id="c-mes" name="mes_inicio_temporada">{% for n, m in meses_temporada %}<option value="{{ n }}" {% if mes_inicio == n %}selected{% endif %}>{{ m }}</option>{% endfor %}</select></span>
+      <span class="ayuda">Todas las cuentas anuales van por temporadas: kilómetros por año, acumulados y por mes del Histórico, brevets y bicis. La temporada lleva el año en que se disputa: si empieza entre septiembre y diciembre, esos meses ya cuentan para el año siguiente (con noviembre, del 01/11/2026 al 31/10/2027 es la temporada 2027); si empieza entre febrero y abril, los meses anteriores son de la temporada del año anterior (con abril, el 31/03/2027 cierra la temporada 2026). Con enero, coincide con el año natural. Al cambiarlo se recalcula todo tu historial.</span></div>
     <div class="campo"><label for="c-rodillo">Bici del rodillo</label>
       <span class="control"><select id="c-rodillo" name="bici_rodillo"><option value="">Ninguna</option>{% for b in bicis %}<option value="{{ b.id }}" {% if a.bici_rodillo == b.id %}selected{% endif %}>{{ b.nombre }}</option>{% endfor %}</select></span></div>
     <div class="campo"><label for="c-manda">En rodillo, esta bici manda sobre la de Garmin Connect</label>

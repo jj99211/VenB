@@ -123,3 +123,78 @@ def ruta_garmin():
 
 def ruta_garmin_db():
     return os.path.expanduser(ajustes()['garmin_db'])
+
+
+# ---------- Temporada ----------
+# Una temporada lleva el año nominal: si empieza entre septiembre y diciembre, esos meses son del año siguiente
+# (noviembre de 2026 abre la temporada 2027); si empieza entre febrero y abril, los meses anteriores son del año
+# anterior (con inicio en abril, marzo de 2027 cierra la temporada 2026). En enero coincide con el año natural.
+# Todas las estadísticas anuales se agrupan con estas funciones; nada se guarda agrupado, así que cambiar el mes
+# en Ajustes recalcula todo el historial.
+MESES_TEMPORADA = (9, 10, 11, 12, 1, 2, 3, 4)
+_MESES_TXT = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+
+
+def mes_inicio(a=None):
+    """Mes de inicio de la temporada (septiembre a abril). Un valor antiguo de mayo a agosto pasa al más cercano."""
+    try:
+        m = int((a or ajustes()).get('mes_inicio_temporada', 11))
+    except (TypeError, ValueError):
+        m = 11
+    if m in MESES_TEMPORADA:
+        return m
+    return 4 if 5 <= m <= 6 else 9 if 7 <= m <= 8 else 11
+
+
+def temporada(anio, mes, inicio=None):
+    """Temporada (año nominal) a la que pertenece un mes de un año natural."""
+    i = inicio or mes_inicio()
+    if i >= 9:
+        return anio + 1 if mes >= i else anio
+    return anio - 1 if mes < i else anio
+
+
+def temporada_fecha(f, inicio=None):
+    """Temporada de una fecha (date, datetime, Timestamp o texto AAAA-MM-DD…)."""
+    if isinstance(f, str):
+        return temporada(int(f[:4]), int(f[5:7]), inicio)
+    return temporada(f.year, f.month, inicio)
+
+
+def temporadas_serie(fechas, inicio=None):
+    """Temporada de cada fecha de una serie de pandas (datetime)."""
+    i = inicio or mes_inicio()
+    a, m = fechas.dt.year, fechas.dt.month
+    if i >= 9:
+        return (a + (m >= i).astype(int)).astype('Int64')
+    return (a - (m < i).astype(int)).astype('Int64')
+
+
+def inicio_temporada(t, inicio=None):
+    """(año, mes) del primer mes de la temporada t."""
+    i = inicio or mes_inicio()
+    return (t - 1, i) if i >= 9 else (t, i)
+
+
+def meses_temporada(inicio=None):
+    """Los doce meses (1-12) en el orden de la temporada."""
+    i = inicio or mes_inicio()
+    return [(i - 1 + k) % 12 + 1 for k in range(12)]
+
+
+def natural(t, mes, inicio=None):
+    """Año natural de un mes de la temporada t."""
+    a, i = inicio_temporada(t, inicio)
+    return a if mes >= i else a + 1
+
+
+def descripcion_temporada(t=None, inicio=None):
+    """«De noviembre a octubre.» o, con t, «De noviembre de 2026 a octubre de 2027»."""
+    i = inicio or mes_inicio()
+    fin = (i - 2) % 12 + 1
+    if i == 1:
+        return f'Año natural {t}' if t else 'Por año natural.'
+    if t is None:
+        return f'De {_MESES_TXT[i - 1]} a {_MESES_TXT[fin - 1]}.'
+    a, _ = inicio_temporada(t, i)
+    return f'De {_MESES_TXT[i - 1]} de {a} a {_MESES_TXT[fin - 1]} de {natural(t, fin, i)}'

@@ -121,7 +121,7 @@ def seccion(ep):
 @app.context_processor
 def contexto():
     return {'version': VERSION, 'remoto': remoto(), 'menu': MENU_RUTAS if RUTAS else MENU, 'seccion': seccion(request.endpoint),
-            'rutas': RUTAS, 'nombre_app': NOMBRE_APP, 'nueva_version': AC.nueva, 'no_actualizable': AC.se_puede_actualizar}
+            'rutas': RUTAS, 'nombre_app': NOMBRE_APP, 'temporada_txt': 'Año' if R.mes_inicio() == 1 else 'Temporada', 'desc_temporada': R.descripcion_temporada, 'nueva_version': AC.nueva, 'no_actualizable': AC.se_puede_actualizar}
 
 
 @app.template_filter('n')
@@ -318,12 +318,13 @@ def historico():
     d = D.historico()
     if d.empty:
         return render_template('sin_datos.html')
-    anual = d[d.bici].groupby(d.fecha.dt.year).agg(n=('km', 'size'), km=('km', 'sum'), h=('h', 'sum'), desnivel=('desnivel', 'sum'), maximo=('km', 'max')).sort_index(ascending=False)
+    temp = R.temporadas_serie(d.fecha)
+    anual = d[d.bici].groupby(temp[d.bici].rename('fecha')).agg(n=('km', 'size'), km=('km', 'sum'), h=('h', 'sum'), desnivel=('desnivel', 'sum'), maximo=('km', 'max')).sort_index(ascending=False)
     q = request.args.get('q', '').strip()
     anio, tipo, minimo = request.args.get('anio', ''), request.args.get('tipo', ''), request.args.get('minkm', '')
     f = d
-    if anio.isdigit():
-        f = f[f.fecha.dt.year == int(anio)]
+    if anio.isdigit():   # temporada (año nominal; con inicio en enero, el año natural)
+        f = f[temp == int(anio)]
     if tipo == 'bici':
         f = f[f.bici]
     elif tipo:
@@ -342,7 +343,7 @@ def historico():
     except Exception:
         en_brevets = set()
     return render_template('historico.html', km_prueba=km_prueba, km_enlace=R.ajustes().get('km_enlace_garmin', 7), en_brevets=en_brevets, anual=anual.reset_index().to_dict('records'), filas=f.head(500).to_dict('records'), total=len(f), km=f.km.sum(), horas=f.h.sum(),
-                           anios=sorted(d.fecha.dt.year.unique(), reverse=True), tipos=sorted(d.tipo.dropna().unique()), q=q, anio=anio, tipo=tipo, minkm=minimo,
+                           anios=sorted(int(t) for t in temp.dropna().unique())[::-1], tipos=sorted(d.tipo.dropna().unique()), q=q, anio=anio, tipo=tipo, minkm=minimo,
                            primero=d.fecha.min(), ultimo=d.fecha.max(), dups=D._cache.get('hist_dups', 0), url_garmin=BR.URL_GARMIN,
                            asig=BI.asignaciones(con_origen=True), opciones_bici=BI.opciones_bici())
 
@@ -912,7 +913,7 @@ def ajustes():
                 if k not in request.form:     # apartado que no está en esta edición (VenB Rutas)
                     continue
                 v = int(request.form[k])
-                if not lo <= v <= hi:
+                if not lo <= v <= hi or (k == 'mes_inicio_temporada' and v not in R.MESES_TEMPORADA):
                     abort(400)
                 cambios[k] = v
             if 'sueno_referencia_h' in request.form:
@@ -956,7 +957,7 @@ def pagina_ajustes(**extra):
     # el mensaje de un apartado de abajo no se vería al recargar la página: se salta a ese apartado
     saltar = next((s for claves, s in ((('error_club', 'club_editar'), 'clubes'), (('error_garmin', 'ok_garmin'), 'garmin'), (('error_copia', 'importado'), 'copia'), (('error_red',), 'red'))
                    if any(extra.get(k) for k in claves)), '')
-    return render_template('ajustes.html', saltar=saltar, a=R.ajustes(), meses=[m.capitalize() for m in D.MES], bicis=BI.activas(), conectado=D.calendario_propio(),
+    return render_template('ajustes.html', saltar=saltar, a=R.ajustes(), meses_temporada=[(m, D.MES[m - 1].capitalize()) for m in R.MESES_TEMPORADA], mes_inicio=R.mes_inicio(), bicis=BI.activas(), conectado=D.calendario_propio(),
                            garmindb=D.garmindb_configurado(), peso_garmin=D.peso_desde_garmin(), error_peso=request.args.get('error_peso'),
                            instalado=D._python_garmindb() is not None, usuario_garmin=D.usuario_garmin(), descarga=D.estado_descarga(), usar_garmin=D.usar_garmin(),
                            red=pagina_red(), sensores=D.SENSORES, estilos_infografia=PL.ESTILOS_INFOGRAFIA, salidas_plan=PL.SALIDAS,
@@ -1158,13 +1159,14 @@ def brevets():
                            pct=pct, tramos=R.ajustes()['tramos_brevet'],
                            organizadores=sorted({b['organizador'] for b in filas if b['organizador']}), inscripciones=sorted({b['inscripcion'] for b in filas if b['inscripcion']}),
                            tipos_hechos=sorted({b['tipo'] for b in filas if b['tipo']}),
-                           temporadas=sorted({int(str(b['fecha'])[:4]) + (str(b['fecha'])[5:7] >= '11') for b in filas if b['fecha']}, reverse=True), anios=sorted({str(b['fecha'])[:4] for b in filas if b['fecha']}, reverse=True))
+                           temporadas=sorted({R.temporada_fecha(str(b['fecha'])) for b in filas if b['fecha']}, reverse=True), inicio_temporada=R.mes_inicio(), anios=sorted({str(b['fecha'])[:4] for b in filas if b['fecha']}, reverse=True))
 
 
 @app.route('/datos/brevets.json')
 def datos_brevets():
     st = BR.estadisticas() or {'anios': [], 'series': []}
-    return jsonify({'anios': st['anios'], 'series': st['series']})
+    return jsonify({'anios': st['anios'], 'series': st['series'], 'etiqueta': 'Año' if R.mes_inicio() == 1 else 'Temporada',
+                    'desc': {t: R.descripcion_temporada(t) for t in st['anios']}})
 
 
 @app.post('/brevets/guardar')

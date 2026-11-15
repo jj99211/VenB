@@ -310,8 +310,10 @@ def estadisticas(hist=None):
     if not fs:
         return None
     ps = pruebas(fs)
-    anios = list(range(min(b['anio'] for b in fs), max(b['anio'] for b in fs) + 1))
-    series = [{'n': n, 'v': [sum(p['distancia'] for p in ps if p['anio'] == a and lo <= p['distancia'] < hi) for a in anios]} for n, lo, hi in rutas.ajustes()['tramos_brevet']]
+    # Por temporada (año nominal, ver rutas.temporada), calculada de la fecha: la columna «anio» queda como dato
+    temp = {id(p): rutas.temporada_fecha(p['fecha']) for p in ps}
+    anios = list(range(min(temp.values()), max(temp.values()) + 1))
+    series = [{'n': n, 'v': [sum(p['distancia'] for p in ps if temp[id(p)] == a and lo <= p['distancia'] < hi) for a in anios]} for n, lo, hi in rutas.ajustes()['tramos_brevet']]
     cats = {}
     for p in ps:
         orden, texto = categoria(p)

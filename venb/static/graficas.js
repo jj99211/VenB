@@ -288,18 +288,23 @@
     t.className = 'mapa';
     const cab = t.insertRow();
     cab.appendChild(document.createElement('th'));
-    for (const m of MES) { const c = document.createElement('th'); c.textContent = m; cab.appendChild(c); }
+    const meses = d.meses || [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], ini = d.inicio || 1;
+    // año natural de un mes de la temporada t (ver rutas.natural)
+    const natural = (t, m) => { const a0 = ini >= 9 ? t - 1 : t; return m >= ini ? a0 : a0 + 1; };
+    for (const m of meses) { const c = document.createElement('th'); c.textContent = MES[m - 1]; cab.appendChild(c); }
     const max = Math.max(...d.km.flat());
     d.anios.forEach((a, f) => {
       const r = t.insertRow(), h = document.createElement('th');
       h.textContent = a;
       r.appendChild(h);
-      d.km[f].forEach((km, m) => {
+      if (ini !== 1) h.title = `Temporada ${a}`;
+      d.km[f].forEach((km, k) => {
+        const m = meses[k] - 1;
         const c = r.insertCell();
         if (km > 0) c.style.background = `color-mix(in oklab, var(--serie1) ${Math.round(12 + 88 * Math.sqrt(km / max))}%, var(--panel))`;
         c.tabIndex = -1;
         const txt = [{ v: num(km) + ' km', n: '' }];
-        c.addEventListener('pointermove', e => mostrar(`${MES[m]} ${a}`, txt, e.clientX, e.clientY));
+        c.addEventListener('pointermove', e => mostrar(`${MES[m]} ${ini === 1 ? a : natural(a, m + 1)}`, txt, e.clientX, e.clientY));
         c.addEventListener('pointerleave', ocultar);
       });
     });
@@ -402,13 +407,14 @@
     const azul = css('--serie1'), naranja = css('--serie2'), gris = css('--gris-serie');
     if ($('g-anual')) {
       const a = D.anual;
-      columnas($('g-anual'), { nombre: 'Kilómetros de bici por año', v: a.km, larga: a.a.map(String), corta: a.a.map(String), c: azul, ud: 'km', nombreValor: 'de bici', anchoEt: 40, extra: i => [{ v: num(a.h[i]) + ' h', n: '' }, { v: num(a.n[i]), n: 'salidas' }, { v: num(a.desnivel[i]) + ' m', n: 'de desnivel' }] });
-      tabla($('g-anual'), ['Año', 'km', 'Horas', 'Salidas', 'Desnivel (m)'], a.a.map((y, i) => [String(y), num(a.km[i]), hm(a.h[i]), num(a.n[i]), num(a.desnivel[i])]).reverse());
+      const et = D.temporada ? D.temporada.etiqueta : 'Año';
+      columnas($('g-anual'), { nombre: et === 'Año' ? 'Kilómetros de bici por año' : 'Kilómetros de bici por temporada', v: a.km, larga: a.a.map(y => et === 'Año' ? String(y) : `Temporada ${y}`), corta: a.a.map(String), c: azul, ud: 'km', nombreValor: 'de bici', anchoEt: 40, extra: i => [{ v: num(a.h[i]) + ' h', n: '' }, { v: num(a.n[i]), n: 'salidas' }, { v: num(a.desnivel[i]) + ' m', n: 'de desnivel' }] });
+      tabla($('g-anual'), [et, 'km', 'Horas', 'Salidas', 'Desnivel (m)'], a.a.map((y, i) => [String(y), num(a.km[i]), hm(a.h[i]), num(a.n[i]), num(a.desnivel[i])]).reverse());
     }
     if ($('g-acum')) {
       const c = D.acumulado, n = c.series.length;
       const series = c.series.map((s, i) => i === n - 1 ? { n: String(s.a), v: s.km, c: azul } : i === n - 2 ? { n: String(s.a), v: s.km, c: naranja } : { n: String(s.a), v: s.km, c: gris, ancho: 1, sinEtiqueta: true, sinLeyenda: true });
-      lineas($('g-acum'), { nombre: 'Kilómetros acumulados por año', x: c.f.map(ms), series, ud: 'km', soloMes: true, cero: true });
+      lineas($('g-acum'), { nombre: D.temporada && D.temporada.etiqueta !== 'Año' ? 'Kilómetros acumulados por temporada' : 'Kilómetros acumulados por año', x: c.f.map(ms), series, ud: 'km', soloMes: true, cero: true });
       const idx = c.f.map((_, i) => i).filter(i => c.f[i].endsWith('-01') || i === c.f.length - 1);
       tabla($('g-acum'), ['Fecha'].concat(c.series.map(s => String(s.a))), idx.map(i => [fechaMes(ms(c.f[i]))].concat(c.series.map(s => num(s.km[i])))));
     }
@@ -436,7 +442,7 @@
       fetch('/datos/brevets.json').then(r => r.json()).then(D => {
         const pinta = () => {
           const c = ['--serie1', '--serie2', '--serie3', '--serie4', '--serie5'].map(css);
-          apiladas($('g-brevets'), { nombre: 'Kilómetros de brevet por año y distancia', etCat: 'Año', cats: D.anios.map(String), series: D.series.map((s, i) => ({ ...s, c: c[i] })) });
+          apiladas($('g-brevets'), { nombre: D.etiqueta === 'Temporada' ? 'Kilómetros de brevet por temporada y distancia' : 'Kilómetros de brevet por año y distancia', etCat: D.etiqueta || 'Año', cats: D.anios.map(String), series: D.series.map((s, i) => ({ ...s, c: c[i] })) });
         };
         pinta();
         document.querySelectorAll('details.plegable').forEach(d => d.addEventListener('toggle', () => { if (d.open) pinta(); }));

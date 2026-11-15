@@ -7,13 +7,13 @@
 {{ tarjetas_analisis('historico') }}
 
 <details class="plegable" id="por-anio" open>
-  <summary><h2>Kilómetros de bici por año</h2></summary>
+  <summary><h2>Kilómetros de bici por {{ 'año' if temporada_txt == 'Año' else 'temporada' }}</h2></summary>
   <section class="panel">
-    <p class="suave">El año en curso está incompleto. Pulsa un año para ver sus salidas.</p>
+    <p class="suave">{% if temporada_txt != 'Año' %}Por temporadas: la {{ anual[0].fecha }} va {{ desc_temporada(anual[0].fecha)|lower }} (el mes de inicio se cambia en Ajustes). {% endif %}{% if temporada_txt == 'Año' %}El año en curso está incompleto. Pulsa un año{% else %}La temporada en curso está incompleta. Pulsa una{% endif %} para ver sus salidas.</p>
     <div class="graf" id="g-anual" data-grafica></div>
     <div class="tabla"><table>
-      <tr><th>Año</th><th class="num">Salidas</th><th class="num">km</th><th class="num">Horas</th><th class="num">Desnivel (m)</th><th class="num">Salida más larga (km)</th></tr>
-      {% for a in anual %}<tr><td><a href="?anio={{ a.fecha }}&tipo=bici#actividades">{{ a.fecha }}</a></td><td class="num">{{ a.n|n }}</td><td class="num">{{ a.km|n }}</td><td class="num">{{ a.h|hm }}</td><td class="num">{{ a.desnivel|n }}</td><td class="num">{{ a.maximo|n }}</td></tr>{% endfor %}
+      <tr><th>{{ temporada_txt }}</th><th class="num">Salidas</th><th class="num">km</th><th class="num">Horas</th><th class="num">Desnivel (m)</th><th class="num">Salida más larga (km)</th></tr>
+      {% for a in anual %}<tr><td><a href="?anio={{ a.fecha }}&tipo=bici#actividades" title="{{ desc_temporada(a.fecha) }}">{{ a.fecha }}</a></td><td class="num">{{ a.n|n }}</td><td class="num">{{ a.km|n }}</td><td class="num">{{ a.h|hm }}</td><td class="num">{{ a.desnivel|n }}</td><td class="num">{{ a.maximo|n }}</td></tr>{% endfor %}
     </table></div>
   </section>
 </details>
@@ -22,8 +22,8 @@
   <summary><h2>Todo tu histórico</h2></summary>
   <div class="rejilla dos bloque">
     <section class="panel">
-      <h3>Kilómetros acumulados en el año</h3>
-      <p class="suave">El año actual frente al anterior; en gris, los tres previos.</p>
+      <h3>Kilómetros acumulados en {{ 'el año' if temporada_txt == 'Año' else 'la temporada' }}</h3>
+      <p class="suave">{% if temporada_txt == 'Año' %}El año actual frente al anterior; en gris, los tres previos.{% else %}La temporada actual frente a la anterior; en gris, las tres previas.{% endif %}</p>
       <div class="graf" id="g-acum" data-grafica></div>
       <details class="ver"><summary>Ver datos</summary><div class="tabla"></div></details>
     </section>
@@ -49,7 +49,7 @@
   <section class="panel">
   <form class="linea" method="get" action="#actividades">
     <label>Buscar en el título <input name="q" value="{{ q }}"></label>
-    <label>Año <select name="anio"><option value="">Todos</option>{% for a in anios %}<option {% if a|string == anio %}selected{% endif %}>{{ a }}</option>{% endfor %}</select></label>
+    <label>{{ temporada_txt }} <select name="anio"><option value="">Todos</option>{% for a in anios %}<option {% if a|string == anio %}selected{% endif %}>{{ a }}</option>{% endfor %}</select></label>
     <label>Tipo <select name="tipo"><option value="">Todos</option><option value="bici" {% if tipo == 'bici' %}selected{% endif %}>Toda la bici</option>{% for t in tipos %}<option {% if t == tipo %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></label>
     <label>km mínimos <input name="minkm" value="{{ minkm }}" inputmode="decimal" size="6"></label>
     <button>Filtrar</button>

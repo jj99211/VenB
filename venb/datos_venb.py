@@ -163,25 +163,33 @@ def graficas():
     sem = x.groupby(lunes).sum()
     rango = pd.date_range(sem.index.min(), hoy - pd.Timedelta(days=hoy.weekday()), freq='7D')
     sem = sem.reindex(rango, fill_value=0)
-    # Año
-    anios = range(int(b.fecha.dt.year.min()), hoy.year + 1)
-    an = b.groupby(b.fecha.dt.year).agg(km=('km', 'sum'), h=('h', 'sum'), n=('km', 'size'), desnivel=('desnivel', 'sum')).reindex(anios, fill_value=0)
-    # Año × mes
-    mapa = b.pivot_table(index=b.fecha.dt.year, columns=b.fecha.dt.month, values='km', aggfunc='sum', fill_value=0).reindex(index=anios, columns=range(1, 13), fill_value=0)
-    # Acumulado sobre una rejilla de año bisiesto, para comparar años entre sí
-    rej = pd.date_range('2024-01-01', '2024-12-31')
+    # Temporada (año nominal; ver rutas.temporada)
+    ini = rutas.mes_inicio()
+    t_hoy = rutas.temporada(hoy.year, hoy.month, ini)
+    temp = rutas.temporadas_serie(b.fecha, ini)
+    anios = range(int(temp.min()), t_hoy + 1)
+    an = b.groupby(temp).agg(km=('km', 'sum'), h=('h', 'sum'), n=('km', 'size'), desnivel=('desnivel', 'sum')).reindex(anios, fill_value=0)
+    # Temporada × mes, con los meses en el orden de la temporada
+    meses = rutas.meses_temporada(ini)
+    mapa = b.pivot_table(index=temp, columns=b.fecha.dt.month, values='km', aggfunc='sum', fill_value=0).reindex(index=anios, columns=meses, fill_value=0)
+    # Acumulado sobre una rejilla de 366 días que empieza en el mes de inicio y contiene un 29 de febrero,
+    # para comparar temporadas entre sí
+    a0 = 2024 if ini <= 2 else 2023
+    rej = pd.date_range(f'{a0}-{ini:02d}-01', periods=366)
     claves = rej.strftime('%m-%d')
     acum = []
     diario = b.groupby(b.fecha.dt.normalize()).km.sum()
-    for a in range(hoy.year - 4, hoy.year + 1):
-        dias = pd.date_range(f'{a}-01-01', f'{a}-12-31')
+    for t in range(t_hoy - 4, t_hoy + 1):
+        a, m = rutas.inicio_temporada(t, ini)
+        ini_t = pd.Timestamp(a, m, 1)
+        dias = pd.date_range(ini_t, ini_t + pd.DateOffset(years=1) - pd.Timedelta(days=1))
         s = diario.reindex(dias, fill_value=0).cumsum()
         s = s.where(dias <= hoy)
         s.index = dias.strftime('%m-%d')
         s = s.reindex(claves)
-        if a % 4:  # el 29 de febrero no existe: repite el día anterior
+        if '02-29' not in dias.strftime('%m-%d'):  # el 29 de febrero no existe: repite el día anterior
             s.loc['02-29'] = s.loc['02-28']
-        acum.append({'a': a, 'km': _lista(s, 0)})
+        acum.append({'a': t, 'km': _lista(s, 0)})
     # Distancias
     tramos = rutas.ajustes()['tramos_salidas']
     etiq = [t[0] for t in tramos]
@@ -200,7 +208,8 @@ def graficas():
             'peso': {'f': [a for a, _ in p], 'kg': [k for _, k in p]},
             'anual': {'a': list(anios), 'km': _lista(an.km, 0), 'h': _lista(an.h, 0), 'n': [int(v) for v in an.n], 'desnivel': _lista(an.desnivel, 0)},
             'acumulado': {'f': _dias(rej), 'series': acum},
-            'mapa': {'anios': list(anios), 'km': [_lista(mapa.loc[a], 0) for a in anios]},
+            'mapa': {'anios': list(anios), 'meses': meses, 'inicio': ini, 'km': [_lista(mapa.loc[a], 0) for a in anios]},
+            'temporada': {'etiqueta': 'Año' if ini == 1 else 'Temporada', 'desc': {t: rutas.descripcion_temporada(t, ini) for t in anios}},
             'distancias': {'et': etiq, 'n': [int(v) for v in dist]}}
 
 
@@ -214,10 +223,12 @@ def tendencias(g):
 
 
 def _km_meses(g):
-    """Km de bici de cada mes hasta el actual, a partir del mapa año × mes."""
+    """Km de bici de cada mes hasta el actual, a partir del mapa temporada × mes."""
     hoy = date.today()
-    v = [x for a, fila in zip(g['mapa']['anios'], g['mapa']['km']) for x in (fila if a < hoy.year else fila[:hoy.month])]
-    return v
+    m = g['mapa']
+    t_hoy = rutas.temporada(hoy.year, hoy.month, m['inicio'])
+    hasta = m['meses'].index(hoy.month) + 1
+    return [x for t, fila in zip(m['anios'], m['km']) for x in (fila if t < t_hoy else fila[:hasta])]
 
 
 def resumen_mes_y_potencia(df, dias=30):

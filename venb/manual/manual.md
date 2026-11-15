@@ -54,7 +54,7 @@ Te pedirá tu contraseña. Si tu distribución es antigua y trae una versión de
 
 1. Comprueba que tienes Python (ver [Antes de instalar: Python](#antes-de-instalar-python)) y descomprime el ZIP donde quieras (en Windows: botón derecho sobre el ZIP > **Extraer todo**). Después, en la carpeta extraída, haz doble clic en **INSTALAR-EN-WINDOWS** (Windows) o ejecuta `bash instalar-en-linux.sh` en una terminal abierta en ella (Linux). Hace falta conexión a internet. La primera vez, el instalador propone instalar VenB en `Documentos\VenB` (Windows) o `~/VenB` (Linux): pulsa Intro para aceptar o escribe otra carpeta. Allí quedan el programa y, a su lado, `VenB-datos`, con tus datos.
 2. Ábrela con su icono. Se abre una terminal, que debe seguir abierta, y el navegador.
-3. En **Ajustes**, indica el mes en que empieza tu temporada.
+3. En **Ajustes**, indica el mes en que empieza tu temporada (de septiembre a abril; por defecto, noviembre).
 4. En **Análisis → Bicis**, da de alta tus bicis.
 5. Vuelve a **Ajustes** y elige a qué bici se asignan los kilómetros de rodillo.
 6. Incorpora tus actividades: [desde Garmin](garmin.md) o [subiendo ficheros](#importar-actividades-de-ficheros). Sin ellas, Bicis, Brevets y Calendario funcionan, pero Inicio y Análisis quedan casi vacíos.
@@ -124,9 +124,9 @@ Al marcar una pieza, su contador vuelve a cero en esa fecha. Cada bici muestra l
 
 ## Brevets
 
-Aquí se registran las pruebas oficiales, aparte de tus actividades: un brevet no se distingue de una salida larga solo por los datos de Garmin. La página tiene cinco bloques plegables: Resumen, Kilómetros de brevet por año, Mejor tiempo por tipo de prueba, Registrar un brevet e Historial.
+Aquí se registran las pruebas oficiales, aparte de tus actividades: un brevet no se distingue de una salida larga solo por los datos de Garmin. La página tiene cinco bloques plegables: Resumen, Kilómetros de brevet por temporada, Mejor tiempo por tipo de prueba, Registrar un brevet e Historial.
 
-![Página Brevets: totales y kilómetros de brevet por año](img/brevets.jpg)
+![Página Brevets: totales y kilómetros de brevet por temporada](img/brevets.jpg)
 
 Para no escribir los datos a mano, VenB ofrece registrar las salidas en bici de 190 km o más que no están en la lista: **Inicio** pregunta por las de los últimos 60 días, y el **Histórico** tiene en todas el botón **Incluir en la lista de brevets**. El formulario se abre con la fecha, el nombre, el tiempo y la distancia homologable (la mayor de 200, 300, 400, 600, 1.000, 1.200… que no supere la grabada en más de un 5 %: 213 km → 200). Revisa el tipo, completa la homologación y los clubes y pulsa **Guardar**. VenB avisa y no guarda nada si la prueba ya está registrada (con la misma actividad, o con la misma fecha y distancia). Una prueba de varios días partida en etapas se registra desde la primera, con la distancia y el tiempo totales. Si fue una salida sin más, cierra el aviso de Inicio con la **×** o pulsa **No es prueba**.
 
@@ -143,17 +143,19 @@ También puedes registrar una prueba a mano en el bloque **Registrar un brevet**
 
 Una prueba grabada en una sola actividad se registra con la fecha de salida y su tiempo total. Si está **partida en varias actividades** (una de varios días, o una que se cortó), registra una fila por actividad con sus km y su tiempo reales y el tipo de la prueba entera, y llámalas igual con el número de etapa al final: «PBP2019_Etapa01», «PBP2019_Etapa02»… Si faltan kilómetros porque no se grabaron, añade otra fila con el resto y el nombre terminado en «_SinGPS». Así los km son los reales y no se cuentan dos veces. En el resumen, el número de pruebas, los tramos por distancia, el R5000 y el R10000 cuentan cada prueba una sola vez, aunque tenga varias etapas.
 
-La página muestra además los totales, los kilómetros por año, el mejor tiempo por tipo de prueba (cada distancia de BRM, las SR, cada superbrevet y las Flechas; las pruebas por etapas, con su tiempo total de la primera salida a la última llegada) y el historial, en una caja que se desplaza por dentro, con los botones **Editar** y **Borrar** en cada fila. El nombre de cada prueba (↗) abre en Garmin Connect su actividad: la enlazada o, si no la hay, la salida en bici de distancia más parecida de ese día, el anterior o el siguiente.
+La página muestra además los totales, los kilómetros por temporada, el mejor tiempo por tipo de prueba (cada distancia de BRM, las SR, cada superbrevet y las Flechas; las pruebas por etapas, con su tiempo total de la primera salida a la última llegada) y el historial, en una caja que se desplaza por dentro, con los botones **Editar** y **Borrar** en cada fila. El nombre de cada prueba (↗) abre en Garmin Connect su actividad: la enlazada o, si no la hay, la salida en bici de distancia más parecida de ese día, el anterior o el siguiente.
 
 ## Histórico
 
 Reúne todas tus actividades. Arriba, las tarjetas **Brevets**, **Planificador de rutas**, **Importar**, **Bicis** e **Informes** llevan a esas páginas. Debajo hay tres bloques de gráficas que se pliegan y despliegan con su triángulo (VenB recuerda en cada navegador cuáles dejaste abiertos):
 
-- **Kilómetros de bici por año:** la gráfica y la tabla con las salidas, los km, las horas, el desnivel y la salida más larga de cada año. Al pulsar un año, la lista muestra sus salidas.
-- **Todo tu histórico:** kilómetros acumulados en el año (el actual frente al anterior y, en gris, los tres previos) y salidas según su distancia.
+- **Kilómetros de bici por temporada:** la gráfica y la tabla con las salidas, los km, las horas, el desnivel y la salida más larga de cada temporada. Al pulsar una, la lista muestra sus salidas.
+- **Todo tu histórico:** kilómetros acumulados en la temporada (la actual frente a la anterior y, en gris, las tres previas) y salidas según su distancia.
 - **Kilómetros por mes:** cuanto más oscuro, más kilómetros.
 
-Debajo está la lista de **Actividades**, también plegable (al filtrar o pulsar un año se abre sola), que puedes filtrar por título, año, tipo y kilómetros mínimos. Si dos grabaciones de bici se solapan, se conserva la más larga. El título de las actividades que vienen de Garmin (de más de 7 km, o de los que pongas en Ajustes; 0 = todas; marcado con ↗) abre la actividad en Garmin Connect en una pestaña nueva; el enlace depende de que la actividad tenga número de Garmin, no de que la conexión con Garmin esté activada, así que también aparece en las del historial exportado de Garmin. Las subidas a mano no lo tienen: llevan la etiqueta **Fichero** y el botón **Borrar**, que la quita de VenB junto con su fichero.
+Todas las cuentas anuales de VenB (Histórico, Brevets y Bicis) van **por temporadas**, que empiezan el mes elegido en Ajustes. Cada temporada lleva el año en que se disputa: con inicio en noviembre (el de las brevets), del 01/11/2026 al 31/10/2027 es la temporada 2027; con inicio en abril, la temporada 2026 va del 01/04/2026 al 31/03/2027; con enero, coincide con el año natural. Al cambiar el mes se recalcula todo el historial: VenB no guarda los totales, los calcula cada vez desde tus actividades. El filtro **Año** de Brevets sigue siendo el año natural.
+
+Debajo está la lista de **Actividades**, también plegable (al filtrar o pulsar una temporada se abre sola), que puedes filtrar por título, temporada, tipo y kilómetros mínimos. Si dos grabaciones de bici se solapan, se conserva la más larga. El título de las actividades que vienen de Garmin (de más de 7 km, o de los que pongas en Ajustes; 0 = todas; marcado con ↗) abre la actividad en Garmin Connect en una pestaña nueva; el enlace depende de que la actividad tenga número de Garmin, no de que la conexión con Garmin esté activada, así que también aparece en las del historial exportado de Garmin. Las subidas a mano no lo tienen: llevan la etiqueta **Fichero** y el botón **Borrar**, que la quita de VenB junto con su fichero.
 
 El botón de la última columna (un pequeño perfil) abre una ventana con el **resumen de la actividad**: distancia, tiempo en movimiento y total, velocidad media (o ritmo, si es a pie), desnivel, altitud mínima y máxima, frecuencia cardiaca, potencia, TSS, calorías y bici, según lo que haya grabado, con el perfil altimétrico y el recorrido. Al pasar el ratón o el dedo por el perfil, se ven la distancia y la altitud, y su posición en el recorrido. El perfil sale del recorrido descargado de Garmin o del fichero subido a mano; las actividades anteriores a la primera descarga de Garmin (las del historial exportado) solo traen el resumen.
 
@@ -245,7 +247,7 @@ La marca de los documentos (texto y logotipo) es la de `planificador_marca` en `
 
 Los ajustes van en tarjetas, con cada opción a la izquierda, su valor a la derecha y una ayuda breve en gris. **Guardar ajustes** guarda los de arriba; **Valores por defecto** los devuelve a los de fábrica, salvo la temporada, la bici del rodillo, tu calendario, el origen del peso y la cuenta de Garmin.
 
-- **Temporada y bicis:** mes de inicio de la temporada, bici del rodillo (y si en rodillo manda sobre la bici de Garmin Connect) y días del recordatorio de cierre.
+- **Temporada y bicis:** mes de inicio de la temporada (de septiembre a abril), bici del rodillo (y si en rodillo manda sobre la bici de Garmin Connect) y días del recordatorio de cierre.
 - **Avisos de Inicio:** días sin actividades, sin datos de salud o sin anotar peso, y referencia de sueño.
 - **Sensores:** cuándo avisa el validador de sensores (porcentaje de tiempo sin datos y días hacia atrás) y qué sensores vigila. Consulta [Sensores sin datos](#sensores-sin-datos).
 - **Brevets e Histórico:** distancia mínima de las salidas por las que se pregunta si fueron una prueba, días en que se pregunta en Inicio y distancia a partir de la cual el Histórico enlaza a Garmin Connect (0: todas).

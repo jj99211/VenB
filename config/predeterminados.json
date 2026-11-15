@@ -7,7 +7,7 @@
  "actualizaciones_github": "jj99211/VenB",
  "dir_garmin": "~/.venb/HealthData/FitFiles/Activities",
  "garmin_db": "~/.venb/HealthData/DBs/garmin.db",
- "mes_inicio_temporada": 1,
+ "mes_inicio_temporada": 11,
  "cierre_dia_inicio": 28,
  "cierre_dia_fin": 7,
  "primer_mes_cierre": "",
