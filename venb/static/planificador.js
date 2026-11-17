@@ -142,6 +142,7 @@
   }
 
   // ---------- etapas (BRM de 400 km o más, SR, Super Brevets y recorridos libres)
+  const rec = $('usar-reciente');
   const etActivas = $('et-activas'), etLlegada = FechaHora($('et-llegada')), etDescanso = $('et-descanso'), etCuerpo = document.querySelector('#et-tabla tbody');
   const E0 = P && P.etapas && P.etapas.activas ? P.etapas : null;
   let ET = (E0 ? E0.paradas : []).map((k, n) => ({ km: k, nombre: (A.puntos.find(p => Math.abs(p.km_hoja - k) < 0.01) || {}).nombre || '',
@@ -155,7 +156,12 @@
   function verEtapas() {
     $('panel-etapas').hidden = !etapasPosibles();
     $('et-campos').hidden = !etapas();
-    vel.readOnly = etapas() && !!etLlegada.value;
+    const fija = etapas() && !!etLlegada.value;   // con llegada prevista, la velocidad sale de ella
+    vel.readOnly = fija;
+    vel.title = fija ? 'Calculada a partir de la llegada prevista de Etapas' : '';
+    $('vel-bloqueada').hidden = !fija;
+    $('quitar-llegada').hidden = !fija;
+    if (rec) rec.disabled = fija;
   }
   function dibujarEtapas() {
     etCuerpo.innerHTML = ET.map((x, i) => `<tr data-i="${i}"><td>${i + 1}</td>
@@ -336,7 +342,7 @@
     filas.forEach((f, i) => { if (A.puntos[i].control && i > 0 && i < N - 1 && f.querySelector('.tipo').value !== 'dormir') f.querySelector('.parada').value = ent(v); });
     pintar();
   });
-  const rec = $('usar-reciente');
+  $('quitar-llegada').addEventListener('click', () => { etLlegada.value = ''; verEtapas(); mostrarVel(); pintar(); vel.focus(); vel.select(); });
   if (rec && X.reciente) rec.addEventListener('click', () => { V.factor = X.reciente.kmh / mediaTabla(); mostrarVel(); pintar(); });
 
   // ---------- ventana de la tabla de velocidades

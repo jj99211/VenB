@@ -70,6 +70,7 @@ th { font-weight:600; } td.num,th.num { text-align:right; font-variant-numeric:t
 form.linea { display:flex; flex-wrap:wrap; gap:8px; align-items:end; }
 label { display:flex; flex-direction:column; font-size:.85rem; color:var(--suave); gap:2px; }
 input,select,button { font:inherit; padding:6px 8px; border:1px solid var(--borde); border-radius:5px; background:var(--panel); color:var(--texto); max-width:100%; }
+input[readonly] { background:var(--fondo, #eee); color:var(--suave, #666); cursor:not-allowed; }
 button { background:var(--rojo); color:#fff; border-color:var(--rojo); cursor:pointer; }
 button.discreto { background:transparent; color:var(--enlace); border-color:var(--borde); padding:2px 8px; font-size:.85rem; }
 a.boton-enlace { display:inline-block; border:1px solid var(--borde); border-radius:5px; padding:2px 8px; font-size:.85rem; white-space:nowrap; text-decoration:none; }

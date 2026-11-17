@@ -55,7 +55,7 @@
   <h2>Etapas</h2>
   <label class="casilla"><input type="checkbox" id="et-activas"> Organizar la ruta en varias etapas (hasta {{ reglas.max_etapas }} días)</label>
   <div id="et-campos" hidden>
-    <p class="suave">Indica dónde duermes (hasta {{ reglas.max_etapas - 1 }} paradas) y cuánto descansas (ocio en el lugar de parada, alojamiento y desayuno). El descanso diario es el de partida de cada parada nueva; después puedes cambiar el de cada noche. Si pones también la llegada prevista, VenB calcula la velocidad media en movimiento necesaria para llegar a esa hora.</p>
+    <p class="suave">Indica dónde duermes (hasta {{ reglas.max_etapas - 1 }} paradas) y cuánto descansas (ocio en el lugar de parada, alojamiento y desayuno). El descanso diario es el de partida de cada parada nueva; después puedes cambiar el de cada noche. Si pones también la llegada prevista, VenB calcula la velocidad media en movimiento necesaria para llegar a esa hora: mientras haya llegada prevista, la velocidad de «Velocidad y paradas» queda calculada y no se puede editar. Para escribirla tú, borra la llegada prevista.</p>
     <div class="linea-campos">
       <label>Llegada prevista <span class="suave">(opcional)</span><input id="et-llegada"></label>
       <label>Descanso diario (h)<input id="et-descanso" inputmode="decimal" size="5"></label>
@@ -77,10 +77,12 @@
     <label>Velocidad media en movimiento (km/h)
       <span class="ajuste"><input id="velocidad" inputmode="decimal" size="6">
       <button type="button" class="discreto" id="ayuda-vel" aria-haspopup="dialog" title="Cómo se calcula la velocidad">?</button></span></label>
+    <button type="button" class="discreto" id="quitar-llegada" hidden>Quitar la llegada prevista y escribir la velocidad</button>
     {% if reciente %}<button type="button" class="discreto" id="usar-reciente">Usar mi media reciente: {{ reciente.kmh|n(1) }} km/h</button>{% endif %}
     <label>Parada en cada control (min)<input id="parada-comun" inputmode="numeric" size="5" value="{{ aj.plan_parada_min }}"></label>
     <button type="button" id="rellenar">Rellenar todas las paradas con este valor</button>
   </div>
+  <p class="suave" id="vel-bloqueada" hidden>Hay una llegada prevista en Etapas: la velocidad media queda calculada para llegar a esa hora y no se puede editar. Para escribirla tú, quita la llegada prevista.</p>
   {% if reciente %}<p class="suave">Tu media reciente sale de {{ reciente.n }} salidas en exterior de {{ reciente.km_min }} km o más del último año (tiempo en movimiento). La de partida es la de la tabla por defecto, según el perfil de esta ruta.</p>{% endif %}
 </section>
 

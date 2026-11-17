@@ -2,6 +2,11 @@
 
 Novedades de cada versión de VenB y VenB Rutas (las dos ediciones comparten número de versión).
 
+## 3.47
+
+- **Planificador, etapas:** con una llegada prevista, la velocidad media en movimiento se calcula para llegar a esa hora y no se puede editar. Ahora la página lo explica junto a «Llegada prevista» y junto al campo de velocidad, que se ve atenuado, y el botón **Quitar la llegada prevista y escribir la velocidad** lo deja editable de nuevo.
+- Corregido: en el calendario de fecha y hora, las flechas de mes cerraban el calendario sin dejar elegir el día.
+
 ## 3.46
 
 - **Planificador:** en una ruta sin hoja, el último punto se llama por defecto «Llegada» en lugar de «Meta» (también en el GPX con waypoints). Se puede cambiar en la tabla de Previsión.

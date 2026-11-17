@@ -87,7 +87,7 @@ window.FechaHora = (() => {
     panel.addEventListener('click', e => {
       const b = e.target.closest('button');
       if (!b) return;
-      if (b.dataset.mover) { vista = new Date(vista.getFullYear(), vista.getMonth() + +b.dataset.mover, 1); pintar(); return; }
+      if (b.dataset.mover) { vista = new Date(vista.getFullYear(), vista.getMonth() + +b.dataset.mover, 1); pintar(); panel.querySelector(`[data-mover="${b.dataset.mover}"]`).focus(); return; }
       if (b.classList.contains('cal-cerrar')) { cerrar(true); return; }
       if (b.dataset.dia) {
         const [h, m] = hora();
@@ -104,7 +104,8 @@ window.FechaHora = (() => {
       campo.value = aTexto(d); comprobar(); avisar();
     });
     panel.addEventListener('keydown', e => { if (e.key === 'Escape') cerrar(true); });
-    document.addEventListener('click', e => { if (!panel.hidden && !caja.contains(e.target)) cerrar(); });
+    // al cambiar de mes el panel se rehace y el botón pulsado ya no está en la página: no es un clic fuera
+    document.addEventListener('click', e => { if (!panel.hidden && e.target.isConnected && !caja.contains(e.target)) cerrar(); });
 
     return {
       get value() { const d = leer(campo.value); return d ? aIso(d) : ''; },
