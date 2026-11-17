@@ -240,9 +240,9 @@ Calcula a qué hora pasarás por cada punto de una ruta y genera sus documentos.
 
 ![Tabla de Previsión, con las paradas, sus tipos y los cierres de cada control](img/plan_prevision.jpg)
 
-![Infografía generada para un BRM 200](img/infografia.jpg)
-
 ![Ficheros generados: infografías y mapa ilustrado, que se abren al pulsarlos](img/plan_ficheros.jpg)
+
+![Infografía generada para un BRM 200](img/infografia.jpg)
 
 Las rutas se guardan en `VenB-datos/planificador/` (una carpeta por ruta, con lo subido y lo generado) y aparecen en **Tus rutas**; desde ahí se abren de nuevo o se borran. Las copias de seguridad las incluyen. La caché de mapas y altitudes está en `.venb/mapas` y puede borrarse sin problema.
 
