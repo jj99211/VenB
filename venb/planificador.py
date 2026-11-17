@@ -32,7 +32,7 @@ MODALIDADES = {'brevet': 'Brevet (BRM)', 'sr': 'Super Randonnée', 'sb': 'Super 
 DISTANCIAS_BREVET = [200, 300, 400, 600, 1000]
 MAX_ETAPAS = 7          # días; como mucho MAX_ETAPAS - 1 paradas para dormir
 TIPOS_PARADA = {'': '—', 'salida': 'Salida', 'cafe': 'Café', 'comida': 'Comida', 'dormir': 'Dormir', 'agua': 'Agua', 'cruce': 'Cruce', 'peligro': 'Peligro',
-                'poblacion': 'Población', 'puerto': 'Puerto', 'llegada': 'Llegada', 'otra': 'Otra'}
+                'interes': 'Punto de interés', 'poblacion': 'Población', 'panoramica': 'Panorámica', 'puerto': 'Puerto', 'llegada': 'Llegada', 'otra': 'Otra'}
 PALETAS = ['verde', 'acuarela', 'bosque', 'pizarra', 'alballut']
 ESTILOS_INFOGRAFIA = {'ign_mtn': 'IGN: topográfico (MTN)', 'ign_base': 'IGN Base', 'ign_orto': 'IGN: ortofoto con rótulos',
                       'topo': 'Topográfico (OpenStreetMap)', 'osm': 'OpenStreetMap', 'hot': 'Humanitario (OpenStreetMap)'}
@@ -44,8 +44,7 @@ class ErrorPlan(Exception):
 
 
 def _tipo(t):
-    """Tipo de parada válido; «Punto de interés» (hasta la 3.45) pasa a «Población»."""
-    t = 'poblacion' if t == 'interes' else t
+    """Tipo de parada válido o ''."""
     return t if t in TIPOS_PARADA else ''
 
 
