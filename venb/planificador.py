@@ -32,7 +32,7 @@ MODALIDADES = {'brevet': 'Brevet (BRM)', 'sr': 'Super Randonnée', 'sb': 'Super 
 DISTANCIAS_BREVET = [200, 300, 400, 600, 1000]
 MAX_ETAPAS = 7          # días; como mucho MAX_ETAPAS - 1 paradas para dormir
 TIPOS_PARADA = {'': '—', 'salida': 'Salida', 'cafe': 'Café', 'comida': 'Comida', 'dormir': 'Dormir', 'agua': 'Agua', 'cruce': 'Cruce', 'peligro': 'Peligro',
-                'interes': 'Punto de interés', 'puerto': 'Puerto', 'llegada': 'Llegada', 'otra': 'Otra'}
+                'poblacion': 'Población', 'puerto': 'Puerto', 'llegada': 'Llegada', 'otra': 'Otra'}
 PALETAS = ['verde', 'acuarela', 'bosque', 'pizarra', 'alballut']
 ESTILOS_INFOGRAFIA = {'ign_mtn': 'IGN: topográfico (MTN)', 'ign_base': 'IGN Base', 'ign_orto': 'IGN: ortofoto con rótulos',
                       'topo': 'Topográfico (OpenStreetMap)', 'osm': 'OpenStreetMap', 'hot': 'Humanitario (OpenStreetMap)'}
@@ -41,6 +41,12 @@ _procesos = {}
 
 class ErrorPlan(Exception):
     pass
+
+
+def _tipo(t):
+    """Tipo de parada válido; «Punto de interés» (hasta la 3.45) pasa a «Población»."""
+    t = 'poblacion' if t == 'interes' else t
+    return t if t in TIPOS_PARADA else ''
 
 
 # ------------------------------------------------------------------ planes guardados
@@ -425,7 +431,7 @@ def validar(datos, a, borrador=False):
     if len(puntos) != n:
         raise ErrorPlan('La lista de puntos no coincide con el análisis.')
     pts = [{'mostrar': bool(x.get('mostrar')), 'parada': num(x.get('parada'), 0, 72 * 60, 0),
-            'tipo': x.get('tipo') if x.get('tipo') in TIPOS_PARADA else ''} for x in puntos]
+            'tipo': _tipo(x.get('tipo'))} for x in puntos]
     v = datos.get('velocidades') or {}
     tramos = v.get('tramos') or []
     if not 1 <= len(tramos) <= 20:
@@ -484,7 +490,7 @@ def editar_puntos(pid, datos):
                 except ValueError:
                     pass
         puntos.append((q, {'mostrar': bool(x.get('mostrar', bool(control))), 'parada': x.get('parada') or 0,
-                           'tipo': x.get('tipo') if x.get('tipo') in TIPOS_PARADA else ''}))
+                           'tipo': _tipo(x.get('tipo'))}))
     puntos.sort(key=lambda t: t[0]['km_hoja'])   # orden estable: puntos con el mismo km quedan como estaban
     # Los controles numerados (y los nuevos) se renumeran por orden de km: uno intermedio desplaza a los siguientes.
     # Se empieza en C1 en la salida, salvo que la hoja empiece en C0 (CC Chamartín). Los de letra (CF…) no se tocan.
@@ -617,8 +623,8 @@ def _generar(d):
     for pa, pp in zip(a['puntos'], p['puntos']):
         clave = _clave(pa)
         paradas[clave] = pp['parada']
-        if pp['tipo']:
-            tipos[clave] = pp['tipo']
+        if _tipo(pp['tipo']):
+            tipos[clave] = _tipo(pp['tipo'])
         if pp['mostrar'] and not pa['control']:
             destacados.append(clave)
         if not pp['mostrar'] and pa['control']:

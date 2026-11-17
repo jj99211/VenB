@@ -5,6 +5,7 @@ Novedades de cada versión de VenB y VenB Rutas (las dos ediciones comparten nú
 ## 3.46 (en preparación)
 
 - **Planificador:** en una ruta sin hoja, el último punto se llama por defecto «Llegada» en lugar de «Meta» (también en el GPX con waypoints). Se puede cambiar en la tabla de Previsión.
+- El tipo de punto «⭐ Punto de interés» pasa a ser **🏘️ Población** (también en las infografías y la página interactiva); los planes que lo usaban lo cambian solos.
 
 ## 3.45
 

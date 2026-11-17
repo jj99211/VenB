@@ -173,7 +173,7 @@
   // ---------- tabla de puntos
   const cuerpo = document.querySelector('#puntos tbody');
   // tipos de parada, con el icono que llevan en la infografía y la página interactiva (generador/estilo.ICONOS)
-  const tipos = [['', '—'], ['salida', '🚩 Salida'], ['cafe', '☕ Café'], ['comida', '🍽 Comida'], ['dormir', '🛏 Dormir'], ['agua', '🚰 Agua'], ['cruce', '🔀 Cruce'], ['peligro', '⚠️ Peligro'], ['interes', '⭐ Punto de interés'], ['puerto', '⛰️ Puerto'], ['llegada', '🏁 Llegada'], ['otra', '✳️ Otra']];
+  const tipos = [['', '—'], ['salida', '🚩 Salida'], ['cafe', '☕ Café'], ['comida', '🍽 Comida'], ['dormir', '🛏 Dormir'], ['agua', '🚰 Agua'], ['cruce', '🔀 Cruce'], ['peligro', '⚠️ Peligro'], ['poblacion', '🏘️ Población'], ['puerto', '⛰️ Puerto'], ['llegada', '🏁 Llegada'], ['otra', '✳️ Otra']];
   const defectoParada = i => (A.puntos[i].control && i > 0 && i < N - 1) ? (num(comun.value) || 0) : 0;
   // Cada fila: lo que se recalcula al momento (paradas, tipo, mapa) y lo que cambia los puntos (control, nombre, km,
   // quitar, añadir), que necesita «Actualizar». Las filas nuevas no tienen datos calculados hasta entonces.
@@ -187,7 +187,7 @@
       <td class="num">${i ? fmt(p.pendiente * 100, 1) + ' %' : i === null ? '–' : ''}</td>
       <td class="num vel"></td>
       <td><input class="parada" inputmode="numeric" size="3" value="${ent(q.parada)}" aria-label="Parada (min)" ${i === 0 ? 'disabled' : ''}></td>
-      <td><select class="tipo" aria-label="Tipo de parada">${tipos.map(([k, t]) => `<option value="${k}" ${q.tipo === k ? 'selected' : ''}>${t}</option>`).join('')}</select></td>
+      <td><select class="tipo" aria-label="Tipo de parada">${tipos.map(([k, t]) => `<option value="${k}" ${(q.tipo === 'interes' ? 'poblacion' : q.tipo) === k ? 'selected' : ''}>${t}</option>`).join('')}</select></td>
       <td class="num llegada"></td><td class="num cierre"></td><td class="num margen"></td>
       <td><button type="button" class="discreto ed-quitar" ${i === 0 ? 'disabled title="La salida no se puede quitar"' : ''}>Quitar</button></td></tr>`;
   cuerpo.innerHTML = A.puntos.map((p, i) => fila(p, i, P ? P.puntos[i] : { mostrar: !!p.control, parada: defectoParada(i), tipo: '' })).join('');
