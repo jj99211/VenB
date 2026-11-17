@@ -6,6 +6,7 @@ Novedades de cada versión de VenB y VenB Rutas (las dos ediciones comparten nú
 
 - **Planificador:** en una ruta sin hoja, el último punto se llama por defecto «Llegada» en lugar de «Meta» (también en el GPX con waypoints). Se puede cambiar en la tabla de Previsión.
 - Tipos de punto nuevos **🏘️ Población** y **🏞️ Panorámica** (también en las infografías y la página interactiva), además de ⭐ Punto de interés.
+- **Perfil más fiel:** el modelo del terreno a veces dibuja dientes de sierra en un puerto continuo (puentes sobre barrancos, desmontes, laderas junto a la carretera), y se notaban en el perfil, en la infografía, en los tiempos y en el GPX descargable. Ahora se quitan las contrapendientes pequeñas y, si el modelo sale claramente dentado y el GPX trae un perfil limpio con un desnivel parecido, se usan las altitudes del GPX. El registro del análisis indica de dónde salen.
 
 ## 3.45
 

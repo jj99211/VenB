@@ -552,6 +552,7 @@ def _analizar(d):
         print(f'Puntos editados a mano: {len(puntos)}', flush=True)
     print('Leyendo el track y consultando las altitudes del terreno…', flush=True)
     track = leer_gpx(gpx)
+    print(f'  altitudes: {track.fuente_altitud}', flush=True)
     if not puntos:
         puntos = [Punto('Salida', 0.0, 'C1'), Punto('Llegada', round(float(track.total_km), 1), 'C2')]
         if not e.get('hoja'):

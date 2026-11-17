@@ -36,6 +36,7 @@ class Proyecto:
         alt = self.seccion("altitud")
         track = leer_gpx(self.base / c["gpx"], ventana_m=alt.get("suavizado_m", 150),
                          altitud=alt.get("fuente", "mdt"))
+        print(f"  altitudes: {track.fuente_altitud}", flush=True)
         if c.get("puntos") is not None:       # puntos ya leídos o editados (VenB): la hoja no se vuelve a leer
             puntos, self.meta = puntos_de_lista(c["puntos"]), dict(c.get("meta") or {})
         else:

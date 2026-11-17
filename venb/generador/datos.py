@@ -22,6 +22,7 @@ class Track:
     ele: np.ndarray          # altitud suavizada (m)
     km: np.ndarray           # distancia acumulada (km)
     nombre: str = ""
+    fuente_altitud: str = ""  # de dónde salen las altitudes, para el registro
 
     @property
     def total_km(self):
@@ -57,6 +58,74 @@ def _haversine(lat1, lon1, lat2, lon2):
     dl = np.radians(lon2 - lon1)
     a = np.sin(dp / 2) ** 2 + np.cos(p1) * np.cos(p2) * np.sin(dl / 2) ** 2
     return 2 * RADIO_TIERRA * np.arcsin(np.sqrt(a))
+
+
+def _contrapendientes(e, paso_m):
+    """Tramos de `paso_m` que van al revés de la tendencia de su kilómetro (dientes de sierra en una subida o bajada)."""
+    if len(e) < 3:
+        return 0
+    p = np.diff(e) / paso_m * 100
+    n = max(1, int(round(1000 / paso_m)))
+    tend = np.convolve(p, np.ones(n) / n, "same")
+    return int(((p < -1) & (tend > 3)).sum() + ((p > 1) & (tend < -3)).sum())
+
+
+def _desnivel(e):
+    d = np.diff(e)
+    return float(d[d > 0].sum())
+
+
+def _suavizar(e, ventana_m, paso_m):
+    n = max(1, int(round(ventana_m / paso_m)))
+    if n > 1:
+        k = np.ones(n) / n
+        e = np.convolve(np.pad(e, (n // 2, n - 1 - n // 2), mode="edge"), k, mode="valid")
+    return e
+
+
+def _sin_dientes(e, umbral):
+    """Quita las contrapendientes de menos de `umbral` metros: entre cada cima y valle reales (los que
+    se separan más del umbral) la altitud solo sube o solo baja. Cimas, valles y desnivel real no cambian."""
+    giros, ext, sentido = [0], 0, 0
+    for i in range(1, len(e)):
+        if sentido == 0:
+            if abs(e[i] - e[0]) >= umbral:
+                sentido, ext = (1 if e[i] > e[0] else -1), i
+            continue
+        if (e[i] - e[ext]) * sentido > 0:
+            ext = i
+        elif (e[ext] - e[i]) * sentido >= umbral:
+            giros.append(ext)
+            sentido, ext = -sentido, i
+    if giros[-1] != len(e) - 1:
+        giros.append(len(e) - 1)
+    salida = np.array(e, dtype=float)
+    for i, j in zip(giros[:-1], giros[1:]):
+        s = salida[i:j + 1] * (1 if e[j] >= e[i] else -1)
+        m = (np.maximum.accumulate(s) + np.minimum.accumulate(s[::-1])[::-1]) / 2   # ajuste monótono
+        m = np.clip(m, s[0], s[-1])
+        salida[i:j + 1] = m * (1 if e[j] >= e[i] else -1)
+    return salida
+
+
+def _elegir_altitud(gpx, mdt, paso_m, ventana_m):
+    """Altitudes del MDT sin dientes de sierra o, si el MDT sale claramente dentado (puentes sobre barrancos,
+    desmontes, laderas junto a la carretera) y el GPX trae un perfil limpio con un desnivel parecido, las del GPX."""
+    km = max(len(mdt) * paso_m / 1000, 0.1)
+    ruido = float(np.std(mdt - _suavizar(mdt, 300, paso_m)))
+    umbral = float(np.clip(2.5 * ruido, 5, 15))
+    limpio = _sin_dientes(mdt, umbral)
+    if gpx is not None and np.ptp(gpx) > 10:
+        c_mdt = _contrapendientes(_suavizar(mdt, ventana_m, paso_m), paso_m)
+        c_gpx = _contrapendientes(_suavizar(gpx, ventana_m, paso_m), paso_m)
+        d_gpx, d_mdt = _desnivel(_suavizar(gpx, ventana_m, paso_m)), _desnivel(_suavizar(limpio, ventana_m, paso_m))
+        if c_mdt / km >= 1 and c_gpx / km <= 0.2 and d_mdt > 0 and 0.8 <= d_gpx / d_mdt <= 1.25:
+            return gpx, (f"las del GPX: el modelo del terreno da un perfil con dientes de sierra "
+                         f"({c_mdt} contrapendientes) y el del GPX es limpio y con desnivel parecido "
+                         f"({d_gpx:.0f} m frente a {d_mdt:.0f} m)")
+    c = _contrapendientes(_suavizar(mdt, ventana_m, paso_m), paso_m)
+    return limpio, (f"las del modelo del terreno, sin contrapendientes de menos de {umbral:.0f} m" if c
+                    else "las del modelo del terreno")
 
 
 def leer_gpx(ruta, paso_m=25.0, ventana_m=150.0, altitud="mdt", paso_mdt_m=50.0):
@@ -111,19 +180,19 @@ def leer_gpx(ruta, paso_m=25.0, ventana_m=150.0, altitud="mdt", paso_mdt_m=50.0)
                 break
             em = None
         if em is not None:
-            ele_r = np.interp(dr, dm, em)
+            ele_r, fuente = _elegir_altitud(None if sin_ele else ele_r, np.interp(dr, dm, em), paso_m, ventana_m)
         elif sin_ele:
             raise ValueError("El GPX no trae altitudes (<ele>) y no se ha podido consultar el modelo digital del "
                              f"terreno ({error or 'sin datos para esta zona'}). Comprueba la conexión a Internet "
                              "y vuelve a intentarlo, o usa un GPX con altitudes.")
         else:
             print(f"  aviso: no se pudo consultar el MDT ({error or 'sin datos'}); uso las altitudes del GPX")
-    n = max(1, int(round(ventana_m / paso_m)))
-    if n > 1:
-        k = np.ones(n) / n
-        ele_r = np.convolve(np.pad(ele_r, (n // 2, n - 1 - n // 2), mode="edge"), k, mode="valid")
+            fuente = "las del GPX (no se pudo consultar el modelo del terreno)"
+    else:
+        fuente = "las del GPX (elegido en el plan)"
+    ele_r = _suavizar(ele_r, ventana_m, paso_m)
     return Track(lat_r, lon_r, ele_r, dr / 1000.0,
-                 nombre_el.text if nombre_el is not None else Path(ruta).stem)
+                 nombre_el.text if nombre_el is not None else Path(ruta).stem, fuente)
 
 
 def leer_waypoints(ruta):
