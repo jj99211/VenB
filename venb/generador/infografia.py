@@ -65,7 +65,7 @@ def _escala(cfg):
 
 
 def _medir(fig, texto, tam, peso):
-    t = fig.text(0, 0, texto, fontsize=tam, family=E.SANS, weight=peso)
+    t = fig.text(0, 0, texto, fontsize=tam, family=[E.SANS, "Noto Emoji"], weight=peso)   # como la leyenda, con los iconos
     bb = t.get_window_extent(renderer=fig.canvas.get_renderer())
     t.remove()
     return bb.width, bb.height

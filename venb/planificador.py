@@ -32,7 +32,7 @@ MODALIDADES = {'brevet': 'Brevet (BRM)', 'sr': 'Super Randonnée', 'sb': 'Super 
 DISTANCIAS_BREVET = [200, 300, 400, 600, 1000]
 MAX_ETAPAS = 7          # días; como mucho MAX_ETAPAS - 1 paradas para dormir
 TIPOS_PARADA = {'': '—', 'salida': 'Salida', 'cafe': 'Café', 'comida': 'Comida', 'dormir': 'Dormir', 'agua': 'Agua', 'cruce': 'Cruce', 'peligro': 'Peligro',
-                'interes': 'Punto de interés', 'llegada': 'Llegada', 'otra': 'Otra'}
+                'interes': 'Punto de interés', 'puerto': 'Puerto', 'llegada': 'Llegada', 'otra': 'Otra'}
 PALETAS = ['verde', 'acuarela', 'bosque', 'pizarra', 'alballut']
 ESTILOS_INFOGRAFIA = {'ign_mtn': 'IGN: topográfico (MTN)', 'ign_base': 'IGN Base', 'ign_orto': 'IGN: ortofoto con rótulos',
                       'topo': 'Topográfico (OpenStreetMap)', 'osm': 'OpenStreetMap', 'hot': 'Humanitario (OpenStreetMap)'}
@@ -359,7 +359,7 @@ def generar(pid, datos):
         raise ErrorPlan('El plan todavía no está analizado.')
     p = validar(datos, a)
     _escribir(d, 'parametros.json', p)
-    _estado(d, fase='generando', nombre=p['nombre'], error=None)
+    _estado(d, fase='generando', nombre=p['nombre'], error=None, inicio_generar=datetime.now().isoformat(timespec='seconds'))
     _lanzar(d, 'generar')
 
 
@@ -413,8 +413,14 @@ def validar(datos, a, borrador=False):
             llegada = datetime.fromisoformat(str(e.get('llegada') or '')[:16]).isoformat(timespec='minutes')
         except ValueError:
             llegada = None
-        kms = sorted({round(num(k, 0, 5000), 3) for k in (e.get('paradas') or [])})[:MAX_ETAPAS - 1]
-        etapas = {'activas': True, 'llegada': llegada, 'descanso_h': num(e.get('descanso_h'), 0, 48, 8), 'paradas': kms}
+        descanso = num(e.get('descanso_h'), 0, 48, 8)
+        # cada parada con su descanso (horas); sin él, el descanso diario
+        des = e.get('descansos') or []
+        pares = {}
+        for j, k in enumerate(e.get('paradas') or []):
+            pares[round(num(k, 0, 5000), 3)] = num(des[j] if j < len(des) else None, 0, 48, descanso)
+        kms = sorted(pares)[:MAX_ETAPAS - 1]
+        etapas = {'activas': True, 'llegada': llegada, 'descanso_h': descanso, 'paradas': kms, 'descansos': [pares[k] for k in kms]}
     puntos = datos.get('puntos') or []
     if len(puntos) != n:
         raise ErrorPlan('La lista de puntos no coincide con el análisis.')

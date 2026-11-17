@@ -35,7 +35,12 @@
   <div class="linea-campos">
     <label>Tipo de ruta<select id="modalidad">{% for k, t in modalidades.items() %}<option value="{{ k }}">{{ t }}</option>{% endfor %}</select></label>
     <label id="campo-distancia">Distancia<select id="distancia-brm"></select></label>
-    <label><span id="etiqueta-limite">Tiempo límite (h)</span><input id="limite" inputmode="decimal" size="6" required></label>
+    <label><span id="etiqueta-limite">Tiempo límite</span>
+      <span class="ajuste"><input id="limite-h" list="lista-horas" inputmode="numeric" size="4" aria-label="Horas" autocomplete="off"> h
+      <input id="limite-m" list="lista-minutos" inputmode="numeric" size="3" aria-label="Minutos" autocomplete="off"> min</span>
+      <input type="hidden" id="limite"></label>
+    <datalist id="lista-horas">{% for h in range(1, 201) %}<option value="{{ h }}">{% endfor %}</datalist>
+    <datalist id="lista-minutos">{% for m in range(0, 60, 5) %}<option value="{{ '%02d' % m }}">{% endfor %}</datalist>
     <button type="button" class="discreto" id="limite-oficial" hidden>Volver al tiempo oficial</button>
   </div>
   <p class="suave" id="explica-modalidad"></p>
@@ -50,19 +55,19 @@
   <h2>Etapas</h2>
   <label class="casilla"><input type="checkbox" id="et-activas"> Organizar la ruta en varias etapas (hasta {{ reglas.max_etapas }} días)</label>
   <div id="et-campos" hidden>
-    <p class="suave">Indica dónde duermes (hasta {{ reglas.max_etapas - 1 }} paradas) y cuánto descansas cada día: ocio en el lugar de parada, alojamiento y desayuno, el mismo tiempo todos los días. Si pones también la llegada prevista, VenB calcula la velocidad media en movimiento necesaria para llegar a esa hora.</p>
+    <p class="suave">Indica dónde duermes (hasta {{ reglas.max_etapas - 1 }} paradas) y cuánto descansas (ocio en el lugar de parada, alojamiento y desayuno). El descanso diario es el de partida de cada parada nueva; después puedes cambiar el de cada noche. Si pones también la llegada prevista, VenB calcula la velocidad media en movimiento necesaria para llegar a esa hora.</p>
     <div class="linea-campos">
       <label>Llegada prevista <span class="suave">(opcional)</span><input id="et-llegada"></label>
       <label>Descanso diario (h)<input id="et-descanso" inputmode="decimal" size="5"></label>
     </div>
-    <div class="tabla"><table id="et-tabla"><thead><tr><th>Noche</th><th class="num">km</th><th>Lugar</th><th></th><th></th></tr></thead><tbody></tbody></table></div>
+    <div class="tabla"><table id="et-tabla"><thead><tr><th>Noche</th><th class="num">km</th><th>Lugar</th><th></th><th class="num">Descanso (h)</th><th></th></tr></thead><tbody></tbody></table></div>
     <div class="linea-campos">
       <button type="button" class="discreto" id="et-anadir">Añadir parada para dormir</button>
       <button type="button" id="et-aplicar">Aplicar las etapas a los puntos</button>
       <span class="suave" id="et-aviso" role="status"></span>
     </div>
     <p class="suave" id="et-resumen"></p>
-    <p class="suave">«Aplicar» pone cada parada en la tabla de Previsión como punto de tipo «Dormir» con el descanso diario (si ya hay un punto a menos de 1 km, se usa ese) y vuelve a calcular la ruta. Después puedes ajustar cada parada en la tabla.</p>
+    <p class="suave">«Aplicar» pone cada parada en la tabla de Previsión como punto de tipo «Dormir» con su descanso (si ya hay un punto a menos de 1 km, se usa ese) y vuelve a calcular la ruta.</p>
   </div>
 </section>
 
@@ -89,6 +94,7 @@
     <span class="suave" id="ed-aviso" role="status"></span>
     {% if a.editados and e.hoja %}<form method="post" action="{{ url_for('plan_puntos_hoja', pid=e.id) }}" onsubmit="return confirm('¿Descartar los cambios en los puntos y volver a los de la hoja de ruta? También se descartan las paradas.')"><button class="discreto">Volver a los puntos de la hoja</button></form>{% endif %}
   </div>
+  <p class="suave">📍 elige el punto exacto en un mapa. Paradas, tipo y «Mapa» (caja en la infografía y rótulo en los mapas) se recalculan al momento; los cambios de nombre, km, «Control», «Quitar» o «Añadir punto» se aplican con <b>Actualizar</b>, que ordena los puntos por km y renumera los controles.{% if a.editados %} Los puntos están editados: mandan sobre la hoja de ruta.{% endif %}</p>
   <div class="tabla ver-alto" style="max-height:none">
     <table id="puntos"><thead><tr>
       <th title="Mostrar en el mapa y en las infografías">Mapa</th><th title="Es un control">Control</th><th>Punto</th><th class="num" title="Desde la salida, como en la hoja de ruta">km</th><th class="num">Alt.</th>
@@ -96,9 +102,7 @@
       <th>Parada (min)</th><th>Tipo</th><th class="num">Llegada</th><th class="num" id="titulo-cierre">Cierre</th><th class="num">Margen</th><th></th>
     </tr></thead><tbody></tbody></table>
   </div>
-  <p class="suave">Con 📍 eliges el punto exacto en un mapa: VenB toma el km del track más cercano al sitio donde pulses (y, si el punto no tiene nombre, propone el de la localidad). Las paradas, el tipo y «Mapa» se recalculan al momento. Para cambiar los puntos, edita su nombre o su km, marca o desmarca «Control», quita puntos o pulsa <b>Añadir punto</b>, y después <b>Actualizar</b>: VenB ordena los puntos por km, numera los controles desde C1 en la salida (o C0, si la hoja empieza así; los de letra, como CF, se conservan) y vuelve a calcular el desnivel y los tiempos. Los km son los de la hoja de ruta; se ajustan a la distancia del GPX.
-  {% if a.editados %}Los puntos están editados: mandan sobre la hoja de ruta.{% endif %}
-  «Mapa»: los controles marcados llevan caja en la infografía; los demás puntos marcados se rotulan en los mapas y llevan caja. Los controles se dibujan siempre.</p>
+
 </section>
 
 <section class="panel">
@@ -125,9 +129,10 @@
     <label class="casilla"><input type="checkbox" id="track-pendiente"> Colorear el track de la infografía según la pendiente</label>
   </div>
   <p><button type="button" id="generar">Generar</button> <span class="suave" id="aviso-generar"></span></p>
-  <div id="progreso-generar" {% if e.fase != 'generando' %}hidden{% endif %}>
-    <p><b>Generando…</b> <span class="suave">Mapas, teselas y datos de OpenStreetMap se descargan la primera vez: en una zona nueva puede tardar varios minutos.</span></p>
-    <pre class="registro"></pre>
+  <div id="progreso-generar" data-inicio="{{ e.inicio_generar or '' }}" {% if e.fase != 'generando' %}hidden{% endif %}>
+    <p class="aviso-espera" role="status"><span class="girando" aria-hidden="true">⟳</span> <b>Generando…</b> <span id="gen-tiempo" class="cifra-tiempo">0:00</span> <span id="gen-paso" class="suave"></span></p>
+    <p class="suave">Mapas, teselas y datos geográficos se descargan la primera vez: en una zona nueva puede tardar de 10 a 15 minutos. Puedes seguir usando VenB; esta página se actualizará sola al terminar.</p>
+    <details><summary>Ver el detalle del proceso</summary><pre class="registro"></pre></details>
   </div>
   {% if e.error and e.fase != 'generando' %}<div class="aviso alto">No se ha podido generar: {{ e.error }}</div>{% endif %}
   {% if ficheros %}

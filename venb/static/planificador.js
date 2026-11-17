@@ -15,9 +15,10 @@
   };
 
   // Seguir un proceso en segundo plano (análisis o generación) hasta que termine
-  function seguir(url, pre, fases, fin) {
+  function seguir(url, pre, fases, fin, cadaVez) {
     const paso = () => fetch(url, { cache: 'no-store' }).then(r => r.json()).then(e => {
       if (pre) pre.textContent = (e.registro || []).join('\n');
+      if (cadaVez) cadaVez(e);
       if (fases.includes(e.fase)) setTimeout(paso, 2000); else fin(e);
     }).catch(() => setTimeout(paso, 5000));
     paso();
@@ -67,7 +68,7 @@
   }
 
   // ---------- campos generales
-  const salida = FechaHora($('salida')), limite = $('limite'), vel = $('velocidad'), comun = $('parada-comun');
+  const salida = FechaHora($('salida')), limite = $('limite'), limH = $('limite-h'), limM = $('limite-m'), vel = $('velocidad'), comun = $('parada-comun');
   const modalidad = $('modalidad'), distBrm = $('distancia-brm');
   // distancias que se pueden elegir: las estándar del brevet, 600 en la SR y de 1.200 a 2.000 en los Super Brevets
   const distancias = m => m === 'brevet' ? R.brevet : m === 'sb' ? R.sb : m === 'sr' ? [600] : [];
@@ -92,8 +93,8 @@
   function explicarModalidad(cambio) {
     const m = modalidad.value;
     $('campo-distancia').hidden = m === 'libre';
-    $('etiqueta-limite').textContent = m === 'libre' ? 'Tiempo deseado (h)' : 'Tiempo límite (h)';
-    if (cambio && m !== 'libre') limite.value = ent(oficial(), 2);
+    $('etiqueta-limite').textContent = m === 'libre' ? 'Tiempo deseado' : 'Tiempo límite';
+    if (cambio && m !== 'libre') ponerLimite(oficial());
     const hoja = A.puntos.some(p => p.cierre_hoja);
     $('explica-modalidad').textContent = m === 'brevet'
       ? 'Brevet: apertura y cierre de los controles según la tabla de Randonneurs Mondiaux' + (hoja ? '; en los intermedios mandan las horas de la hoja del organizador.' : '.') + ' La meta cierra en el tiempo límite oficial.'
@@ -118,7 +119,18 @@
   $('nombre').value = P ? P.nombre : A.nombre;
   $('subtitulo').value = P ? P.subtitulo : '';
   salida.value = (P ? P.salida : A.salida) || '';
-  limite.value = ent((P ? P.limite_h : A.limite_h) || NaN, 2);
+  // Tiempo en horas y minutos (desplegables que admiten escribir); #limite guarda las horas con decimales
+  function ponerLimite(h) {
+    limite.value = isFinite(h) && h > 0 ? String(h) : '';
+    const total = Math.round(h * 60);
+    limH.value = limite.value ? Math.floor(total / 60) : '';
+    limM.value = limite.value ? z(total % 60) : '';
+  }
+  function leerLimite() {
+    const h = num(limH.value), m = num(limM.value);
+    limite.value = isFinite(h) || isFinite(m) ? String((isFinite(h) ? h : 0) + (isFinite(m) ? m : 0) / 60) : '';
+  }
+  ponerLimite((P ? P.limite_h : A.limite_h) || NaN);
   const mostrarVel = () => { vel.value = ent(mediaTabla() * V.factor, 1); };
   mostrarVel();
   if (P) {
@@ -132,7 +144,8 @@
   // ---------- etapas (BRM de 400 km o más, SR, Super Brevets y recorridos libres)
   const etActivas = $('et-activas'), etLlegada = FechaHora($('et-llegada')), etDescanso = $('et-descanso'), etCuerpo = document.querySelector('#et-tabla tbody');
   const E0 = P && P.etapas && P.etapas.activas ? P.etapas : null;
-  let ET = (E0 ? E0.paradas : []).map(k => ({ km: k, nombre: (A.puntos.find(p => Math.abs(p.km_hoja - k) < 0.01) || {}).nombre || '' }));
+  let ET = (E0 ? E0.paradas : []).map((k, n) => ({ km: k, nombre: (A.puntos.find(p => Math.abs(p.km_hoja - k) < 0.01) || {}).nombre || '',
+    descanso: E0.descansos && E0.descansos[n] !== undefined ? E0.descansos[n] : E0.descanso_h }));
   let etPendiente = false;
   etActivas.checked = !!E0;
   etLlegada.value = E0 && E0.llegada || '';
@@ -149,6 +162,7 @@
       <td class="num"><input class="et-km" inputmode="decimal" size="5" value="${x.km === '' ? '' : ent(x.km, 1)}" aria-label="km de la parada ${i + 1}"></td>
       <td><input class="et-nombre" size="20" maxlength="80" value="${esc(x.nombre)}" placeholder="Noche ${i + 1}" aria-label="Lugar de la parada ${i + 1}"></td>
       <td><button type="button" class="discreto ed-mapa" title="Elegir en el mapa" aria-label="Elegir la parada ${i + 1} en el mapa">📍</button></td>
+      <td class="num"><input class="et-descanso" inputmode="decimal" size="4" value="${ent(x.descanso, 2)}" aria-label="Descanso de la noche ${i + 1} (h)"></td>
       <td><button type="button" class="discreto et-quitar">Quitar</button></td></tr>`).join('');
     $('et-anadir').disabled = ET.length >= R.max_etapas - 1;
   }
@@ -159,7 +173,7 @@
   // ---------- tabla de puntos
   const cuerpo = document.querySelector('#puntos tbody');
   // tipos de parada, con el icono que llevan en la infografía y la página interactiva (generador/estilo.ICONOS)
-  const tipos = [['', '—'], ['salida', '🚩 Salida'], ['cafe', '☕ Café'], ['comida', '🍽 Comida'], ['dormir', '🛏 Dormir'], ['agua', '🚰 Agua'], ['cruce', '🔀 Cruce'], ['peligro', '⚠️ Peligro'], ['interes', '⭐ Punto de interés'], ['llegada', '🏁 Llegada'], ['otra', '✳️ Otra']];
+  const tipos = [['', '—'], ['salida', '🚩 Salida'], ['cafe', '☕ Café'], ['comida', '🍽 Comida'], ['dormir', '🛏 Dormir'], ['agua', '🚰 Agua'], ['cruce', '🔀 Cruce'], ['peligro', '⚠️ Peligro'], ['interes', '⭐ Punto de interés'], ['puerto', '⛰️ Puerto'], ['llegada', '🏁 Llegada'], ['otra', '✳️ Otra']];
   const defectoParada = i => (A.puntos[i].control && i > 0 && i < N - 1) ? (num(comun.value) || 0) : 0;
   // Cada fila: lo que se recalcula al momento (paradas, tipo, mapa) y lo que cambia los puntos (control, nombre, km,
   // quitar, añadir), que necesita «Actualizar». Las filas nuevas no tienen datos calculados hasta entonces.
@@ -278,19 +292,27 @@
 
   // ---------- eventos
   salida.addEventListener('input', pintar);
-  limite.addEventListener('input', () => { explicarLimite(); pintar(); });
+  [limH, limM].forEach(c => c.addEventListener('input', () => { leerLimite(); explicarLimite(); pintar(); }));
+  limM.addEventListener('change', () => { const m = num(limM.value); if (isFinite(m) && m >= 60) { leerLimite(); ponerLimite(num(limite.value)); } });
   modalidad.addEventListener('change', () => { opcionesDistancia(distBrm.value); explicarModalidad(true); pintar(); });
   distBrm.addEventListener('change', () => { explicarModalidad(true); pintar(); });
-  $('limite-oficial').addEventListener('click', () => { limite.value = ent(oficial(), 2); explicarLimite(); pintar(); });
+  $('limite-oficial').addEventListener('click', () => { ponerLimite(oficial()); explicarLimite(); pintar(); });
   explicarModalidad(modalidad.value !== 'libre' && !isFinite(num(limite.value)));
   etActivas.addEventListener('change', () => { verEtapas(); pintar(); });
   etLlegada.addEventListener('input', () => { verEtapas(); pintar(); });
   etLlegada.campo.addEventListener('change', () => { verEtapas(); if (!etLlegada.value) { V.factor = V.factor || 1; mostrarVel(); } pintar(); });
-  etDescanso.addEventListener('input', marcarEtapas);
+  // el descanso diario es el de partida: las noches que lo tenían cambian con él
+  let descansoAnterior = num(etDescanso.value);
+  etDescanso.addEventListener('input', () => {
+    const v = num(etDescanso.value);
+    if (isFinite(v)) { ET.forEach(x => { if (Math.abs(x.descanso - descansoAnterior) < 1e-6) x.descanso = v; }); descansoAnterior = v; dibujarEtapas(); }
+    marcarEtapas();
+  });
   etCuerpo.addEventListener('input', ev => {
     const f = ev.target.closest('tr'), x = ET[+f.dataset.i];
     if (ev.target.matches('.et-km')) x.km = num(ev.target.value);
     if (ev.target.matches('.et-nombre')) x.nombre = ev.target.value;
+    if (ev.target.matches('.et-descanso')) x.descanso = num(ev.target.value);
     marcarEtapas();
   });
   etCuerpo.addEventListener('click', ev => {
@@ -304,7 +326,7 @@
   $('et-anadir').addEventListener('click', () => {
     if (ET.length >= R.max_etapas - 1) return;
     const k = TOTAL * (ET.length + 1) / (ET.length + 2);
-    ET.push({ km: Math.round(k), nombre: '' }); dibujarEtapas(); marcarEtapas();
+    ET.push({ km: Math.round(k), nombre: '', descanso: num(etDescanso.value) || 0 }); dibujarEtapas(); marcarEtapas();
   });
   cuerpo.addEventListener('input', pintar);
   vel.addEventListener('input', () => { const v = num(vel.value), m = mediaTabla(); if (v > 0 && m > 0) { V.factor = v / m; pintar(); } });
@@ -350,9 +372,20 @@
 
   // ---------- generar
   const pg = $('progreso-generar'), boton = $('generar');
-  function esperar() {
+  // Temporizador: tiempo desde que empezó la generación y el paso en curso (la consola queda plegada)
+  function esperar(inicio) {
     pg.hidden = false; boton.disabled = true;
-    seguir(X.urlEstado, pg.querySelector('pre'), ['generando'], () => location.reload());
+    let t0 = inicio || (pg.dataset.inicio ? new Date(pg.dataset.inicio) : new Date());
+    const reloj = () => {
+      const s = Math.max(0, Math.round((Date.now() - t0) / 1000)), h = Math.floor(s / 3600);
+      $('gen-tiempo').textContent = (h ? h + ':' + z(Math.floor(s / 60) % 60) : Math.floor(s / 60)) + ':' + z(s % 60);
+    };
+    reloj(); setInterval(reloj, 1000);
+    seguir(X.urlEstado, pg.querySelector('pre'), ['generando'], () => location.reload(), e => {
+      if (e.inicio_generar) t0 = new Date(e.inicio_generar);
+      const pasos = (e.registro || []).filter(l => /^\S.*(…|\.\.\.)\s*$/.test(l));   // los pasos acaban en «…»; avisos y detalles, no
+      $('gen-paso').textContent = pasos.length ? '· ' + pasos[pasos.length - 1] : '';
+    });
   }
   // Todo lo que hay en la página (para generar o para guardarlo al editar los puntos)
   function recoger() {
@@ -361,7 +394,7 @@
       nombre: $('nombre').value, subtitulo: $('subtitulo').value, salida: salida.value, limite_h: num(limite.value),
       modalidad: modalidad.value, distancia_brm: modalidad.value === 'libre' ? null : +distBrm.value,
       etapas: etapas() ? { activas: true, llegada: etLlegada.value || null, descanso_h: num(etDescanso.value) || 0,
-        paradas: ET.map(x => num(x.km)).filter(k => isFinite(k)) } : null,
+        paradas: ET.filter(x => isFinite(num(x.km))).map(x => num(x.km)), descansos: ET.filter(x => isFinite(num(x.km))).map(x => isFinite(x.descanso) ? x.descanso : num(etDescanso.value) || 0) } : null,
       puntos: filas.map((f, i) => ({ mostrar: f.querySelector('.mostrar').checked, parada: paradas()[i], tipo: f.querySelector('.tipo').value })),
       velocidades: { tramos: V.tramos.map(t => [t[0] * 100, t[1]]), resto: V.resto, fatiga_pct: V.fatiga_pct, fatiga_cada_pct: V.fatiga_cada * 100,
         fatiga_max_pct: V.fatiga_max_pct, factor: V.factor },
@@ -375,7 +408,7 @@
     boton.disabled = true;
     fetch(X.urlGenerar, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos) })
       .then(r => r.json().then(j => ({ ok: r.ok, j })))
-      .then(({ ok, j }) => { if (ok) esperar(); else { boton.disabled = false; $('aviso-generar').textContent = j.error || 'No se ha podido generar.'; } })
+      .then(({ ok, j }) => { if (ok) esperar(new Date()); else { boton.disabled = false; $('aviso-generar').textContent = j.error || 'No se ha podido generar.'; } })
       .catch(() => { boton.disabled = false; $('aviso-generar').textContent = 'No se ha podido contactar con VenB.'; });
   });
 
@@ -424,8 +457,9 @@
   actualizar.addEventListener('click', () => enviarPuntos(listaFilas(), aviso, actualizar));
   // Las paradas para dormir pasan a la tabla: un punto existente a menos de 1 km o uno nuevo, de tipo «Dormir»
   $('et-aplicar').addEventListener('click', () => {
-    const lista = listaFilas(), min = Math.round((num(etDescanso.value) || 0) * 60), avisoEt = $('et-aviso');
+    const lista = listaFilas(), diario = num(etDescanso.value) || 0, avisoEt = $('et-aviso');
     if (ET.some(x => !isFinite(num(x.km)) || num(x.km) <= 0 || num(x.km) >= A.puntos[N - 1].km_hoja)) { avisoEt.textContent = 'Cada parada necesita un km entre la salida y la meta.'; return; }
+    if (ET.some(x => !(x.descanso >= 0 && x.descanso <= 48))) { avisoEt.textContent = 'El descanso de cada noche debe estar entre 0 y 48 h.'; return; }
     const nuevas = ET.map(x => num(x.km));
     (E0 ? E0.paradas : []).forEach(k => {     // paradas aplicadas antes que ya no están
       if (nuevas.some(n => Math.abs(n - k) <= 1)) return;
@@ -433,7 +467,7 @@
       if (q) { q.tipo = ''; q.parada = 0; }
     });
     ET.forEach((x, n) => {
-      const k = num(x.km), q = lista.reduce((a, y) => (Math.abs(num(y.km) - k) <= 1 && (!a || Math.abs(num(y.km) - k) < Math.abs(num(a.km) - k)) ? y : a), null);
+      const min = Math.round((isFinite(x.descanso) ? x.descanso : diario) * 60), k = num(x.km), q = lista.reduce((a, y) => (Math.abs(num(y.km) - k) <= 1 && (!a || Math.abs(num(y.km) - k) < Math.abs(num(a.km) - k)) ? y : a), null);
       if (q) { q.tipo = 'dormir'; q.parada = min; x.km = num(q.km); }
       else lista.push({ control: '', nombre: x.nombre.trim() || `Noche ${n + 1}`, km: String(k), cierre_hoja: null, apertura_hoja: null, localidad: true, mostrar: true, parada: min, tipo: 'dormir' });
     });

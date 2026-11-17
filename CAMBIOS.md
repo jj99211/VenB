@@ -2,6 +2,15 @@
 
 Novedades de cada versión de VenB y VenB Rutas (las dos ediciones comparten número de versión).
 
+## 3.44
+
+- **Planificador, generar:** mientras se generan los documentos, un reloj muestra el tiempo transcurrido y el paso en curso; el registro completo queda plegado en «Ver el detalle del proceso».
+- **Tiempo límite o deseado** en horas y minutos: listas desplegables en las que también se puede escribir.
+- **Etapas:** cada noche puede tener su propio descanso; el descanso diario es el de partida.
+- Tipo de punto nuevo **⛰️ Puerto**, también en las infografías y la página interactiva.
+- La explicación de la tabla de Previsión va, más breve, junto a los botones «Añadir punto» y «Actualizar».
+- Corregido: en un recorrido libre ya no aparece el campo «Distancia» vacío.
+
 ## 3.43
 
 - **Planificador, tipo de ruta y distancia:** la distancia se elige según el tipo: en un brevet, solo las estándar (200 a 1.000 km); en una Super Randonnée, 600 km; en el tipo nuevo **Super Brevet**, de 1.200 a 2.000 km, con los tiempos del reglamento de Randonneurs Mondiaux. En un recorrido libre no se elige distancia.

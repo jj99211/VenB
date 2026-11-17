@@ -26,6 +26,7 @@ ICONOS = {
     "cruce": "\U0001F500",
     "peligro": "\u26A0",
     "interes": "\u2B50",
+    "puerto": "\u26F0",
     "otra": "\u2733",
     "meta": "\U0001F3C1",
     "bici": "\U0001F6B2",
@@ -34,7 +35,7 @@ ICONOS = {
 # nombres de los tipos de parada para las leyendas, en el orden en que se muestran
 NOMBRES_TIPO = {"salida": "salida", "cafe": "café", "desayuno": "desayuno", "comida": "comida", "cena": "cena",
                 "dormir": "dormir", "agua": "agua", "cruce": "cruce", "peligro": "peligro",
-                "interes": "punto de interés", "llegada": "llegada", "otra": "otra"}
+                "interes": "punto de interés", "puerto": "puerto", "llegada": "llegada", "otra": "otra"}
 
 # un color por día de ruta (cajas, track y bandas del perfil)
 COLORES_DIA = ["#d62728", "#2c5aa0", "#16855f", "#b0124f", "#c25a00", "#5b3b8c", "#00838f"]

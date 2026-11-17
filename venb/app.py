@@ -1293,7 +1293,7 @@ def plan_trazado(pid):
 @app.route('/planificador/<pid>/estado.json')
 def plan_estado(pid):
     e = _plan(pid)
-    return jsonify({k: e.get(k) for k in ('fase', 'error', 'registro', 'nombre')})
+    return jsonify({k: e.get(k) for k in ('fase', 'error', 'registro', 'nombre', 'inicio_generar')})
 
 
 @app.post('/planificador/<pid>/generar')
