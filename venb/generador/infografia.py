@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import patheffects as pe
 from matplotlib.collections import LineCollection, PolyCollection
-from matplotlib.patches import FancyBboxPatch, Rectangle
+from matplotlib.patches import Circle, FancyBboxPatch, Rectangle
 
 from . import estilo as E
 from .datos import hora_en_km
@@ -483,6 +483,42 @@ def _toponimos(fig, ax, osm, pxll, huecos, TX, TY, F, cfg):
 
 # ------------------------------------------------------------------ infografía
 
+def _servicios(ax, servicios, pxll, rects, TX, TY, W, Hm, F, maximo=80):
+    """Iconos de fuentes, bares, tiendas y gasolineras junto al track, fuera de las cajas y sin tapar el track."""
+    lado = 15 * F ** 0.55 * PT * 1.25
+    paso = max(1, len(TX) // 4000)
+    tx, ty = np.asarray(TX)[::paso], np.asarray(TY)[::paso]
+    puestos = 0
+    for sv in servicios:
+        if puestos >= maximo:
+            break
+        x, y = pxll(sv["lon"], sv["lat"])
+        sitio = None
+        for f in (0.9, 1.4, 2.0):
+            for ang in np.radians([90, 270, 0, 180, 45, 135, 225, 315]):
+                cx, cy = x + np.cos(ang) * lado * f, y + np.sin(ang) * lado * f
+                r = (cx - lado / 2, cy - lado / 2, cx + lado / 2, cy + lado / 2)
+                if not (4 < r[0] and r[2] < W - 4 and 4 < r[1] and r[3] < Hm - 4):
+                    continue
+                if any(not (r[2] < q[0] or r[0] > q[2] or r[3] < q[1] or r[1] > q[3]) for q in rects):
+                    continue
+                if np.min(np.hypot(tx - cx, ty - cy)) < lado * 0.5 + 6 * F ** 0.5:
+                    continue
+                sitio = (cx, cy, r)
+                break
+            if sitio:
+                break
+        if not sitio:
+            continue
+        cx, cy, r = sitio
+        ax.plot([x, cx], [y, cy], color="#1b1b1b", lw=1.2, alpha=0.7, zorder=13)
+        ax.add_patch(Circle((cx, cy), lado * 0.5, fc="white", ec="#1b1b1b", lw=1.6, zorder=13.5))
+        ax.text(cx, cy, E.ICONOS_SERVICIO[sv["tipo"]], fontproperties=E.EMOJI, fontsize=15 * F ** 0.55 * 0.72,
+                ha="center", va="center", color="#1b1b1b", zorder=14)
+        rects.append(r)
+        puestos += 1
+
+
 def generar(proyecto, plan, osm=None):
     cfg = proyecto.seccion("infografia")
     W = int(cfg.get("ancho_px", 2400))
@@ -520,6 +556,7 @@ def generar(proyecto, plan, osm=None):
     horas = hora_en_km(plan, tr.km)
     dias_track = np.array([_dia(plan, t) for t in horas])
     puertos = _puertos_en_ruta(tr, (osm or {}).get("puertos", []))
+    servicios = (osm or {}).get("servicios", []) if cfg.get("servicios", True) and estilo.startswith("ign_") else []
 
     F = _escala(cfg)
     perfil_h, dias_h, pie_base = int(220 + 90 * F), int(22 * F), int(34 * F)
@@ -550,7 +587,8 @@ def generar(proyecto, plan, osm=None):
             atrib += "  ·  Nombres: NGBE, © IGN España (CC BY 4.0)"
         atrib = f"{atrib}  ·  Altitudes: EU-DEM 25 m (OpenTopoData)  ·  Tiempos estimados según pendiente media de cada tramo"
         usados = {p.tipo_parada for p in plan.puntos if p.tipo_parada}
-        items = [f"{E.ICONOS[k]} {n}" for k, n in E.NOMBRES_TIPO.items() if k in usados and k in E.ICONOS]
+        ley_serv = E.leyenda_servicios(servicios)
+        items = [f"{E.ICONOS[k]} {n}" for k, n in E.NOMBRES_TIPO.items() if k in usados and k in E.ICONOS] + ([ley_serv] if ley_serv else [])
         w_atrib, h_atrib = _medir(fig, atrib, 9.5 * F, "regular")
         ancho_ley = lambda s: _medir(fig, s, 11 * F, "regular")[0] * 1.15
         util = 0.98 * W
@@ -673,6 +711,10 @@ def generar(proyecto, plan, osm=None):
                     bbox=dict(boxstyle="round,pad=0.25", fc=E.color_dia(d), ec="none"))
             xa = x_et if ha == "left" else x_et - tw
             rects.append((xa - 6, TY[i] - th, xa + tw + 6, TY[i] + th))
+
+        # servicios junto al track (solo con el mapa del IGN, que no los trae; los de OSM ya los muestran)
+        if servicios:
+            _servicios(ax, servicios, lambda lon, lat: px(*a_mercator(lon, lat)), rects, TX, TY, W, Hm, F)
 
         # topónimos del mapa base: sierras, ríos, embalses y comarcas
         if cfg.get("toponimos", True):

@@ -43,6 +43,21 @@ class ErrorPlan(Exception):
     pass
 
 
+class EnMarcha(ErrorPlan):
+    """El plan ya tiene un análisis o una generación en marcha: la página muestra su progreso."""
+
+
+LATIDO_S = 15       # el proceso de análisis o generación marca que sigue vivo cada LATIDO_S segundos
+
+
+def _latir(d):
+    try:
+        with open(os.path.join(d, 'latido.txt'), 'w', encoding='utf-8') as f:
+            f.write(datetime.now().isoformat(timespec='seconds'))
+    except OSError:
+        pass
+
+
 def _tipo(t):
     """Tipo de parada válido o ''."""
     return t if t in TIPOS_PARADA else ''
@@ -126,7 +141,7 @@ def crear(gpx, hoja=None, evento=None):
     gpx.save(os.path.join(d, 'entrada', rg))
     if hoja:
         hoja.save(os.path.join(d, 'entrada', rh))
-    _estado(d, fase='analizando', creado=datetime.now().isoformat(timespec='seconds'), gpx=rg, hoja=rh,
+    _estado(d, fase='analizando', creado=datetime.now().isoformat(timespec='seconds'), inicio_analizar=datetime.now().isoformat(timespec='seconds'), gpx=rg, hoja=rh,
             nombre=os.path.splitext(gpx.filename)[0][:80], gpx_original=os.path.basename(gpx.filename)[:120],
             hoja_original=os.path.basename(hoja.filename)[:120] if hoja else '', evento=evento)
     _lanzar(d, 'analizar')
@@ -143,20 +158,29 @@ def _lanzar(d, orden):
                          cwd=AQUI, env=dict(os.environ, PYTHONIOENCODING='utf-8', PYTHONUNBUFFERED='1', GENERADOR_CACHE=CACHE, MPLBACKEND='Agg'), **opciones)
     log.close()
     _procesos[d] = p
+    _latir(d)
 
 
 def en_marcha(d):
+    """¿Hay un análisis o una generación en marcha? Si lo lanzó esta VenB, se pregunta al proceso; si no (VenB se
+    cerró y se volvió a abrir, o hay otra VenB, como VenB Rutas, sobre los mismos datos), por su latido reciente."""
     p = _procesos.get(d)
-    return p is not None and p.poll() is None
+    if p is not None:
+        return p.poll() is None
+    try:
+        return datetime.now().timestamp() - os.path.getmtime(os.path.join(d, 'latido.txt')) < LATIDO_S * 4
+    except OSError:
+        return False
 
 
 def estado(pid):
     d = _carpeta(pid)
     e = _leer(d, 'estado.json', {})
-    # un proceso que ya no corre (VenB reiniciada o fallo grave) no puede seguir «analizando»
+    # un proceso que ya no corre (VenB cerrada durante el proceso o fallo grave) no puede seguir «analizando»
     if e.get('fase') in ('analizando', 'generando') and not en_marcha(d):
+        e = _leer(d, 'estado.json', {})     # pudo terminar justo ahora
         p = _procesos.get(d)
-        if p is None or p.returncode not in (0, None):
+        if e.get('fase') in ('analizando', 'generando') and (p is None or p.returncode not in (0, None)):
             e = _estado(d, fase='error' if e['fase'] == 'analizando' else 'listo',
                         error='El proceso se interrumpió. Vuelve a intentarlo.' if p is None else 'El proceso terminó con un error.')
     e['id'] = pid
@@ -324,6 +348,54 @@ def zip_salida(pid):
     return ruta
 
 
+MARCA_FICHA = ('const FICHA = false;', 'const FICHA = true;')   # en generador/web.py
+
+
+def carpeta_web(pid):
+    """Nombre limpio de la carpeta para publicar la ruta en una web: «castillo-collados-de-frailes»."""
+    d = _carpeta(pid)
+    nombre = (_leer(d, 'parametros.json') or {}).get('nombre') or _leer(d, 'estado.json', {}).get('nombre') or 'ruta'
+    base = unicodedata.normalize('NFKD', nombre).encode('ascii', 'ignore').decode().lower()
+    return re.sub(r'[^a-z0-9]+', '-', base).strip('-')[:60] or 'ruta'
+
+
+def codigo_iframe(pid, base_url=None):
+    """Código para insertar la ruta en otra web. Sin dirección base (ajuste plan_web_base), con un marcador."""
+    base_url = (R.ajustes().get('plan_web_base') if base_url is None else base_url) or ''
+    url = (base_url.rstrip('/') + '/' if base_url else 'https://TU-WEB/CARPETA/') + carpeta_web(pid) + '/'
+    return (f'<iframe src="{url}" title="Ruta" style="width:100%;height:1200px;border:0" loading="lazy" '
+            f'allow="fullscreen"></iframe>\n<p><a href="{url}" target="_blank" rel="noopener">Abrir la ruta a pantalla completa</a></p>')
+
+
+def exportar_web(pid, ficha=True):
+    """ZIP para publicar la página interactiva en una web: <carpeta>/index.html (autónomo: datos y logo dentro) y
+    LEEME.txt con el código para insertarla. Con ficha, tiempos desde la salida, sin fecha, cierres ni márgenes."""
+    d = _carpeta(pid)
+    origen = os.path.join(d, 'salida', 'ruta_interactiva.html')
+    if not os.path.isfile(origen):
+        raise ErrorPlan('Primero genera la página interactiva (casilla «Página interactiva» y «Generar»).')
+    with open(origen, encoding='utf-8') as f:
+        html = f.read()
+    if ficha:
+        if MARCA_FICHA[0] not in html:
+            raise ErrorPlan('Esta página interactiva es de una versión anterior de VenB: vuelve a generarla para exportarla como ficha.')
+        html = html.replace(MARCA_FICHA[0], MARCA_FICHA[1], 1)
+    carpeta = carpeta_web(pid)
+    leeme = (f'Ruta para publicar en una web\n\n'
+             f'1. Sube la carpeta «{carpeta}» completa a tu alojamiento web (por FTP o con el administrador de archivos), '
+             'por ejemplo dentro de una carpeta «rutas».\n'
+             f'2. Comprueba que se abre en el navegador: https://tu-web/rutas/{carpeta}/\n'
+             '3. Para insertarla en una página o entrada, pega este código en un bloque HTML (en WordPress, bloque «HTML personalizado»), '
+             'cambiando la dirección si hace falta:\n\n' + codigo_iframe(pid) + '\n\n'
+             'La página es un único fichero: el track, los puntos y el logo van dentro. El mapa base se carga de los servidores '
+             'del IGN (España) o de OpenStreetMap/OpenTopoMap, que piden no abusar: para mucho tráfico, mejor el mapa del IGN.\n')
+    ruta = os.path.join(d, f'web_{carpeta}.zip')
+    with zipfile.ZipFile(ruta, 'w', zipfile.ZIP_DEFLATED) as z:
+        z.writestr(f'{carpeta}/index.html', html)
+        z.writestr(f'{carpeta}/LEEME.txt', leeme)
+    return ruta
+
+
 def reglas_rm():
     """Tablas de Randonneurs Mondiaux para la página (la vista previa calcula con ellas, como generador/datos.py)."""
     from generador.datos import APERTURA_BRM, CIERRE_BRM, DISTANCIAS_SB, LIMITE_SR600, MEDIAS_SB, limite_oficial
@@ -358,7 +430,7 @@ def generar(pid, datos):
     """datos: lo enviado por la página (ya validado aquí). Guarda los parámetros y lanza la generación."""
     d = _carpeta(pid)
     if en_marcha(d):
-        raise ErrorPlan('Este plan ya se está procesando.')
+        raise EnMarcha('Este plan ya se está procesando: abajo se ve su progreso.')
     a = _leer(d, 'analisis.json')
     if not a:
         raise ErrorPlan('El plan todavía no está analizado.')
@@ -451,7 +523,7 @@ def validar(datos, a, borrador=False):
             'estilo_infografia': datos.get('estilo_infografia') if datos.get('estilo_infografia') in ESTILOS_INFOGRAFIA else 'ign_mtn',
             # VenB Rutas: club u organizador cuya marca llevan los documentos ('' = la de VenB)
             'club': datos.get('club') if R.RUTAS and datos.get('club') and _club_valido(datos.get('club')) else '',
-            'auto_lugares': bool(datos.get('auto_lugares', True)), 'track_pendiente': bool(datos.get('track_pendiente')), 'altitud_gpx': bool(datos.get('altitud_gpx'))}
+            'auto_lugares': bool(datos.get('auto_lugares', True)), 'track_pendiente': bool(datos.get('track_pendiente')), 'servicios': bool(datos.get('servicios', True)), 'altitud_gpx': bool(datos.get('altitud_gpx'))}
 
 
 def editar_puntos(pid, datos):
@@ -504,7 +576,7 @@ def editar_puntos(pid, datos):
     except ErrorPlan:                            # sin parámetros válidos se usan los de partida
         if os.path.exists(os.path.join(d, 'parametros.json')):
             os.remove(os.path.join(d, 'parametros.json'))
-    _estado(d, fase='analizando', error=None)
+    _estado(d, fase='analizando', error=None, inicio_analizar=datetime.now().isoformat(timespec='seconds'))
     _lanzar(d, 'analizar')
 
 
@@ -516,7 +588,7 @@ def quitar_edicion(pid):
     for f in ('puntos.json', 'parametros.json'):
         if os.path.exists(os.path.join(d, f)):
             os.remove(os.path.join(d, f))
-    _estado(d, fase='analizando', error=None)
+    _estado(d, fase='analizando', error=None, inicio_analizar=datetime.now().isoformat(timespec='seconds'))
     _lanzar(d, 'analizar')
 
 
@@ -640,8 +712,9 @@ def _generar(d):
            'regla': regla,
            'destacados': destacados, 'paradas': paradas, 'tipos_parada': tipos, 'velocidades': p['velocidades'],
            'altitud': {'fuente': 'gpx' if p.get('altitud_gpx') else 'mdt'},
-           'infografia': {'estilo': p['estilo_infografia'], 'sin_caja': sin_caja, 'track_pendiente': bool(p.get('track_pendiente'))},
-           'mapa': {'titulo': p['nombre'], 'estilos': estilos, 'paleta': p['paleta']}, 'marca': marca}
+           'infografia': {'estilo': p['estilo_infografia'], 'sin_caja': sin_caja, 'track_pendiente': bool(p.get('track_pendiente')),
+                          'servicios': p.get('servicios', True)},
+           'mapa': {'titulo': p['nombre'], 'estilos': estilos, 'paleta': p['paleta'], 'servicios': p.get('servicios', True)}, 'marca': marca}
     salida_dir = os.path.join(d, 'salida')
     if os.path.isdir(salida_dir):
         shutil.rmtree(salida_dir)
@@ -664,7 +737,8 @@ def _generar(d):
         tr = plan.track
         print('Datos geográficos: IGN y OpenStreetMap (la primera vez en una zona nueva puede tardar varios minutos)…', flush=True)
         try:
-            osm = elementos(tr, (tr.lat.min() - 0.4, tr.lon.min() - 0.6, tr.lat.max() + 0.4, tr.lon.max() + 0.6))
+            osm = elementos(tr, (tr.lat.min() - 0.4, tr.lon.min() - 0.6, tr.lat.max() + 0.4, tr.lon.max() + 0.6),
+                            servicios=p.get('servicios', True))
         except Exception as ex:
             print(f'  aviso: sin datos geográficos ({ex})', flush=True)
     if 'infografia' in p['salidas']:
@@ -688,6 +762,16 @@ def _generar(d):
 
 def _trabajo(orden, d):
     sys.path.insert(0, AQUI)
+    import threading
+
+    global _parar_latido
+    _parar_latido = threading.Event()
+
+    def latido():
+        while not _parar_latido.is_set():
+            _latir(d)
+            _parar_latido.wait(LATIDO_S)
+    threading.Thread(target=latido, daemon=True).start()
     try:
         (_analizar if orden == 'analizar' else _generar)(d)
     except Exception as ex:
@@ -696,6 +780,12 @@ def _trabajo(orden, d):
         mensaje = str(ex) or ex.__class__.__name__
         _estado(d, fase='error' if orden == 'analizar' else 'listo', error=mensaje)
         sys.exit(1)
+    finally:
+        _parar_latido.set()
+        try:     # terminado: sin latido, se puede volver a generar enseguida
+            os.remove(os.path.join(d, 'latido.txt'))
+        except OSError:
+            pass
 
 
 if __name__ == '__main__':

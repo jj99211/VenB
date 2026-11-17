@@ -26,7 +26,24 @@
 
   const prog = $('progreso');
   if (prog && prog.dataset.estado) {
-    if (prog.querySelector('h2').textContent.startsWith('Analizando')) seguir(prog.dataset.estado, prog.querySelector('pre'), ['analizando'], () => location.reload());
+    if (prog.querySelector('h2').textContent.startsWith('Analizando')) {
+      // Reloj y paso en curso; con las altitudes del terreno, lote actual y tiempo que queda
+      const marca = prog.querySelector('[data-inicio]');
+      let t0 = marca && marca.dataset.inicio ? new Date(marca.dataset.inicio) : new Date();
+      const reloj = () => { const s = Math.max(0, Math.round((Date.now() - t0) / 1000)); $('an-tiempo').textContent = Math.floor(s / 60) + ':' + z(s % 60); };
+      reloj(); setInterval(reloj, 1000);
+      seguir(prog.dataset.estado, prog.querySelector('pre'), ['analizando'], () => location.reload(), e => {
+        if (e.inicio_analizar) t0 = new Date(e.inicio_analizar);
+        const reg = e.registro || [], pasos = reg.filter(l => /^\S.*(…|\.\.\.)\s*$/.test(l));
+        let txt = pasos.length ? pasos[pasos.length - 1] : '';
+        const m = reg.length && /lote (\d+)\/(\d+)/.exec(reg[reg.length - 1]);
+        if (m) {
+          const quedan = Math.ceil((+m[2] - +m[1]) * 1.5 / 60);   // ~1,5 s por lote (consulta + pausa)
+          txt = `Altitudes del terreno: lote ${m[1]} de ${m[2]}` + (quedan > 1 ? ` (quedan unos ${quedan} min)` : quedan === 1 ? ' (queda menos de un minuto)' : '');
+        }
+        $('an-paso').textContent = txt ? '· ' + txt : '';
+      });
+    }
     return;
   }
   const nodo = $('datos-plan');
@@ -136,7 +153,7 @@
   if (P) {
     document.querySelectorAll('input[name=salida]').forEach(c => { c.checked = P.salidas.includes(c.value); });
     if ($('club') && P.club) $('club').value = P.club;
-    $('paleta').value = P.paleta; $('estilo-infografia').value = P.estilo_infografia; $('auto-lugares').checked = P.auto_lugares; $('track-pendiente').checked = !!P.track_pendiente;
+    $('paleta').value = P.paleta; $('estilo-infografia').value = P.estilo_infografia; $('auto-lugares').checked = P.auto_lugares; $('track-pendiente').checked = !!P.track_pendiente; $('servicios').checked = P.servicios !== false;
     const paradasCtrl = P.puntos.filter((x, i) => A.puntos[i].control && i > 0 && i < N - 1).map(x => x.parada);
     if (paradasCtrl.length) comun.value = ent(paradasCtrl[0]);
   }
@@ -404,7 +421,7 @@
       puntos: filas.map((f, i) => ({ mostrar: f.querySelector('.mostrar').checked, parada: paradas()[i], tipo: f.querySelector('.tipo').value })),
       velocidades: { tramos: V.tramos.map(t => [t[0] * 100, t[1]]), resto: V.resto, fatiga_pct: V.fatiga_pct, fatiga_cada_pct: V.fatiga_cada * 100,
         fatiga_max_pct: V.fatiga_max_pct, factor: V.factor },
-      salidas, paleta: $('paleta').value, estilo_infografia: $('estilo-infografia').value, club: $('club') ? $('club').value : '', auto_lugares: $('auto-lugares').checked, track_pendiente: $('track-pendiente').checked,
+      salidas, paleta: $('paleta').value, estilo_infografia: $('estilo-infografia').value, club: $('club') ? $('club').value : '', auto_lugares: $('auto-lugares').checked, track_pendiente: $('track-pendiente').checked, servicios: $('servicios').checked,
     };
   }
   boton.addEventListener('click', () => {
@@ -414,7 +431,11 @@
     boton.disabled = true;
     fetch(X.urlGenerar, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos) })
       .then(r => r.json().then(j => ({ ok: r.ok, j })))
-      .then(({ ok, j }) => { if (ok) esperar(new Date()); else { boton.disabled = false; $('aviso-generar').textContent = j.error || 'No se ha podido generar.'; } })
+      .then(({ ok, j }) => {
+        if (ok) esperar(new Date());
+        else if (j.en_marcha) { $('aviso-generar').textContent = j.error; esperar(); }   // ya en marcha: se sigue su progreso
+        else { boton.disabled = false; $('aviso-generar').textContent = j.error || 'No se ha podido generar.'; }
+      })
       .catch(() => { boton.disabled = false; $('aviso-generar').textContent = 'No se ha podido contactar con VenB.'; });
   });
 

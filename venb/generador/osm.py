@@ -110,12 +110,13 @@ def _en_espana(track):
         return False
 
 
-def elementos(track, bbox, radio_rios_km=15, radio_cimas_km=20, radio_embalses_km=15, radio_sierras_km=25):
+def elementos(track, bbox, radio_rios_km=15, radio_cimas_km=20, radio_embalses_km=15, radio_sierras_km=25, servicios=False):
     """Descarga ríos, sierras, cimas, puertos, embalses, regiones, comarcas y pueblos cercanos (con castillo o no).
 
     En España se cruzan las sierras y los puertos con el Nomenclátor del IGN: la posición oficial manda
     cuando el nombre está en los dos, y se añade lo que solo tiene el IGN (sierras con nombre de sierra y
     puertos junto al track). Fuera de España, o si el IGN no responde, todo sale de OpenStreetMap. bbox: (sur, oeste, norte, este) del mapa.
+    Con servicios, también fuentes, bares, tiendas y gasolineras junto al track (ver servicios_cerca).
     Devuelve un diccionario con listas; "fuente_nombres" es "ign" u "osm".
     """
     s, o, n, e = bbox
@@ -137,7 +138,8 @@ def elementos(track, bbox, radio_rios_km=15, radio_cimas_km=20, radio_embalses_k
             rios[el["tags"]["name"]].append(puntos)
 
     res = {"rios": dict(rios), "sierras": [], "cimas": [], "puertos": [], "regiones": [],
-           "embalses": [], "comarcas": comarcas(bbox), "pueblos": [], "fuente_nombres": "osm"}
+           "embalses": [], "comarcas": comarcas(bbox), "pueblos": [], "aldeas": [], "cascos": [], "servicios": [],
+           "fuente_nombres": "osm"}
     ign = None
     if _en_espana(track):
         try:
@@ -185,6 +187,22 @@ def elementos(track, bbox, radio_rios_km=15, radio_cimas_km=20, radio_embalses_k
         castillo = any(np.hypot((a - c[0]) * 111, (b - c[1]) * 111 * k) < 1.5 for a, b in castillos)
         res["pueblos"].append({**_item(el, c), "tipo": el["tags"]["place"], "castillo": castillo, "km_ruta": d})
 
+    # cascos urbanos (landuse=residential): los dibujos de pueblos van sobre ellos, no en cualquier hueco
+    try:
+        res["cascos"] = cascos(track, celdas_ruta, cerca)
+        for el in _por_celdas('node["place"="hamlet"]["name"]({caja});', celdas_ruta):
+            c = _centro(el)
+            if c and cerca.km(*c) <= 3:
+                res["aldeas"].append({**_item(el, c), "km_ruta": cerca.km(*c)})
+    except RuntimeError as ex:
+        print(f"  aviso: sin cascos urbanos ({ex}); los pueblos se dibujan junto a su nombre", file=sys.stderr)
+        res["cascos"] = None
+    if servicios:
+        try:
+            res["servicios"] = servicios_cerca(track, celdas_ruta, cerca, res["cascos"] or [])
+        except RuntimeError as ex:
+            print(f"  aviso: sin servicios ({ex})", file=sys.stderr)
+
     # sierras y regiones: pocas y repartidas, basta una consulta al encuadre
     for filtro, clave in (('nwr["natural"="mountain_range"]["name"]', "sierras"),
                           ('node["place"~"^(state|province|region)$"]["name"]', "regiones")):
@@ -199,6 +217,91 @@ def elementos(track, bbox, radio_rios_km=15, radio_cimas_km=20, radio_embalses_k
         s_, o_, n_, e_ = bbox
         res["sierras"] = ngbe.combinar(res["sierras"], [x for x in ign[0] if s_ < x["lat"] < n_ and o_ < x["lon"] < e_])
     return res
+
+
+def cascos(track, celdas, cerca, radio_km=12):
+    """Zonas residenciales de OpenStreetMap a menos de radio_km del track: centro, recuadro y tamaño aproximado."""
+    salida = []
+    for el in _por_celdas('(way["landuse"="residential"]({caja});rel["landuse"="residential"]({caja}););', celdas, "out center bb qt;"):
+        b = el.get("bounds")
+        if not b:
+            continue
+        c = el.get("center") or {"lat": (b["minlat"] + b["maxlat"]) / 2, "lon": (b["minlon"] + b["maxlon"]) / 2}
+        if cerca.km(c["lat"], c["lon"]) > radio_km:
+            continue
+        k = np.cos(np.radians(c["lat"]))
+        area = (b["maxlat"] - b["minlat"]) * 111 * (b["maxlon"] - b["minlon"]) * 111 * k
+        salida.append({"lat": c["lat"], "lon": c["lon"], "s": b["minlat"], "o": b["minlon"], "n": b["maxlat"], "e": b["maxlon"],
+                       "km2": round(area, 4)})
+    return salida
+
+
+def casco_de(lat, lon, cascos, radio_km=1.5):
+    """Casco urbano de una localidad: une las zonas residenciales a menos de radio_km de su punto y devuelve
+    (lat, lon) del centro (ponderado por tamaño) y su recuadro (s, o, n, e), o None si no hay ninguna."""
+    if not cascos:
+        return None
+    k = np.cos(np.radians(lat))
+    cerca_ = [c for c in cascos if np.hypot((c["lat"] - lat) * 111, (c["lon"] - lon) * 111 * k) <= radio_km]
+    if not cerca_:
+        return None
+    pesos = np.array([max(c["km2"], 0.002) for c in cerca_])
+    clat = float(np.average([c["lat"] for c in cerca_], weights=pesos))
+    clon = float(np.average([c["lon"] for c in cerca_], weights=pesos))
+    caja = (min(c["s"] for c in cerca_), min(c["o"] for c in cerca_), max(c["n"] for c in cerca_), max(c["e"] for c in cerca_))
+    return clat, clon, caja
+
+
+# tipos de servicio: clave de icono y etiqueta para la leyenda; separación mínima a lo largo de la ruta (km)
+SERVICIOS = {"agua": ("fuente", 2.0), "gasolinera": ("gasolinera", 5.0), "tienda": ("tienda", 3.0), "bar": ("bar", 3.0)}
+
+
+def _tipo_servicio(t):
+    a, sh = t.get("amenity"), t.get("shop")
+    if a in ("drinking_water",) or t.get("man_made") == "water_tap" or (t.get("natural") == "spring" and t.get("drinking_water") == "yes"):
+        return "agua"
+    if a == "fuel":
+        return "gasolinera"
+    if sh in ("supermarket", "convenience", "bakery"):
+        return "tienda"
+    if a in ("cafe", "bar", "restaurant", "fast_food"):
+        return "bar"
+    return None
+
+
+def servicios_cerca(track, celdas, cerca, cascos_, max_km=0.4):
+    """Fuentes, bares y restaurantes, tiendas y gasolineras a menos de max_km del track. Dentro de un casco urbano
+    solo los supermercados con marca (en un pueblo, de lo demás siempre hay). Como mucho uno de cada tipo cada
+    pocos km de ruta (SERVICIOS), el más cercano al track. Cada uno: tipo, nombre, lat, lon, km (de la ruta)."""
+    filtro = ('(node["amenity"~"^(drinking_water|cafe|bar|restaurant|fast_food|fuel)$"]({caja});way["amenity"="fuel"]({caja});'
+              'node["shop"~"^(supermarket|convenience|bakery)$"]({caja});way["shop"="supermarket"]({caja});'
+              'node["man_made"="water_tap"]({caja});node["natural"="spring"]["drinking_water"="yes"]({caja}););')
+    paso = max(1, len(track.lat) // 6000)
+    lat_t, lon_t, km_t = track.lat[::paso], track.lon[::paso], np.asarray(track.km)[::paso]
+    k = np.cos(np.radians(float(lat_t.mean())))
+    cajas = np.array([[c["s"], c["o"], c["n"], c["e"]] for c in cascos_]) if cascos_ else np.zeros((0, 4))
+    cand = []
+    for el in _por_celdas(filtro, celdas):
+        c, t = _centro(el), el.get("tags", {})
+        tipo = _tipo_servicio(t) if c else None
+        if not tipo:
+            continue
+        d = np.hypot((lat_t - c[0]) * 111, (lon_t - c[1]) * 111 * k)
+        i = int(np.argmin(d))
+        if d[i] > max_km:
+            continue
+        en_casco = bool(len(cajas)) and bool(((cajas[:, 0] <= c[0]) & (c[0] <= cajas[:, 2]) & (cajas[:, 1] <= c[1]) & (c[1] <= cajas[:, 3])).any())
+        if en_casco and not (tipo == "tienda" and t.get("shop") == "supermarket" and t.get("brand")):
+            continue
+        cand.append({"tipo": tipo, "nombre": t.get("brand") or t.get("name") or "", "lat": c[0], "lon": c[1],
+                     "km": round(float(km_t[i]), 2), "dist": round(float(d[i]), 3)})
+    elegidos = []
+    for c in sorted(cand, key=lambda x: x["dist"]):
+        sep = SERVICIOS[c["tipo"]][1]
+        if not any(e["tipo"] == c["tipo"] and abs(e["km"] - c["km"]) < sep for e in elegidos):
+            elegidos.append(c)
+    print(f"  servicios junto al track: {len(elegidos)} (de {len(cand)})", file=sys.stderr)
+    return sorted(elegidos, key=lambda x: x["km"])
 
 
 def _item(el, centro):

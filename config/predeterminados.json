@@ -22,6 +22,7 @@
  "sensores_vigilar": ["fc", "potencia", "cadencia", "velocidad", "gps"],
  "horas_descarga_garmin": 3,
  "plan_mapa_base": "ign_mtn",
+ "plan_web_base": "",
  "plan_parada_min": 20,
  "plan_salidas": ["tabla", "infografia", "alballut", "personal", "tronos", "web"],
  "piezas": ["Cubiertas", "Pastillas o zapatas", "Cables de freno", "Cables de cambio", "Cassette", "Cadena"],

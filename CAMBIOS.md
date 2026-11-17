@@ -2,6 +2,15 @@
 
 Novedades de cada versión de VenB y VenB Rutas (las dos ediciones comparten número de versión).
 
+## 3.50
+
+- **Planificador, análisis con reloj:** mientras se analiza una ruta se ven el tiempo transcurrido, el paso en curso y, al consultar las altitudes del terreno, el lote y lo que queda (un BRM 1000 tarda unos 5 minutos; el servicio público de altitudes no admite más de una consulta por segundo).
+- **Ruta para una web:** con la página interactiva generada, un ZIP para publicarla en tu web o en la de tu club: una carpeta con `index.html` (lo lleva todo dentro) y un LEEME con los pasos. **Como ficha de ruta**, con los tiempos desde la salida («+2:15») y sin fecha, cierres ni márgenes; o **con horario**. VenB muestra el código para insertarla en una página (en WordPress, bloque «HTML personalizado»); con la dirección de tu web en **Ajustes > Planificador**, sale ya completo. El manual explica cómo publicarla.
+- **Mapas dibujados más fieles:** cada pueblo se dibuja sobre su casco urbano (zonas residenciales de OpenStreetMap), no en un hueco cualquiera junto al nombre, y un pueblo sin casco cerca no se dibuja; las aldeas y cortijadas junto a la ruta llevan unas casitas; los árboles sueltos van solo donde OpenStreetMap tiene bosque.
+- **Servicios junto al track:** casilla **Marcar servicios junto al track** al generar. Los mapas Al-Ballut y personal y las infografías con mapa del IGN señalan fuentes 🚰, bares y restaurantes ☕, tiendas 🛒 y gasolineras ⛽ a menos de 400 m del track, como mucho uno de cada tipo cada pocos km; dentro de los pueblos, solo los supermercados de cadena. Con su leyenda al pie.
+- Corregido: si VenB se cerraba y se volvía a abrir durante una generación larga (o había otra VenB abierta sobre los mismos datos), la página decía «El proceso se interrumpió» aunque seguía trabajando, y al pulsar Generar respondía «Este plan ya se está procesando» sin mostrar nada. Ahora el proceso deja una señal de vida cada pocos segundos: mientras siga trabajando, la página lo sabe y muestra el reloj y el paso en curso.
+- Incluye también lo de la [3.47](https://github.com/jj99211/VenB/releases/tag/v3.47): explicación y botón para la velocidad calculada desde la llegada prevista de las etapas, y el calendario que se cerraba al cambiar de mes.
+
 ## 3.47
 
 - **Planificador, etapas:** con una llegada prevista, la velocidad media en movimiento se calcula para llegar a esa hora y no se puede editar. Ahora la página lo explica junto a «Llegada prevista» y junto al campo de velocidad, que se ve atenuado, y el botón **Quitar la llegada prevista y escribir la velocidad** lo deja editable de nuevo.

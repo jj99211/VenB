@@ -9,14 +9,16 @@
 <section class="panel" id="progreso" data-estado="{{ url_for('plan_estado', pid=e.id) }}">
   {% if e.fase == 'analizando' %}
   <h2>Analizando la ruta…</h2>
-  <p class="suave">Se leen la hoja y el track y se consultan las altitudes del terreno. Con una ruta nueva puede tardar uno o dos minutos; la página se actualiza sola.</p>
+  <p class="aviso-espera" role="status" data-inicio="{{ e.inicio_analizar or e.creado or '' }}"><span class="girando" aria-hidden="true">⟳</span> <span id="an-tiempo" class="cifra-tiempo">0:00</span> <span id="an-paso" class="suave"></span></p>
+  <p class="suave">Se leen la hoja y el track y se consultan las altitudes del terreno por Internet, en lotes de unos 5 km con una pausa de un segundo entre lotes (el servicio público no admite más): una ruta de 200 km tarda menos de un minuto, y un BRM 1000, unos 5 minutos. Una ruta ya analizada sale al momento. Puedes seguir usando VenB; esta página se actualiza sola.</p>
   {% else %}
   <h2>No se ha podido analizar la ruta</h2>
   <div class="aviso alto">{{ e.error }}</div>
   <p>Si el GPX no trae altitudes, VenB las toma del modelo del terreno por Internet: comprueba la conexión. Si el problema es la hoja de ruta (formato desconocido o PDF escaneado, sin texto), prepara una <b>hoja de cálculo sencilla</b> con los puntos que te interesan y vuelve a <a href="{{ url_for('planificador') }}">subir la ruta</a> con ella.</p>
   {% include '_hoja_sencilla.html' %}
   {% endif %}
-  <pre class="registro">{{ e.registro|join('\n') }}</pre>
+  {% if e.fase == 'analizando' %}<details><summary>Ver el detalle del proceso</summary><pre class="registro">{{ e.registro|join('\n') }}</pre></details>
+  {% else %}<pre class="registro">{{ e.registro|join('\n') }}</pre>{% endif %}
 </section>
 {% else %}
 
@@ -107,7 +109,7 @@
 
 </section>
 
-<section class="panel">
+<section class="panel" id="documentos">
   <h2>Documentos</h2>
   <div class="explicacion">
     <p>Marca lo que quieres y pulsa <b>Generar</b>. Los documentos aparecen debajo, en «Ficheros generados», cada uno con sus formatos para abrirlo o descargarlo por separado, o todos juntos en un ZIP. Siempre se genera además la <b>ruta con waypoints</b> (GPX).</p>
@@ -129,6 +131,7 @@
     <label>Colores del mapa personal<select id="paleta">{% for x in paletas %}<option>{{ x }}</option>{% endfor %}</select></label>
     <label class="casilla"><input type="checkbox" id="auto-lugares" checked> Rotular también otras localidades bien repartidas</label>
     <label class="casilla"><input type="checkbox" id="track-pendiente"> Colorear el track de la infografía según la pendiente</label>
+    <label class="casilla"><input type="checkbox" id="servicios" checked> Marcar servicios junto al track (fuentes, bares, tiendas y gasolineras de OpenStreetMap; en la infografía, con el mapa del IGN)</label>
   </div>
   <p><button type="button" id="generar">Generar</button> <span class="suave" id="aviso-generar"></span></p>
   <div id="progreso-generar" data-inicio="{{ e.inicio_generar or '' }}" {% if e.fase != 'generando' %}hidden{% endif %}>
@@ -152,6 +155,15 @@
         {% if fmt != 'Excel' %}<a href="{{ url_for('plan_fichero', pid=e.id, nombre=f) }}" target="_blank" rel="noopener">Abrir</a> · {% endif %}<a href="{{ url_for('plan_fichero', pid=e.id, nombre=f, descargar=1) }}">Descargar</a></span>{% endfor %}</p>{% endif %}
     </article>{% endfor %}
   </div>{% endif %}{% endfor %}
+  {% if 'ruta_interactiva.html' in ficheros %}
+  <article class="documento documento-web" id="web">
+    <h3>Ruta para una web</h3>
+    <p class="suave">La página interactiva, lista para subirla a tu web (un blog, la web de un club…): una carpeta con <code>index.html</code>, que lo lleva todo dentro, y un LEEME con los pasos. Como <b>ficha de ruta</b>, los tiempos se cuentan desde la salida («+2:15»), sin fecha, cierres ni márgenes; <b>con horario</b>, igual que la página interactiva.</p>
+    <p><a class="boton" href="{{ url_for('plan_web', pid=e.id) }}">Descargar como ficha de ruta (ZIP)</a> <a href="{{ url_for('plan_web', pid=e.id, modo='horario') }}">Descargar con horario</a></p>
+    <p class="suave" id="web-codigo-ayuda">Código para insertarla en una página, una vez subida la carpeta <code>{{ carpeta_web }}/</code>{% if not aj.plan_web_base %} (pon la dirección de tu web en <a href="{{ url_for('ajustes') }}">Ajustes</a> para que salga completa){% endif %}:</p>
+    <textarea readonly rows="3" aria-labelledby="web-codigo-ayuda" onclick="this.select()">{{ iframe }}</textarea>
+  </article>
+  {% endif %}
   {% endif %}
 </section>
 

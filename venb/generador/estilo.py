@@ -39,6 +39,18 @@ NOMBRES_TIPO = {"salida": "salida", "cafe": "café", "desayuno": "desayuno", "co
                 "dormir": "dormir", "agua": "agua", "cruce": "cruce", "peligro": "peligro",
                 "interes": "punto de interés", "poblacion": "población", "panoramica": "panorámica", "puerto": "puerto", "llegada": "llegada", "otra": "otra"}
 
+# servicios junto al track (mapas e infografías con mapa del IGN): icono y nombre para la leyenda
+ICONOS_SERVICIO = {"agua": "\U0001F6B0", "bar": "\u2615", "tienda": "\U0001F6D2", "gasolinera": "\u26FD"}
+NOMBRES_SERVICIO = {"agua": "fuente", "bar": "bar", "tienda": "tienda", "gasolinera": "gasolinera"}
+
+
+def leyenda_servicios(servicios):
+    """«Servicios: 🚰 fuente · ☕ bar…» con los tipos presentes, o cadena vacía."""
+    tipos = {s["tipo"] for s in servicios or []}
+    partes = [f"{ICONOS_SERVICIO[k]} {n}" for k, n in NOMBRES_SERVICIO.items() if k in tipos]
+    return "Junto al track: " + "  ".join(partes) if partes else ""
+
+
 # un color por día de ruta (cajas, track y bandas del perfil)
 COLORES_DIA = ["#d62728", "#2c5aa0", "#16855f", "#b0124f", "#c25a00", "#5b3b8c", "#00838f"]
 

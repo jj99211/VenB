@@ -29,6 +29,7 @@ PLANTILLA = r"""<!doctype html>
   .datos { display:flex; flex-wrap:wrap; gap:6px 18px; margin-top:6px; color:#333; }
   .datos b { font-variant-numeric:tabular-nums; }
   .controles { display:flex; flex-wrap:wrap; gap:10px 18px; align-items:end; margin-top:10px; }
+  .controles label[hidden] { display:none; }
   .controles label { display:flex; flex-direction:column; font-size:20px; color:var(--gris); gap:2px; }
   .controles input, .controles select { font:inherit; padding:4px 6px; border:1px solid #ccc; border-radius:4px; }
   .controles input[type=number] { width:120px; }
@@ -83,6 +84,8 @@ PLANTILLA = r"""<!doctype html>
 <footer>Mapa: © OpenStreetMap contributors · OpenTopoMap (CC-BY-SA) · Altitudes: EU-DEM 25 m (OpenTopoData).
 Velocidad según la pendiente media del tramo (ascenso/distancia), con pérdida por fatiga a lo largo de la ruta.</footer>
 <script>
+// FICHA = true en la copia para publicar en una web (Planificador, «Ruta para una web»): tiempos desde la salida, sin fecha, cierres ni márgenes
+const FICHA = false;
 const D = __DATOS__;
 const COLORES = __COLORES__;
 const ICONOS = __ICONOS__;
@@ -99,6 +102,8 @@ function velocidadBase(p) {
 }
 const fatiga = f => 1 - Math.min(Math.floor(f / (V.fatiga_cada || 1) + 1e-6) * V.fatiga_pct, V.fatiga_max_pct) / 100;
 const hhmm = d => d.toTimeString().slice(0,5);
+const desde = d => "+" + dur((d - estado.salida) / 60e3);                 // tiempo desde la salida (ficha)
+const momento = d => FICHA ? desde(d) : `${d.getDate()} · ${hhmm(d)}`;
 function dur(min, signo) {
   const neg = min < 0; min = Math.round(Math.abs(min));
   return (neg ? "−" : signo ? "+" : "") + Math.floor(min/60) + ":" + String(min%60).padStart(2,"0");
@@ -160,10 +165,12 @@ function horaEnKm(res, km) {
 
 function popup(r) {
   const tit = icono(r) + esc((r.control ? r.control + " - " : "") + r.nombre.toUpperCase());
+  const linea = FICHA ? `${desde(r.llegada)} h${r.parada ? ` (+${r.parada} min)` : ""}`
+    : `${hhmm(r.llegada)} h${r.parada ? ` (+${r.parada} min)` : ""} &lt; ${hhmm(r.cierre)} h<br>
+    margen ${dur(r.margen, true)} h`;
   return `<div class="caja" style="background:${color(r.dia)}"><b>${tit}</b><br>
     km ${r.km.toFixed(0)} (+${r.asc_total.toFixed(0)} m) · ${r.alt.toFixed(0)} m<br>
-    ${hhmm(r.llegada)} h${r.parada ? ` (+${r.parada} min)` : ""} &lt; ${hhmm(r.cierre)} h<br>
-    margen ${dur(r.margen, true)} h</div>`;
+    ${linea}</div>`;
 }
 
 function dibujarMapa(res) {
@@ -186,7 +193,7 @@ function dibujarMapa(res) {
         .bindPopup(popup(r)).addTo(grupoPuntos);
       continue;
     }
-    L.circleMarker([r.lat, r.lon], { radius: 11, color: r.margen < 0 ? "#c62828" : "#111", weight: 4, fillColor: "#fff", fillOpacity: 1 })
+    L.circleMarker([r.lat, r.lon], { radius: 11, color: !FICHA && r.margen < 0 ? "#c62828" : "#111", weight: 4, fillColor: "#fff", fillOpacity: 1 })
       .bindPopup(popup(r)).bindTooltip(esc((r.control || "") + " " + r.nombre), { direction: "right" }).addTo(grupoPuntos);
   }
 }
@@ -220,7 +227,7 @@ function dibujarPerfil(res) {
   for (let k = 0; k <= total; k += total > 600 ? 100 : 25)
     s += `<text x="${X(k)}" y="${H-8}" font-size="19" text-anchor="middle" fill="#666">${k}</text>`;
   for (const r of res) if (r.control) {
-    s += `<line x1="${X(r.km)}" x2="${X(r.km)}" y1="${Y(r.alt)}" y2="${m.t}" stroke="${r.margen < 0 ? "#c62828" : "#555"}" stroke-width="2.5"/>`
+    s += `<line x1="${X(r.km)}" x2="${X(r.km)}" y1="${Y(r.alt)}" y2="${m.t}" stroke="${!FICHA && r.margen < 0 ? "#c62828" : "#555"}" stroke-width="2.5"/>`
        + `<text x="${X(r.km)+4}" y="${m.t-6}" font-size="19" font-weight="700" fill="#333">${r.control}</text>`;
   }
   svg.innerHTML = s;
@@ -228,7 +235,8 @@ function dibujarPerfil(res) {
 
 // ---------- tabla
 function dibujarTabla(res) {
-  const cab = ["", "Lugar", "km", "Tramo", "Alt.", "Asc. tramo", "Asc. total", "% medio", "Vel.", "Parada (min)", "Llegada", "Salida", "Cierre", "Margen", "Apertura"];
+  const cab = ["", "Lugar", "km", "Tramo", "Alt.", "Asc. tramo", "Asc. total", "% medio", "Vel.", "Parada (min)", "Llegada", "Salida"]
+    .concat(FICHA ? [] : ["Cierre", "Margen", "Apertura"]);
   let s = "<thead><tr>" + cab.map(c => `<th>${c}</th>`).join("") + "</tr></thead><tbody>";
   res.forEach((r, i) => {
     const valor = estado.paradas[i] === null ? "" : estado.paradas[i];
@@ -239,10 +247,10 @@ function dibujarTabla(res) {
       <td>${r.asc_tramo.toFixed(0)}</td><td>${r.asc_total.toFixed(0)}</td><td>${(r.pendiente*100).toFixed(1)}%</td>
       <td>${r.vel ? r.vel.toFixed(1) : ""}</td>
       <td>${i ? `<input type="number" min="0" step="5" data-i="${i}" value="${valor}" placeholder="${marcador}">` : ""}</td>
-      <td>${r.llegada.getDate()} · ${hhmm(r.llegada)}</td><td>${r.salida.getDate()} · ${hhmm(r.salida)}</td>
+      <td>${momento(r.llegada)}</td><td>${momento(r.salida)}</td>` + (FICHA ? "</tr>" : `
       <td>${r.cierre.getDate()} · ${hhmm(r.cierre)}</td>
       <td class="${r.margen < 0 ? "neg" : "pos"}">${i ? dur(r.margen, true) : ""}</td>
-      <td class="${r.antes ? "neg" : ""}">${r.apertura ? hhmm(r.apertura) + (r.antes ? " ⚠" : "") : ""}</td></tr>`;
+      <td class="${r.antes ? "neg" : ""}">${r.apertura ? hhmm(r.apertura) + (r.antes ? " ⚠" : "") : ""}</td></tr>`);
   });
   document.getElementById("tabla").innerHTML = s + "</tbody>";
   document.querySelectorAll("#tabla input").forEach(inp => inp.onchange = e => {
@@ -255,14 +263,21 @@ function dibujarTabla(res) {
 function dibujarResumen(res) {
   const fin = res[res.length - 1];
   const totalMin = (fin.llegada - estado.salida) / 60e3;
-  const peor = res.slice(1).filter(r => r.control).reduce((a, b) => b.margen < a.margen ? b : a);
+  const peor = res.slice(1).filter(r => r.control).reduce((a, b) => b.margen < a.margen ? b : a, fin);
+  const dias = [...new Set(res.map(r => r.dia))];
+  if (FICHA) {
+    document.getElementById("resumen").innerHTML =
+      `<span><b>${D.total_km.toFixed(0)}</b> km</span><span><b>+${Math.round(D.total_asc).toLocaleString("es")}</b> m</span>
+       <span>tiempo previsto <b>${dur(totalMin)}</b> h</span>` + (dias.length > 1 ? `<span><b>${dias.length}</b> días</span>` : "");
+    document.getElementById("dias").innerHTML = dias.length > 1 ? dias.map(d => `<span class="chip" style="background:${color(d)}">Día ${d + 1}</span>`).join("") : "";
+    return;
+  }
   document.getElementById("resumen").innerHTML =
     `<span><b>${D.total_km.toFixed(0)}</b> km</span><span><b>+${Math.round(D.total_asc).toLocaleString("es")}</b> m</span>
      <span>llegada <b>${fin.llegada.getDate()}/${fin.llegada.getMonth()+1} ${hhmm(fin.llegada)}</b></span>
      <span>tiempo previsto <b>${dur(totalMin)}</b> h</span>
      <span>margen en meta <b class="${fin.margen < 0 ? "neg" : "pos"}">${dur(fin.margen, true)}</b> h</span>
      <span>margen mínimo <b class="${peor.margen < 0 ? "neg" : "pos"}">${dur(peor.margen, true)}</b> h (${esc(peor.control)} ${esc(peor.nombre)})</span>`;
-  const dias = [...new Set(res.map(r => r.dia))];
   document.getElementById("dias").innerHTML = dias.map(d => {
     const f = new Date(estado.salida.getFullYear(), estado.salida.getMonth(), estado.salida.getDate() + d);
     return `<span class="chip" style="background:${color(d)}">${f.getDate()} ${MESES_L[f.getMonth()]}</span>`;
@@ -281,6 +296,10 @@ inSalida.onchange = () => { if (inSalida.value) { estado.salida = new Date(inSal
 inLimite.onchange = () => { estado.limite = +inLimite.value || estado.limite; todo(); };
 inDefecto.onchange = () => { estado.defecto = Math.max(0, +inDefecto.value || 0); todo(); };
 window.addEventListener("resize", () => dibujarPerfil(calcular()));
+if (FICHA) {   // en la ficha no hay fecha ni tiempo límite: solo las paradas
+  inSalida.closest("label").hidden = true; inLimite.closest("label").hidden = true;
+  document.querySelector("footer").insertAdjacentHTML("beforeend", "<br>Tiempos en horas:minutos desde la salida, con las paradas previstas; cambia las paradas en la tabla.");
+}
 // GPX hecho aquí mismo (la página se comparte suelta, sin servidor): track y puntos como waypoints
 document.getElementById("descargar-gpx").onclick = () => {
   const a = document.createElement("a");

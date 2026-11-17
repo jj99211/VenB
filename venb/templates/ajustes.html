@@ -61,6 +61,9 @@
     <div class="campo"><label for="c-base">Mapa de las infografías</label>
       <span class="control"><select id="c-base" name="plan_mapa_base">{% for k, t in estilos_infografia.items() %}<option value="{{ k }}" {% if a.plan_mapa_base == k %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></span></div>
     {{ numero('plan_parada_min', 'Parada en cada control', min=0, max=600, unidad='min') }}
+    <div class="campo"><label for="c-web">Dirección para publicar rutas en una web</label>
+      <span class="control"><input id="c-web" name="plan_web_base" type="url" size="40" placeholder="https://tu-web/rutas/" value="{{ a.plan_web_base or '' }}"></span>
+      <span class="ayuda">Opcional. Carpeta de tu web donde subes las rutas exportadas («Ruta para una web» en cada plan): así el código para insertarlas sale con la dirección final.</span></div>
     <div class="campo"><span class="etiqueta-campo">Documentos marcados al generar</span>
       <span class="control casillas">{% for k, t in salidas_plan.items() %}<label class="casilla"><input type="checkbox" name="plan_salidas" value="{{ k }}" {% if k in a.plan_salidas %}checked{% endif %}> {{ t }}</label>{% endfor %}</span>
       <span class="ayuda">Valores con los que empieza cada ruta nueva; en cada ruta se pueden cambiar.</span></div>

@@ -799,27 +799,51 @@ def _hueco_cerca(lz, x, y, ancho, alto, dist, track_max=0.0):
     return None
 
 
-def _pueblos_ruta(lz, lugares, F, rng, castillos):
-    """Dibujo de pueblo junto a cada localidad rotulada de la ruta (castillo si OSM tiene uno al lado)."""
+def _sobre_casco(lz, cx, cy, tam):
+    """Base (x, y) para un dibujo de pueblo de tamaño tam lo más cerca posible del centro del casco urbano (cx, cy),
+    sin tapar el track, rótulos ni agua; None si alrededor del casco no hay sitio."""
+    for f in (0, 0.35, 0.7, 1.05, 1.4):
+        for ang in (np.radians([90, 270, 0, 180, 45, 135, 225, 315]) if f else [0.0]):
+            x, y = cx + np.cos(ang) * tam * f, cy + np.sin(ang) * tam * f - tam / 2
+            r = (x - tam * 0.62, y - 2, x + tam * 0.62, y + tam)
+            if lz.libre(r, margen=3, track_max=0.0) and not lz.en_agua(x, y + tam / 2, tam / 3):
+                return x, y
+    return None
+
+
+def _pueblos_ruta(lz, lugares, F, rng, castillos, cascos=None):
+    """Dibujo de pueblo en cada localidad rotulada de la ruta, sobre su casco urbano (OSM, landuse=residential) si lo
+    hay cerca; si no, en un hueco junto al nombre. Castillo si OSM tiene uno al lado."""
+    from .osm import casco_de
     tam = 46 * F ** 0.6
     for k, l in enumerate(lugares):
         if not (k == 0 or l.get("rotulado") or l["control"]) or not l.get("localidad", True) or DESCRIPTIVOS.search(_norm(l["nombre"])):
             continue
         x, y = lz.px(l["lon"], l["lat"])
-        hueco = _hueco_cerca(lz, x, y, tam * 1.3, tam, 14 * F ** 0.6 + tam * 0.55)
+        casco = casco_de(l["lat"], l["lon"], cascos)
+        hueco = _sobre_casco(lz, *lz.px(casco[1], casco[0]), tam) if casco else None
+        hueco = hueco or _hueco_cerca(lz, x, y, tam * 1.3, tam, 14 * F ** 0.6 + tam * 0.55)
         if hueco:
             castillo = any(np.hypot(*(np.array(lz.px(c[1], c[0])) - (x, y))) < 40 * F ** 0.5 for c in castillos)
             lz.ocupado.append(_dibujo_pueblo(lz, *hueco, tam, castillo, rng))
 
 
-def _pueblos_cercanos(lz, pueblos, lugares, maximo, F, rng):
-    """Pueblos de OpenStreetMap cerca de la ruta que no son de la hoja: dibujo pequeño y nombre si cabe."""
+def _pueblos_cercanos(lz, pueblos, lugares, maximo, F, rng, cascos=None):
+    """Pueblos de OpenStreetMap cerca de la ruta que no son de la hoja: dibujo pequeño, sobre su casco urbano, y
+    nombre si cabe. Con los cascos descargados (lista), un pueblo sin casco cerca no se dibuja: su nodo puede ser solo
+    la cabecera administrativa de un término sin núcleo. Sin ellos (None, fallo de la consulta), en su nodo."""
+    from .osm import casco_de
     if not pueblos or maximo <= 0:
         return
     tam = 36 * F ** 0.6
     ya = [np.array(lz.px(l["lon"], l["lat"])) for l in lugares]
     cand = []
     for p in sorted(pueblos, key=lambda p: (p["tipo"] != "town", not p["castillo"], p["km_ruta"])):
+        if cascos is not None:
+            casco = casco_de(p["lat"], p["lon"], cascos, radio_km=1.0)
+            if not casco:
+                continue
+            p = {**p, "lat": casco[0], "lon": casco[1]}
         xy = np.array(lz.px(p["lon"], p["lat"]))
         if not (0.04 * lz.W < xy[0] < 0.96 * lz.W and 0.04 * lz.H < xy[1] < 0.96 * lz.H):
             continue
@@ -848,6 +872,79 @@ def _pueblos_cercanos(lz, pueblos, lugares, maximo, F, rng):
                 lz.ax.text(x, ty, texto, ha="center", va=va, zorder=12, path_effects=lz.halo(3), **kw)
                 lz.ocupado.append(rt)
                 break
+
+
+def _aldeas(lz, aldeas, lugares, maximo, F, rng):
+    """Aldeas y cortijadas (place=hamlet) cerca del track: dos o tres casitas, sin torre ni nombre."""
+    if not aldeas or maximo <= 0:
+        return
+    tam = 24 * F ** 0.6
+    ya = [np.array(lz.px(l["lon"], l["lat"])) for l in lugares]
+    puestos, minimo = [], 0.035 * min(lz.W, lz.H)
+    for a in sorted(aldeas, key=lambda a: a["km_ruta"]):
+        if len(puestos) >= maximo:
+            break
+        xy = np.array(lz.px(a["lon"], a["lat"]))
+        if any(np.hypot(*(xy - q)) < minimo for q in puestos + ya):
+            continue
+        x, y = xy
+        r = (x - tam * 0.8, y - tam * 0.3, x + tam * 0.8, y + tam * 0.6)
+        if not lz.libre(r, margen=2, track_max=0.0) or lz.en_agua(x, y, tam / 2):
+            continue
+        for dx, dy, esc in ((-0.45, 0.05, 0.85), (0.4, 0.0, 0.75), (0.0, -0.25, 0.95))[:int(rng.choice([2, 3]))]:
+            w = tam * 0.5 * esc
+            _casa(lz, x + dx * tam, y + dy * tam, w, w * 0.7, 8.4 + 0.01 * dy)
+        lz.ocupado.append(r)
+        puestos.append(xy)
+
+
+def _mascara_bosque(lz):
+    """Bosques (0 a 1) a partir del verde de los bosques en las teselas OSM estándar, a 1/3 de la resolución del
+    mapa (fila 0 = sur). Se calcula una vez por mapa; None si no hay teselas."""
+    if getattr(lz, "_bosque", False) is not False:
+        return lz._bosque
+    lz._bosque = None
+    try:
+        xmin, ymin, xmax, ymax = lz.caja
+        z = zoom_para(xmin, xmax, lz.W / 2.5, "osm")
+        img = mapa_base(xmin, ymin, xmax, ymax, z, "osm").resize((lz.W // 3, lz.H // 3))
+        a = np.asarray(img).astype(int)
+        m = (np.abs(a - [173, 209, 158]).sum(axis=2) < 22).astype(np.uint8) * 255
+        m = Image.fromarray(m).filter(ImageFilter.MaxFilter(5)).filter(ImageFilter.MinFilter(5))   # cierra huecos de rótulos
+        m = m.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.MaxFilter(3))                    # quita motas
+        lz._bosque = np.asarray(m.filter(ImageFilter.GaussianBlur(1.5)))[::-1] / 255.0
+    except Exception as e:
+        print(f"  aviso: sin bosques de OpenStreetMap ({e})")
+    return lz._bosque
+
+
+def _servicios(lz, servicios, F, maximo=80):
+    """Iconos de fuentes, bares, tiendas y gasolineras junto al track, sin tapar el track ni los rótulos."""
+    s = 15 * F ** 0.55                 # tamaño del icono (pt)
+    lado = s * PT * 1.25               # caja en píxeles
+    puestos = 0
+    for sv in servicios or []:
+        if puestos >= maximo:
+            break
+        x, y = lz.px(sv["lon"], sv["lat"])
+        sitio = None
+        for f in (0.9, 1.4, 2.0):
+            for ang in np.radians([90, 270, 0, 180, 45, 135, 225, 315]):
+                cx, cy = x + np.cos(ang) * lado * f, y + np.sin(ang) * lado * f
+                r = (cx - lado / 2, cy - lado / 2, cx + lado / 2, cy + lado / 2)
+                if lz.libre(r, margen=1, track_max=0.0):
+                    sitio = (cx, cy, r)
+                    break
+            if sitio:
+                break
+        if not sitio:
+            continue
+        cx, cy, r = sitio
+        lz.ax.add_patch(Circle((cx, cy), lado * 0.5, fc="white", ec=lz.c["tinta"], lw=1.1 * F ** 0.4, alpha=0.92, zorder=10.6))
+        lz.ax.text(cx, cy, E.ICONOS_SERVICIO[sv["tipo"]], fontproperties=E.EMOJI, fontsize=s * 0.72, ha="center",
+                   va="center", color=lz.c["tinta"], zorder=10.7)
+        lz.ocupado.append(r)
+        puestos += 1
 
 
 def _arbol(lz, x, y, s, rng, conifera=False):
@@ -948,13 +1045,24 @@ def _arboles_ribera(lz, cauces, rng, maximo, F):
 
 
 def _arboles_sueltos(lz, rng, grupos, F):
-    """Bosquecillos de 1 a 4 árboles repartidos por el mapa, lejos del track, el agua y los rótulos."""
+    """Bosquecillos de 1 a 4 árboles donde OpenStreetMap tiene bosque, lejos del track, el agua y los rótulos.
+    Sin datos de bosque, ninguno: mejor sin árboles que con árboles donde no los hay."""
+    m = _mascara_bosque(lz)
+    if m is None:
+        return
+    filas, cols = np.nonzero(m > 0.6)
+    if not len(filas):
+        return
+    h, w = m.shape
     s = 25 * F ** 0.55
     puestos = 0
     for _ in range(grupos * 25):
         if puestos >= grupos:
             break
-        x, y = rng.uniform(0.04, 0.96) * lz.W, rng.uniform(0.05, 0.92) * lz.H
+        j = int(rng.integers(len(filas)))
+        x, y = (cols[j] + rng.random()) / w * lz.W, (filas[j] + rng.random()) / h * lz.H
+        if not (0.04 * lz.W < x < 0.96 * lz.W and 0.05 * lz.H < y < 0.92 * lz.H):
+            continue
         conifera = rng.random() < 0.35
         n = int(rng.choice([1, 2, 3, 3, 4]))
         sitios = [(x + rng.uniform(-1, 1) * s * 0.9 * (n > 1), y + rng.uniform(-0.4, 0.4) * s * (n > 1)) for _ in range(n)]
@@ -1373,15 +1481,8 @@ def _terreno_tronos(lz, rng):
 def _bosques_tronos(lz, rng):
     """Bosques con textura de copas, a partir del verde de los bosques en las teselas OSM estándar."""
     from scipy import ndimage
-    xmin, ymin, xmax, ymax = lz.caja
-    z = zoom_para(xmin, xmax, lz.W / 2.5, "osm")
-    img = mapa_base(xmin, ymin, xmax, ymax, z, "osm").resize((lz.W // 3, lz.H // 3))
-    a = np.asarray(img).astype(int)
-    m = (np.abs(a - [173, 209, 158]).sum(axis=2) < 22).astype(np.uint8) * 255
-    m = Image.fromarray(m).filter(ImageFilter.MaxFilter(5)).filter(ImageFilter.MinFilter(5))   # cierra huecos de rótulos
-    m = m.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.MaxFilter(3))                    # quita motas
-    m = np.asarray(m.filter(ImageFilter.GaussianBlur(1.5)))[::-1] / 255.0
-    if m.max() < 0.5:
+    m = _mascara_bosque(lz)
+    if m is None or m.max() < 0.5:
         return
     h, w = m.shape
     # copas: manchas de ruido a dos escalas, verde oscuro con luces
@@ -1519,7 +1620,7 @@ def _generar_estilo(proyecto, plan, osm, estilo):
                 break
     pueblos = osm.get("pueblos", [])
     if cfg.get("pueblos", True):
-        _pueblos_ruta(lz, lugares, F, rng, [(p["lat"], p["lon"]) for p in pueblos if p["castillo"]])
+        _pueblos_ruta(lz, lugares, F, rng, [(p["lat"], p["lon"]) for p in pueblos if p["castillo"]], osm.get("cascos"))
 
     # 4. geografía (el relieve, al final: rellena los huecos que dejan los rótulos)
     _sierras(lz, osm.get("sierras", []), cfg.get("sierras_max", 7 if tronos else 10), TX, TY)
@@ -1530,7 +1631,11 @@ def _generar_estilo(proyecto, plan, osm, estilo):
     _cumbres(lz, osm.get("cimas", []), cfg.get("cumbres_max", 6 if personal else 3))
     _puertos(lz, osm.get("puertos", []))
     if cfg.get("pueblos", True):
-        _pueblos_cercanos(lz, pueblos, lugares, cfg.get("pueblos_max", 12), F, rng)
+        _pueblos_cercanos(lz, pueblos, lugares, cfg.get("pueblos_max", 12), F, rng, osm.get("cascos"))
+        _aldeas(lz, osm.get("aldeas", []), lugares, cfg.get("aldeas_max", 20), F, rng)
+    servicios = osm.get("servicios", []) if cfg.get("servicios", True) and not tronos else []
+    if servicios:
+        _servicios(lz, servicios, F, cfg.get("servicios_max", 80))
     if personal and cfg.get("puentes", True):
         _puentes(lz, TX, TY, cauces, F, cfg.get("grosor_track", 5) * F ** 0.5 * PT)
     if cfg.get("arboles", True):
@@ -1577,7 +1682,8 @@ def _generar_estilo(proyecto, plan, osm, estilo):
         fuentes += " · Nombres: NGBE, © IGN España (CC BY 4.0)"
     if personal:
         fuentes += " · Wikidata · Relieve: Terrarium (Mapzen/AWS)"
-    lz.fig.text(0.995, 0.004, fuentes, fontsize=8 * F, family=E.SANS, color="#8a8270",
+    ley = E.leyenda_servicios(servicios)
+    lz.fig.text(0.995, 0.004, (ley + "  ·  " if ley else "") + fuentes, fontsize=8 * F, family=[E.SANS, "Noto Emoji"], color="#8a8270",
                 ha="right", va="bottom")
     nombre = proyecto.salida_dir / {"alballut": "mapa_ilustrado", "personal": "mapa_personal"}.get(estilo, f"mapa_{estilo}")
     lz.fig.savefig(f"{nombre}.png", dpi=100, facecolor=lz.c["papel"])

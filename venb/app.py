@@ -862,13 +862,13 @@ AJUSTES_NUM = (('mes_inicio_temporada', 1, 12), ('cierre_dia_inicio', 15, 28), (
                ('km_enlace_garmin', 0, 10000), ('km_aviso_prueba', 50, 2000), ('dias_aviso_prueba', 1, 3650), ('horas_descarga_garmin', 1, 48),
                ('plan_parada_min', 0, 600))
 # Lo que «Valores por defecto» devuelve a predeterminados.json (no el calendario, el peso, Garmin ni las bicis)
-AJUSTES_DEFECTO = [k for k, _, _ in AJUSTES_NUM if k != 'mes_inicio_temporada'] + ['sueno_referencia_h', 'sensores_vigilar', 'plan_mapa_base',
+AJUSTES_DEFECTO = [k for k, _, _ in AJUSTES_NUM if k != 'mes_inicio_temporada'] + ['sueno_referencia_h', 'sensores_vigilar', 'plan_mapa_base', 'plan_web_base',
                                                                                 'plan_salidas', 'calendario_defecto_ver']
 
 
 @app.post('/ajustes/defecto')
 def ajustes_defecto():
-    R.quitar_ajustes(['plan_parada_min', 'plan_mapa_base', 'plan_salidas'] if RUTAS else AJUSTES_DEFECTO)
+    R.quitar_ajustes(['plan_parada_min', 'plan_mapa_base', 'plan_salidas', 'plan_web_base'] if RUTAS else AJUSTES_DEFECTO)
     return redirect(url_for('ajustes'))
 
 
@@ -928,6 +928,11 @@ def ajustes():
         if base not in PL.ESTILOS_INFOGRAFIA:
             abort(400)
         cambios['plan_mapa_base'] = base
+        if 'plan_web_base' in request.form:
+            web = request.form['plan_web_base'].strip()
+            if web and not re.match(r'https?://[^\s"<>]+$', web):
+                abort(400, 'La dirección de publicación debe empezar por https:// (o http://).')
+            cambios['plan_web_base'] = web
         if not RUTAS:     # VenB Rutas solo tiene los apartados del Planificador (los ajustes se comparten con VenB)
             cambios['sensores_vigilar'] = [k for k in request.form.getlist('sensores_vigilar') if k in D.SENSORES]
             rod = request.form.get('bici_rodillo', '')
@@ -1277,7 +1282,7 @@ def plan_ver(pid):
     e = _plan(pid)
     PL.asegurar_gpx(pid)
     return render_template('plan.html', e=e, a=PL.analisis(pid), p=PL.parametros(pid), ficheros=PL.ficheros(pid), documentos=PL.documentos(pid), reciente=PL.velocidad_reciente(),
-                           reglas=PL.reglas_rm(), modalidades=PL.MODALIDADES, salidas=PL.SALIDAS, tipos=PL.TIPOS_PARADA, paletas=PL.PALETAS, estilos=PL.ESTILOS_INFOGRAFIA, aj=R.ajustes(),
+                           iframe=PL.codigo_iframe(pid), carpeta_web=PL.carpeta_web(pid), reglas=PL.reglas_rm(), modalidades=PL.MODALIDADES, salidas=PL.SALIDAS, tipos=PL.TIPOS_PARADA, paletas=PL.PALETAS, estilos=PL.ESTILOS_INFOGRAFIA, aj=R.ajustes(),
                            clubes=CL.lista() if RUTAS else [])
 
 
@@ -1293,7 +1298,7 @@ def plan_trazado(pid):
 @app.route('/planificador/<pid>/estado.json')
 def plan_estado(pid):
     e = _plan(pid)
-    return jsonify({k: e.get(k) for k in ('fase', 'error', 'registro', 'nombre', 'inicio_generar')})
+    return jsonify({k: e.get(k) for k in ('fase', 'error', 'registro', 'nombre', 'inicio_generar', 'inicio_analizar')})
 
 
 @app.post('/planificador/<pid>/generar')
@@ -1302,6 +1307,8 @@ def plan_generar(pid):
     request.max_content_length = 2 * 1024 ** 2
     try:
         PL.generar(pid, request.get_json(force=True, silent=True) or {})
+    except PL.EnMarcha as e:
+        return jsonify({'error': str(e), 'en_marcha': True}), 409
     except PL.ErrorPlan as e:
         return jsonify({'error': str(e)}), 400
     return jsonify({'ok': True})
@@ -1345,6 +1352,16 @@ def plan_zip(pid):
         abort(404)
     ruta = PL.zip_salida(pid)
     return send_file(ruta, as_attachment=True, download_name=os.path.basename(ruta), mimetype='application/zip')
+
+
+@app.route('/planificador/<pid>/web.zip')
+def plan_web(pid):
+    _plan(pid)
+    try:
+        ruta = PL.exportar_web(pid, ficha=request.args.get('modo') != 'horario')
+    except PL.ErrorPlan as e:
+        return redirect(url_for('plan_ver', pid=pid, error=str(e), _anchor='documentos'))
+    return send_file(ruta, as_attachment=True, download_name=os.path.basename(ruta)[4:], mimetype='application/zip')
 
 
 @app.post('/planificador/<pid>/borrar')
