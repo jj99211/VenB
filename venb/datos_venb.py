@@ -668,6 +668,7 @@ def estado_recientes():
         _reciente['motivo'] = _motivo_fallo(codigo)
         if not _reciente['motivo']:
             FR.registrar(True)
+            nombres_en_segundo_plano()
         elif FR.clasificar(_reciente['motivo']) == 'bloqueo' and FR.estado()['tipo'] != 'bloqueo':
             FR.registrar(False, _reciente['motivo'])
     motivo = _reciente.get('motivo') if hecho else None
@@ -806,6 +807,50 @@ def _renombrar_historico(aid, nombre):
         e.writeheader()
         e.writerows(filas)
     os.replace(ruta + '.tmp', ruta)
+
+
+def sincronizar_nombres(n=50):
+    """Trae de Garmin Connect el nombre de las n últimas actividades y lo copia en los JSON locales cuyo nombre
+    difiera: garmindb no vuelve a descargar el resumen de una actividad que ya tiene, así que lo renombrado en Connect
+    no llegaría nunca a VenB. Devuelve (error, número de actividades renombradas)."""
+    error, texto = _enviar_garmin('nombres', n, salida=True, manual=False)
+    if error:
+        return error, 0
+    try:
+        nombres = json.loads(texto or '{}')
+    except ValueError:
+        return 'Garmin Connect ha devuelto una respuesta que no se entiende.', 0
+    cambiadas = 0
+    for aid, nombre in nombres.items():
+        ruta = os.path.join(rutas.ruta_garmin(), f'activity_{aid}.json')
+        if not nombre or not str(aid).isdigit() or not os.path.exists(ruta):
+            continue
+        try:
+            with open(ruta, encoding='utf-8') as f:
+                actual = json.load(f).get('activityName')
+        except (OSError, ValueError):
+            continue
+        if actual != nombre:
+            _renombrar_json(aid, nombre)
+            cambiadas += 1
+    if cambiadas:
+        _cache.clear()
+    return None, cambiadas
+
+
+_nombres = {}
+
+
+def nombres_en_segundo_plano():
+    """Tras cada descarga reciente que ha ido bien: los nombres de Connect, sin hacer esperar a la página."""
+    if not usar_garmin() or not _python_garmindb():
+        return
+    h = _nombres.get('hilo')
+    if h and h.is_alive():
+        return
+    import threading
+    _nombres['hilo'] = threading.Thread(target=sincronizar_nombres, daemon=True)
+    _nombres['hilo'].start()
 
 
 def renombrar_actividad(aid, nombre):

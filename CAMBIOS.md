@@ -2,6 +2,14 @@
 
 Novedades de cada versión de VenB y VenB Rutas (las dos ediciones comparten número de versión).
 
+## 3.43
+
+- **Planificador, tipo de ruta y distancia:** la distancia se elige según el tipo: en un brevet, solo las estándar (200 a 1.000 km); en una Super Randonnée, 600 km; en el tipo nuevo **Super Brevet**, de 1.200 a 2.000 km, con los tiempos del reglamento de Randonneurs Mondiaux. En un recorrido libre no se elige distancia.
+- **Tiempo límite editable:** se rellena con el oficial, pero se puede cambiar (por ejemplo, una SR cicloturista). Entonces los cálculos son personales y no siguen la tabla oficial, y la página lo explica. Con un tiempo personal o en un recorrido libre, aviso si la media neta queda por debajo de 12 km/h o por encima de 28 km/h.
+- **Etapas:** en los brevets de 400 km o más, las SR, los Super Brevets y los recorridos libres, la ruta se puede organizar en varios días (hasta 7): paradas para dormir, descanso diario y llegada prevista, de la que sale la velocidad necesaria.
+- **Puntos en el mapa:** con 📍 se elige el punto exacto en un mapa, sobre el track, y VenB propone el nombre de la localidad.
+- **Garmin Connect:** los nombres cambiados en Connect llegan a VenB tras cada descarga.
+
 ## 3.42
 
 - **Temporadas:** todas las cuentas anuales (km, horas, salidas y desnivel por año, acumulados y mapa por mes del Histórico, kilómetros de brevet y bicis) van por la temporada de Ajustes, que lleva el año en que se disputa: con inicio en noviembre, la temporada 2027 empezó el 01/11/2026. Al cambiar el mes se recalcula todo el historial.

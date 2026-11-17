@@ -20,7 +20,7 @@
 </section>
 {% else %}
 
-<script type="application/json" id="datos-plan">{{ {'a': a, 'p': p, 'reciente': reciente, 'reglas': reglas, 'fase': e.fase, 'urlGenerar': url_for('plan_generar', pid=e.id), 'urlPuntos': url_for('plan_puntos', pid=e.id), 'urlEstado': url_for('plan_estado', pid=e.id)}|tojson }}</script>
+<script type="application/json" id="datos-plan">{{ {'a': a, 'p': p, 'reciente': reciente, 'reglas': reglas, 'fase': e.fase, 'urlGenerar': url_for('plan_generar', pid=e.id), 'urlPuntos': url_for('plan_puntos', pid=e.id), 'urlEstado': url_for('plan_estado', pid=e.id), 'urlTrazado': url_for('plan_trazado', pid=e.id)}|tojson }}</script>
 
 {% if request.args.error %}<div class="aviso alto">{{ request.args.error }}</div>{% endif %}
 {% if a.avisos %}<div class="aviso medio"><b>Avisos:</b><ul class="lista">{% for x in a.avisos %}<li>{{ x }}</li>{% endfor %}</ul></div>{% endif %}
@@ -34,13 +34,36 @@
   </div>
   <div class="linea-campos">
     <label>Tipo de ruta<select id="modalidad">{% for k, t in modalidades.items() %}<option value="{{ k }}">{{ t }}</option>{% endfor %}</select></label>
-    <label id="campo-distancia">Distancia del brevet<select id="distancia-brm">{% for d, h in reglas.limites.items() %}<option value="{{ d }}">{{ d }} km ({{ h|tiempo }} h)</option>{% endfor %}</select></label>
+    <label id="campo-distancia">Distancia<select id="distancia-brm"></select></label>
     <label><span id="etiqueta-limite">Tiempo límite (h)</span><input id="limite" inputmode="decimal" size="6" required></label>
+    <button type="button" class="discreto" id="limite-oficial" hidden>Volver al tiempo oficial</button>
   </div>
   <p class="suave" id="explica-modalidad"></p>
+  <p class="suave" id="explica-limite"></p>
+  <div class="aviso medio" id="aviso-velocidad" hidden></div>
   <p class="suave" id="origen-hoja">{{ a.puntos|length }} puntos de la hoja, {{ a.puntos|selectattr('control')|list|length }} controles.
     {% if a.anclas %}Controles colocados con {{ a.anclas }} waypoints del GPX.{% endif %}
     {% if a.salida %}La salida y el límite vienen de la hoja de ruta.{% else %}La hoja no trae salida ni límite: rellénalos.{% endif %}</p>
+</section>
+
+<section class="panel" id="panel-etapas" hidden>
+  <h2>Etapas</h2>
+  <label class="casilla"><input type="checkbox" id="et-activas"> Organizar la ruta en varias etapas (hasta {{ reglas.max_etapas }} días)</label>
+  <div id="et-campos" hidden>
+    <p class="suave">Indica dónde duermes (hasta {{ reglas.max_etapas - 1 }} paradas) y cuánto descansas cada día: ocio en el lugar de parada, alojamiento y desayuno, el mismo tiempo todos los días. Si pones también la llegada prevista, VenB calcula la velocidad media en movimiento necesaria para llegar a esa hora.</p>
+    <div class="linea-campos">
+      <label>Llegada prevista <span class="suave">(opcional)</span><input id="et-llegada"></label>
+      <label>Descanso diario (h)<input id="et-descanso" inputmode="decimal" size="5"></label>
+    </div>
+    <div class="tabla"><table id="et-tabla"><thead><tr><th>Noche</th><th class="num">km</th><th>Lugar</th><th></th><th></th></tr></thead><tbody></tbody></table></div>
+    <div class="linea-campos">
+      <button type="button" class="discreto" id="et-anadir">Añadir parada para dormir</button>
+      <button type="button" id="et-aplicar">Aplicar las etapas a los puntos</button>
+      <span class="suave" id="et-aviso" role="status"></span>
+    </div>
+    <p class="suave" id="et-resumen"></p>
+    <p class="suave">«Aplicar» pone cada parada en la tabla de Previsión como punto de tipo «Dormir» con el descanso diario (si ya hay un punto a menos de 1 km, se usa ese) y vuelve a calcular la ruta. Después puedes ajustar cada parada en la tabla.</p>
+  </div>
 </section>
 
 <section class="panel">
@@ -73,7 +96,7 @@
       <th>Parada (min)</th><th>Tipo</th><th class="num">Llegada</th><th class="num" id="titulo-cierre">Cierre</th><th class="num">Margen</th><th></th>
     </tr></thead><tbody></tbody></table>
   </div>
-  <p class="suave">Las paradas, el tipo y «Mapa» se recalculan al momento. Para cambiar los puntos, edita su nombre o su km, marca o desmarca «Control», quita puntos o pulsa <b>Añadir punto</b>, y después <b>Actualizar</b>: VenB ordena los puntos por km, numera los controles desde C1 en la salida (o C0, si la hoja empieza así; los de letra, como CF, se conservan) y vuelve a calcular el desnivel y los tiempos. Los km son los de la hoja de ruta; se ajustan a la distancia del GPX.
+  <p class="suave">Con 📍 eliges el punto exacto en un mapa: VenB toma el km del track más cercano al sitio donde pulses (y, si el punto no tiene nombre, propone el de la localidad). Las paradas, el tipo y «Mapa» se recalculan al momento. Para cambiar los puntos, edita su nombre o su km, marca o desmarca «Control», quita puntos o pulsa <b>Añadir punto</b>, y después <b>Actualizar</b>: VenB ordena los puntos por km, numera los controles desde C1 en la salida (o C0, si la hoja empieza así; los de letra, como CF, se conservan) y vuelve a calcular el desnivel y los tiempos. Los km son los de la hoja de ruta; se ajustan a la distancia del GPX.
   {% if a.editados %}Los puntos están editados: mandan sobre la hoja de ruta.{% endif %}
   «Mapa»: los controles marcados llevan caja en la infografía; los demás puntos marcados se rotulan en los mapas y llevan caja. Los controles se dibujan siempre.</p>
 </section>
@@ -143,7 +166,17 @@
   <p class="suave" id="vel-resultado"></p>
   <p><button type="button" id="vel-cerrar">Aplicar</button> <button type="button" class="discreto" id="vel-defecto">Valores por defecto</button></p>
 </dialog>
+<dialog id="dialogo-mapa" aria-labelledby="titulo-mapa">
+  <h2 id="titulo-mapa">Elegir el punto en el mapa</h2>
+  <p class="suave">Pulsa sobre el mapa, cerca del track: se marca el punto del recorrido más cercano. Acerca el mapa para precisar.</p>
+  <div id="mapa-puntos"></div>
+  <p id="mapa-resultado" role="status"></p>
+  <p id="mapa-alternativas"></p>
+  <p><button type="button" id="mapa-usar" disabled>Usar este punto</button> <button type="button" class="discreto" id="mapa-cancelar">Cancelar</button></p>
+</dialog>
 {% endif %}
 {% endblock %}
-{% block guiones %}<script src="{{ url_for('static', filename='fecha_hora.js') }}"></script>
+{% block guiones %}<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="{{ url_for('static', filename='fecha_hora.js') }}"></script>
 <script src="{{ url_for('static', filename='planificador.js') }}"></script>{% endblock %}

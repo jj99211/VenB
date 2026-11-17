@@ -28,7 +28,9 @@ EXT_GPX = ('.gpx',)
 EXT_HOJA = ('.pdf', '.odt', '.ods', '.xlsx', '.xlsm', '.csv')
 SALIDAS = {'tabla': 'Tabla de tiempos (Excel)', 'infografia': 'Infografías', 'alballut': 'Mapa ilustrado (estilo Al-Ballut)',
            'personal': 'Mapa personal', 'tronos': 'Mapa «Juego de Tronos»', 'web': 'Página interactiva'}
-MODALIDADES = {'brevet': 'Brevet (BRM)', 'sr': 'Super Randonnée', 'libre': 'Recorrido libre'}
+MODALIDADES = {'brevet': 'Brevet (BRM)', 'sr': 'Super Randonnée', 'sb': 'Super Brevet (1.200 km o más)', 'libre': 'Recorrido libre'}
+DISTANCIAS_BREVET = [200, 300, 400, 600, 1000]
+MAX_ETAPAS = 7          # días; como mucho MAX_ETAPAS - 1 paradas para dormir
 TIPOS_PARADA = {'': '—', 'salida': 'Salida', 'cafe': 'Café', 'comida': 'Comida', 'dormir': 'Dormir', 'agua': 'Agua', 'cruce': 'Cruce', 'peligro': 'Peligro',
                 'interes': 'Punto de interés', 'llegada': 'Llegada', 'otra': 'Otra'}
 PALETAS = ['verde', 'acuarela', 'bosque', 'pizarra', 'alballut']
@@ -42,6 +44,25 @@ class ErrorPlan(Exception):
 
 
 # ------------------------------------------------------------------ planes guardados
+
+def regla_de(p):
+    """Regla de cierres de unos parámetros: RM (brevet o Super Brevet con su tiempo oficial), proporcional sin las
+    horas de la hoja (tiempo límite cambiado a mano: cálculos personales) o None (SR y libre: proporcional; en el
+    libre mandan las horas de la hoja, si las trae)."""
+    modalidad, dist = p.get('modalidad'), p.get('distancia_brm')
+    if modalidad == 'brevet' and dist == 1200:      # planes anteriores a la 3.43: el 1200 era un brevet
+        modalidad = 'sb'
+    if p.get('limite_personal'):
+        return {'proporcional': True}
+    if modalidad in ('brevet', 'sb') and dist:
+        return {'distancia': dist, 'prefijo': 'SB' if modalidad == 'sb' else 'BRM'}
+    return None
+
+
+def ver_etapas(modalidad, dist):
+    """Se puede organizar en varias etapas: BRM de 400 km o más, SR, Super Brevets y recorridos libres."""
+    return modalidad in ('sr', 'sb', 'libre') or (modalidad == 'brevet' and (dist or 0) >= 400)
+
 
 def _carpeta(pid):
     if not re.fullmatch(r'[0-9]{8}-[0-9]{6}-[0-9a-f]{6}', pid or ''):
@@ -235,8 +256,7 @@ def _escribir_gpx(d, plan=None):
         gpx = os.path.join(d, 'entrada', _leer(d, 'estado.json', {})['gpx'])
         plan = calcular(leer_gpx(gpx), puntos_de_lista(a['puntos']), datetime.now(), a.get('limite_h') or 1, 0, {}, {}, (),
                         'auto', 3.0, '', leer_waypoints(gpx))
-    modalidad, dist = p.get('modalidad', a.get('modalidad')), p.get('distancia_brm', a.get('distancia_brm'))
-    regla = {'distancia': dist} if modalidad == 'brevet' and dist else None
+    regla = regla_de(p or {'modalidad': a.get('modalidad'), 'distancia_brm': a.get('distancia_brm')})
     nombre, texto = gpx_waypoints(SimpleNamespace(cfg={'regla': regla}), plan)
     salida = os.path.join(d, 'salida')
     os.makedirs(salida, exist_ok=True)
@@ -244,6 +264,29 @@ def _escribir_gpx(d, plan=None):
         os.remove(viejo)
     with open(os.path.join(salida, nombre), 'w', encoding='utf-8') as f:
         f.write(texto)
+
+
+def trazado(pid, paso_m=40):
+    """Track del plan para elegir puntos en el mapa: [[lat, lon, km del GPX]] cada `paso_m` como mínimo.
+    Los km se cuentan como en generador/datos.leer_gpx (distancia acumulada entre los puntos del fichero)."""
+    import xml.etree.ElementTree as ET
+    import numpy as np
+    from generador.datos import _haversine
+    d = _carpeta(pid)
+    raiz = ET.parse(os.path.join(d, 'entrada', _leer(d, 'estado.json', {})['gpx'])).getroot()
+    pre = raiz.tag.split('}')[0] + '}' if raiz.tag.startswith('{') else ''
+    pts = [(float(x.get('lat')), float(x.get('lon'))) for x in raiz.iter(f'{pre}trkpt')] or \
+          [(float(x.get('lat')), float(x.get('lon'))) for x in raiz.iter(f'{pre}rtept')]
+    if len(pts) < 2:
+        return []
+    lat, lon = np.array(pts).T
+    km = np.concatenate([[0.0], np.cumsum(_haversine(lat[:-1], lon[:-1], lat[1:], lon[1:]))]) / 1000
+    salida, ultimo = [], -1.0
+    for i in range(len(km)):
+        if km[i] - ultimo >= paso_m / 1000 or i == len(km) - 1:
+            salida.append([round(float(lat[i]), 5), round(float(lon[i]), 5), round(float(km[i]), 3)])
+            ultimo = km[i]
+    return salida
 
 
 def asegurar_gpx(pid):
@@ -278,8 +321,9 @@ def zip_salida(pid):
 
 def reglas_rm():
     """Tablas de Randonneurs Mondiaux para la página (la vista previa calcula con ellas, como generador/datos.py)."""
-    from generador.datos import APERTURA_BRM, CIERRE_BRM, LIMITE_SR600, LIMITES_BRM
-    return {'limites': LIMITES_BRM, 'apertura': APERTURA_BRM, 'cierre': CIERRE_BRM, 'sr600': LIMITE_SR600}
+    from generador.datos import APERTURA_BRM, CIERRE_BRM, DISTANCIAS_SB, LIMITE_SR600, MEDIAS_SB, limite_oficial
+    return {'limites': {d: limite_oficial(d) for d in DISTANCIAS_BREVET + DISTANCIAS_SB}, 'apertura': APERTURA_BRM, 'cierre': CIERRE_BRM,
+            'sr600': LIMITE_SR600, 'brevet': DISTANCIAS_BREVET, 'sb': DISTANCIAS_SB, 'medias_sb': MEDIAS_SB, 'max_etapas': MAX_ETAPAS}
 
 
 def velocidad_reciente():
@@ -340,18 +384,37 @@ def validar(datos, a, borrador=False):
             raise ErrorPlan('Indica la fecha y la hora de salida.')
         salida = None
     limite = num(datos.get('limite_h'), 1, 400, None if not borrador else 0) or None
-    from generador.datos import LIMITES_BRM
+    from generador.datos import DISTANCIAS_SB, LIMITE_SR600, limite_oficial
     modalidad = datos.get('modalidad') if datos.get('modalidad') in MODALIDADES else 'libre'
     distancia = None
-    if modalidad == 'brevet':
+    try:
+        distancia = int(datos.get('distancia_brm'))
+    except (TypeError, ValueError):
+        distancia = None
+    if modalidad == 'brevet' and distancia == 1200:
+        modalidad = 'sb'
+    validas = {'brevet': DISTANCIAS_BREVET, 'sb': DISTANCIAS_SB, 'sr': [600]}.get(modalidad)
+    if validas is None:
+        distancia = None
+    elif distancia not in validas:
+        if modalidad == 'sr':
+            distancia = 600
+        elif not borrador:
+            raise ErrorPlan('Elige la distancia.')
+        else:
+            distancia = None
+    oficial = LIMITE_SR600 if modalidad == 'sr' else limite_oficial(distancia) if distancia else None
+    # tiempo límite cambiado a mano: los cálculos son personales (cierres proporcionales), no los del reglamento
+    personal = bool(oficial and limite and abs(limite - oficial) > 0.01)
+    e = datos.get('etapas') or {}
+    etapas = None
+    if e.get('activas') and ver_etapas(modalidad, distancia):
         try:
-            distancia = int(datos.get('distancia_brm'))
-        except (TypeError, ValueError):
-            distancia = None
-        if distancia not in LIMITES_BRM:
-            if not borrador:
-                raise ErrorPlan('Elige la distancia del brevet.')
-            distancia = None
+            llegada = datetime.fromisoformat(str(e.get('llegada') or '')[:16]).isoformat(timespec='minutes')
+        except ValueError:
+            llegada = None
+        kms = sorted({round(num(k, 0, 5000), 3) for k in (e.get('paradas') or [])})[:MAX_ETAPAS - 1]
+        etapas = {'activas': True, 'llegada': llegada, 'descanso_h': num(e.get('descanso_h'), 0, 48, 8), 'paradas': kms}
     puntos = datos.get('puntos') or []
     if len(puntos) != n:
         raise ErrorPlan('La lista de puntos no coincide con el análisis.')
@@ -371,6 +434,7 @@ def validar(datos, a, borrador=False):
     return {'nombre': ' '.join(str(datos.get('nombre') or a['nombre']).split())[:80] or 'Ruta',
             'subtitulo': ' '.join(str(datos.get('subtitulo') or '').split())[:120],
             'salida': salida.isoformat(timespec='minutes') if salida else None, 'limite_h': limite, 'modalidad': modalidad, 'distancia_brm': distancia,
+            'limite_personal': personal, 'etapas': etapas,
             'puntos': pts, 'velocidades': vel,
             'salidas': salidas, 'paleta': datos.get('paleta') if datos.get('paleta') in PALETAS else 'verde',
             'estilo_infografia': datos.get('estilo_infografia') if datos.get('estilo_infografia') in ESTILOS_INFOGRAFIA else 'ign_mtn',
@@ -458,7 +522,7 @@ def _proyecto(d, cfg):
 
 
 def _analizar(d):
-    from generador.datos import LIMITES_BRM, Punto, calcular, distancia_nominal, leer_gpx, leer_hoja, leer_waypoints, puntos_de_lista, velocidades
+    from generador.datos import DISTANCIAS_SB, LIMITES_BRM, Punto, calcular, distancia_nominal, limite_oficial, leer_gpx, leer_hoja, leer_waypoints, puntos_de_lista, velocidades
     e = _leer(d, 'estado.json', {})
     gpx = os.path.join(d, 'entrada', e['gpx'])
     puntos, meta, avisos = [], {}, []
@@ -486,11 +550,11 @@ def _analizar(d):
     plan = calcular(track, puntos, salida or datetime.combine(date.today() + timedelta(days=7), datetime.min.time()).replace(hour=8),
                     limite or 1, 0, {}, {}, (), 'auto', 3.0, '', leer_waypoints(gpx))
     # modalidad propuesta: brevet si la hoja lo dice (distancia oficial u horas de control); si no, recorrido libre
-    distancia = meta.get('distancia') if meta.get('distancia') in LIMITES_BRM else None
+    distancia = meta.get('distancia') if meta.get('distancia') in LIMITES_BRM or meta.get('distancia') in DISTANCIAS_SB else None
     if distancia is None and any(p.cierre_hoja for p in puntos):
         distancia = distancia_nominal(puntos[-1].km_hoja)
     if distancia:   # en un brevet, el límite es el oficial; si la hoja cierra la meta a otra hora, se avisa
-        oficial = LIMITES_BRM[distancia]
+        oficial = limite_oficial(distancia)
         if limite and abs(limite - oficial) > 0.01:
             fmt = lambda h: f'{int(h)}:{round(h % 1 * 60):02d}'
             avisos.append(f'La hoja de ruta cierra la meta a las {fmt(limite)} h de la salida, pero el tiempo límite de un BRM de '
@@ -500,7 +564,9 @@ def _analizar(d):
     if re.fullmatch(r'(?i)(track|ruta|course)?[\s_0-9-]*', nombre):
         nombre = e.get('nombre') or 'Ruta'
     a = {'nombre': nombre[:80], 'salida': salida.isoformat(timespec='minutes') if salida else None, 'limite_h': limite,
-         'modalidad': 'brevet' if distancia else 'libre', 'distancia_brm': distancia or distancia_nominal(plan.total_km),
+         'modalidad': ('sb' if distancia >= 1200 else 'brevet') if distancia else 'libre',
+         'distancia_brm': distancia or (max([x for x in DISTANCIAS_SB if x <= plan.total_km * 1.05] or [1200]) if plan.total_km >= 1140
+                                        else distancia_nominal(plan.total_km)),
          'meta': {k: v for k, v in meta.items() if k in ('distancia', 'desnivel', 'club', 'lugar_salida')},
          'total_km': plan.total_km, 'total_asc': plan.total_asc, 'avisos': avisos + plan.avisos, 'anclas': plan.anclas,
          'editados': bool(editados),
@@ -527,7 +593,6 @@ def _perfil(track, n=400):
 
 
 def _generar(d):
-    from generador.datos import LIMITES_BRM
     e = _leer(d, 'estado.json', {})
     a = _leer(d, 'analisis.json')
     p = _leer(d, 'parametros.json')
@@ -553,12 +618,14 @@ def _generar(d):
         if not pp['mostrar'] and pa['control']:
             sin_caja.append(pa['control'])
     estilos = [s for s in ('alballut', 'personal', 'tronos') if s in p['salidas']]
+    from generador.datos import limite_oficial
+    regla = regla_de(p)
     cfg = {'nombre': p['nombre'], 'subtitulo': p['subtitulo'], 'gpx': f"entrada/{e['gpx']}", 'hoja': None,
            'puntos': a['puntos'], 'meta': a.get('meta') or {},   # los del análisis (leídos o editados): la hoja no se relee
            'salida': datetime.fromisoformat(p['salida']), 'carpeta_salida': 'salida', 'ajuste_km': 'auto',
-           # en un brevet, el límite es siempre el oficial (planes guardados antes con el de la hoja)
-           'limite_horas': LIMITES_BRM[p['distancia_brm']] if p.get('modalidad') == 'brevet' and p.get('distancia_brm') in LIMITES_BRM else p['limite_h'],
-           'regla': {'distancia': p['distancia_brm']} if p.get('modalidad') == 'brevet' and p.get('distancia_brm') else None,
+           # con la regla de RM, el límite es siempre el oficial (planes guardados antes con el de la hoja)
+           'limite_horas': limite_oficial(regla['distancia']) if regla and regla.get('distancia') else p['limite_h'],
+           'regla': regla,
            'destacados': destacados, 'paradas': paradas, 'tipos_parada': tipos, 'velocidades': p['velocidades'],
            'altitud': {'fuente': 'gpx' if p.get('altitud_gpx') else 'mdt'},
            'infografia': {'estilo': p['estilo_infografia'], 'sin_caja': sin_caja, 'track_pendiente': bool(p.get('track_pendiente'))},

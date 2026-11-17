@@ -473,9 +473,26 @@ LIMITES_BRM = {200: 13.5, 300: 20, 400: 27, 600: 40, 1000: 75, 1200: 90}
 LIMITE_SR600 = 60
 # Velocidades de la tabla de controles: (hasta km, km/h). Apertura, a la máxima; cierre, a la mínima.
 APERTURA_BRM = [(200, 34), (400, 32), (600, 30), (1000, 28), (1300, 26)]
-# 13,333 sube a propósito (un 1200 cierra en 90 h). Más allá de 1300 km, RM fija medias para toda la prueba
-# (12, 10 km/h, 200 km/día): esas pruebas no están en LIMITES_BRM; se planifican como «libre».
+# 13,333 sube a propósito (un 1200 cierra en 90 h).
 CIERRE_BRM = [(600, 15), (1000, 11.428), (1300, 13.333)]
+# Super Brevets (pruebas RM de 1.200 km o más): media mínima de toda la prueba según la distancia (reglamento de RM):
+# 1.200–1.299 km, 13,333 km/h (90 h); 1.300–1.899 km, 12 km/h; 1.900–2.499 km, 10 km/h.
+DISTANCIAS_SB = list(range(1200, 2001, 100))
+MEDIAS_SB = [(1300, 13.333), (1900, 12), (2500, 10)]
+
+
+def media_sb(distancia):
+    for hasta, v in MEDIAS_SB:
+        if distancia < hasta:
+            return v
+    return MEDIAS_SB[-1][1]
+
+
+def limite_oficial(distancia):
+    """Tiempo límite (h) de una prueba de Randonneurs Mondiaux: BRM hasta 1.200 km y Super Brevets de 1.200 a 2.000."""
+    if distancia in LIMITES_BRM:
+        return LIMITES_BRM[distancia]
+    return round(distancia / media_sb(distancia), 4)
 
 
 def _horas_tramos(km, tramos):
@@ -494,13 +511,16 @@ def _horas_tramos(km, tramos):
 def horas_brm(km, distancia, final=False):
     """(apertura, cierre) de un control en horas desde la salida, redondeadas al minuto, según la tabla de
     Randonneurs Mondiaux. Hasta el km 60 el cierre es a 20 km/h más una hora (la salida cierra a la hora).
-    La meta (y cualquier control a partir de la distancia nominal) cierra en el tiempo límite del BRM."""
-    limite = LIMITES_BRM[distancia]
+    La meta (y cualquier control a partir de la distancia nominal) cierra en el tiempo límite del BRM.
+    En los Super Brevets de más de 1.200 km, los cierres intermedios van a la media mínima de la prueba."""
+    limite = limite_oficial(distancia)
     ap = _horas_tramos(min(km, distancia), APERTURA_BRM)
     if final or km >= distancia:
         ci = limite
     elif km <= 60:
         ci = km / 20 + 1
+    elif distancia > 1200:
+        ci = min(km / media_sb(distancia), limite)
     else:
         ci = min(_horas_tramos(km, CIERRE_BRM), limite)
     return round(ap * 60) / 60, round(ci * 60) / 60
@@ -586,13 +606,18 @@ def calcular(track, puntos, salida, limite_h, paradas_defecto=0, paradas=None,
              waypoints=(), vel=None, regla=None):
     """Rellena posición, altitud, desnivel, velocidad y horarios de cada punto.
 
-    regla: {"distancia": 200…} para un BRM: apertura y cierre de los controles según Randonneurs Mondiaux
-    (las horas que trae la hoja mandan). Sin regla, el cierre se reparte en proporción a la distancia.
+    regla: {"distancia": 200…} para un BRM o un Super Brevet: apertura y cierre de los controles según Randonneurs
+    Mondiaux (las horas que trae la hoja mandan). Sin regla, el cierre se reparte en proporción a la distancia (salvo
+    donde la hoja trae hora); con {"proporcional": True} (tiempo límite personal), también ahí: se ignoran las horas de la hoja.
 
     paradas: {clave: minutos}; tipos: {clave: "cafe"|"comida"|"dormir"…}. La clave
     puede ser el id del control ("C6"), el nombre del punto o "nombre@km".
     """
     vel = velocidades(vel)
+    if regla and regla.get("proporcional"):
+        for p in puntos:
+            p.cierre_hoja = p.apertura_hoja = None
+    regla = regla if regla and regla.get("distancia") else None
     paradas = {k.upper(): v for k, v in (paradas or {}).items()}
     tipos = {k.upper(): v for k, v in (tipos or {}).items()}
     destacados = {d.upper() for d in destacados}

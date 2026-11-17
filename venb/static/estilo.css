@@ -275,3 +275,8 @@ button.interruptor.activo .punto { background:var(--color); }
 table.eventos .punto { display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--color); vertical-align:middle; }
 
 img.logo-club { height:40px; width:auto; max-width:140px; object-fit:contain; vertical-align:middle; margin-right:8px; background:#fff; border-radius:4px; }
+
+/* Planificador: elegir puntos en el mapa */
+dialog#dialogo-mapa { width:min(900px, calc(100vw - 32px)); max-width:none; }
+#mapa-puntos { height:min(60vh, 520px); border:1px solid var(--borde); border-radius:6px; }
+button.ed-mapa { padding:2px 6px; margin-left:2px; }

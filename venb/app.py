@@ -1281,6 +1281,15 @@ def plan_ver(pid):
                            clubes=CL.lista() if RUTAS else [])
 
 
+@app.route('/planificador/<pid>/trazado.json')
+def plan_trazado(pid):
+    _plan(pid)
+    try:
+        return jsonify(PL.trazado(pid))
+    except Exception:
+        return jsonify([])
+
+
 @app.route('/planificador/<pid>/estado.json')
 def plan_estado(pid):
     e = _plan(pid)

@@ -4,6 +4,7 @@ Uso: python garmin_enviar.py probar
      python garmin_enviar.py nombre ID_ACTIVIDAD "Nombre nuevo"
      python garmin_enviar.py peso AAAA-MM-DDTHH:MM:SS KILOS
      python garmin_enviar.py equipo     (bicis de Garmin Connect y sus actividades, en JSON por la salida estándar)
+     python garmin_enviar.py nombres N  (nombre de las N últimas actividades, en JSON {id: nombre} por la salida estándar)
 Sale con 0 si Garmin lo acepta; si no, escribe el motivo en la salida de errores."""
 import json
 import re
@@ -45,6 +46,8 @@ def _argumentos():
     a = sys.argv[1:]
     if a in (['probar'], ['equipo']):
         return a[0], None, None
+    if len(a) == 2 and a[0] == 'nombres' and a[1].isdigit() and 1 <= int(a[1]) <= 200:
+        return a[0], int(a[1]), None
     if len(a) == 3 and a[0] == 'nombre' and a[1].isdigit() and a[2].strip():
         return a
     if len(a) == 3 and a[0] == 'peso':
@@ -72,6 +75,9 @@ def main():
             g.client.set_activity_name(x, y.strip())
         elif orden == 'equipo':
             print(json.dumps(_equipo(g.client)))
+        elif orden == 'nombres':
+            lista = g.client.connectapi('/activitylist-service/activities/search/activities', params={'start': 0, 'limit': x}) or []
+            print(json.dumps({str(a['activityId']): a.get('activityName') or '' for a in lista if a.get('activityId')}, ensure_ascii=False))
         else:
             g.client.add_weigh_in(float(y), unitKey='kg', timestamp=x)
     except Exception as e:  # cualquier fallo de Garmin se comunica a VenB

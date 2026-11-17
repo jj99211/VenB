@@ -346,7 +346,7 @@ def gpx_waypoints(proyecto, plan):
     from xml.sax.saxutils import escape
     regla = proyecto.cfg.get("regla") or {}
     if regla.get("distancia"):
-        prefijo = f"BRM{regla['distancia']}"
+        prefijo = f"{regla.get('prefijo', 'BRM')}{regla['distancia']}"
     else:
         prefijo = f"RUTA{plan.total_km:.0f}"
     pts = plan.puntos
