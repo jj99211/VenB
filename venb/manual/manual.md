@@ -238,9 +238,9 @@ Calcula a qué hora pasarás por cada punto de una ruta y genera sus documentos.
 
 ![Página de un plan: avisos y datos de la ruta](img/plan_datos.jpg)
 
-![Tabla de Previsión, con las paradas, sus tipos y los cierres de cada control](img/plan_prevision.jpg)
-
 ![Ficheros generados: infografías y mapa ilustrado, que se abren al pulsarlos](img/plan_ficheros.jpg)
+
+![Tabla de Previsión, con las paradas, sus tipos y los cierres de cada control](img/plan_prevision.jpg)
 
 ![Infografía generada para un BRM 200](img/infografia.jpg)
 

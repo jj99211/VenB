@@ -28,8 +28,8 @@ MARCADOR_INDICE = '%%INDICE%%'
 DOCUMENTOS = {
     'usuario': {'titulo': 'Manual de usuario', 'fichero': 'Manual_VenB-{v}', 'fuentes': ['manual.md', 'garmin.md'], 'indice': True},
 }
-ANCHO_IMG = {'infografia.jpg': 470}     # px a 96 ppp en el HTML; el resto, 640 (16,9 cm)
-ANCHO_CM = {'infografia.jpg': 12000}   # ancho final en el documento (1/100 mm); el resto, 16,5 cm
+ANCHO_IMG = {'infografia.jpg': 470, 'plan_ficheros.jpg': 504}     # px a 96 ppp en el HTML; el resto, 640 (16,9 cm)
+ANCHO_CM = {'infografia.jpg': 12000, 'plan_ficheros.jpg': 13000}   # ancho final en el documento (1/100 mm); el resto, 16,5 cm
 ALTO_MAX = 21000                       # ninguna imagen pasa de 21 cm de alto
 # Análisis del PDF (puntos; A4 = 595 × 842): cuerpo de la página entre el pie y el encabezado
 CUERPO_ABAJO, CUERPO_ARRIBA = 70, 765
