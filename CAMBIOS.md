@@ -5,6 +5,7 @@ Novedades de cada versión de VenB y VenB Rutas (las dos ediciones comparten nú
 ## 3.45
 
 - **Infografías:** la leyenda de los tipos de punto y la de la pendiente del track ya no se pueden solapar. Cada una comparte línea solo si cabe entera; si no, baja a una fila propia (y la de tipos se parte en varias si hiciera falta) y el pie crece.
+- Incluye todas las novedades de las versiones anteriores, también las de la [3.43](https://github.com/jj99211/VenB/releases/tag/v3.43) (Super Brevet, tiempo límite personal, etapas, puntos en el mapa, nombres de Garmin Connect) y la [3.44](https://github.com/jj99211/VenB/releases/tag/v3.44) (reloj al generar, tiempo en horas y minutos, descanso por noche, tipo Puerto): basta con instalar esta.
 
 ## 3.44
 
