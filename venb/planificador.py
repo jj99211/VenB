@@ -548,7 +548,7 @@ def _analizar(d):
     print('Leyendo el track y consultando las altitudes del terreno…', flush=True)
     track = leer_gpx(gpx)
     if not puntos:
-        puntos = [Punto('Salida', 0.0, 'C1'), Punto('Meta', round(float(track.total_km), 1), 'C2')]
+        puntos = [Punto('Salida', 0.0, 'C1'), Punto('Llegada', round(float(track.total_km), 1), 'C2')]
         if not e.get('hoja'):
             avisos.append('Sin hoja de ruta: el plan empieza con la salida y la meta del track. Añade los puntos y controles en la tabla de Previsión («Añadir punto» y «Actualizar»).')
     salida = meta.get('salida')
