@@ -2,6 +2,10 @@
 
 Novedades de cada versión de VenB y VenB Rutas (las dos ediciones comparten número de versión).
 
+## 3.45
+
+- **Infografías:** la leyenda de los tipos de punto y la de la pendiente del track ya no se pueden solapar. Cada una comparte línea solo si cabe entera; si no, baja a una fila propia (y la de tipos se parte en varias si hiciera falta) y el pie crece.
+
 ## 3.44
 
 - **Planificador, generar:** mientras se generan los documentos, un reloj muestra el tiempo transcurrido y el paso en curso; el registro completo queda plegado en «Ver el detalle del proceso».

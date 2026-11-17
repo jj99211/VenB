@@ -64,6 +64,34 @@ def _escala(cfg):
     return float(cfg.get("escala_texto", 2.0))
 
 
+def _textos_pendiente():
+    lims = [0] + [l for l, _ in E.COLORES_PENDIENTE[:-1]]
+    return [f"< {lims[1]} %"] + [f"{a}–{b} %" for a, b in zip(lims[1:-1], lims[2:])] + [f"> {lims[-1]} %"]
+
+
+def _ancho_pendiente(fig, F):
+    """Ancho (px) de la leyenda «Pendiente del track» que dibuja _dibujar_pendiente."""
+    x = _medir(fig, "Pendiente del track:", 11 * F, "regular")[0] + 10 * F
+    for t in _textos_pendiente():
+        x += 11 * F * PT * 0.8 + 5 * F + _medir(fig, t, 11 * F, "regular")[0] + 14 * F
+    return x
+
+
+def _dibujar_pendiente(fig, F, W, H, y):
+    """Colores del track (los mismos del perfil), desde el borde izquierdo, a la altura y (fracción de la figura)."""
+    x = 0.01 * W
+    kw = dict(fontsize=11 * F, family=E.SANS, color="#444444", va="bottom")
+    fig.text(x / W, y, "Pendiente del track:", **kw)
+    x += _medir(fig, "Pendiente del track:", 11 * F, "regular")[0] + 10 * F
+    lado = 11 * F * PT * 0.8
+    for (_, c), t in zip(E.COLORES_PENDIENTE, _textos_pendiente()):
+        fig.patches.append(Rectangle((x / W, y + 2 / H), lado / W, lado / H, transform=fig.transFigure,
+                                     figure=fig, fc=c, ec="#5a4a1a", lw=0.6))
+        x += lado + 5 * F
+        fig.text(x / W, y, t, **kw)
+        x += _medir(fig, t, 11 * F, "regular")[0] + 14 * F
+
+
 def _medir(fig, texto, tam, peso):
     t = fig.text(0, 0, texto, fontsize=tam, family=[E.SANS, "Noto Emoji"], weight=peso)   # como la leyenda, con los iconos
     bb = t.get_window_extent(renderer=fig.canvas.get_renderer())
@@ -522,12 +550,31 @@ def generar(proyecto, plan, osm=None):
             atrib += "  ·  Nombres: NGBE, © IGN España (CC BY 4.0)"
         atrib = f"{atrib}  ·  Altitudes: EU-DEM 25 m (OpenTopoData)  ·  Tiempos estimados según pendiente media de cada tramo"
         usados = {p.tipo_parada for p in plan.puntos if p.tipo_parada}
-        leyenda = "  ".join(f"{E.ICONOS[k]} {n}" for k, n in E.NOMBRES_TIPO.items() if k in usados and k in E.ICONOS)
+        items = [f"{E.ICONOS[k]} {n}" for k, n in E.NOMBRES_TIPO.items() if k in usados and k in E.ICONOS]
         w_atrib, h_atrib = _medir(fig, atrib, 9.5 * F, "regular")
-        w_ley = _medir(fig, leyenda, 11 * F, "regular")[0] * 1.15 if leyenda else 0
-        dos_lineas = bool(leyenda) and 0.01 * W + w_atrib + 20 * F + w_ley > 0.99 * W
-        dos_lineas = dos_lineas or bool(cfg.get("track_pendiente"))     # la leyenda de pendientes va en esa línea
-        pie_h = pie_base + (int(h_atrib + 8 * F) if dos_lineas else 0)
+        ancho_ley = lambda s: _medir(fig, s, 11 * F, "regular")[0] * 1.15
+        util = 0.98 * W
+        # Leyenda de tipos partida en líneas que quepan en el ancho (hoy, con todos los tipos, cabe en una)
+        lineas_ley = []
+        for it in items:
+            if lineas_ley and ancho_ley(lineas_ley[-1] + "  " + it) <= util:
+                lineas_ley[-1] += "  " + it
+            else:
+                lineas_ley.append(it)
+        w_pend = _ancho_pendiente(fig, F) if cfg.get("track_pendiente") else 0
+        # Filas del pie por encima de la atribución, de abajo arriba: nada comparte línea si no cabe entero
+        tipos_en_atrib = (len(lineas_ley) == 1 and not w_pend
+                          and 0.01 * W + w_atrib + 20 * F + ancho_ley(lineas_ley[0]) <= 0.99 * W)
+        filas, resto = [], ([] if tipos_en_atrib else lineas_ley)
+        if w_pend:
+            if resto and w_pend + 30 * F + ancho_ley(resto[-1]) <= util:
+                filas.append((True, resto[-1]))
+                resto = resto[:-1]
+            else:
+                filas.append((True, None))
+        filas += [(False, x) for x in reversed(resto)]
+        h_fila = max(h_atrib, _medir(fig, "Ág", 11 * F, "regular")[1]) + 8 * F
+        pie_h = pie_base + int(len(filas) * h_fila)
         H = cab_h + Hm + etq_h + perfil_h + dias_h + pie_h + 40
         fig.set_size_inches(W / 100, H / 100)
 
@@ -699,24 +746,18 @@ def generar(proyecto, plan, osm=None):
 
         # ---- pie
         fig.text(0.01, 6 / H, atrib, fontsize=9.5 * F, family=E.SANS, color="#666666", va="bottom")
-        # leyenda: solo los tipos de parada que lleva esta ruta, en el orden de la lista
-        y_ley = (6 + (h_atrib + 8 * F if dos_lineas else 0)) / H
-        fig.text(0.99, y_ley, leyenda, family=[E.SANS, "Noto Emoji"],
-                 fontsize=11 * F, ha="right", va="bottom", color="#444444")
-        if cfg.get("track_pendiente"):     # colores del track (los mismos del perfil), a la izquierda de esa línea
-            lims = [0] + [l for l, _ in E.COLORES_PENDIENTE[:-1]]
-            textos = [f"< {lims[1]} %"] + [f"{a}–{b} %" for a, b in zip(lims[1:-1], lims[2:])] + [f"> {lims[-1]} %"]
-            x = 0.01 * W
-            kw = dict(fontsize=11 * F, family=E.SANS, color="#444444", va="bottom")
-            fig.text(x / W, y_ley, "Pendiente del track:", **kw)
-            x += _medir(fig, "Pendiente del track:", 11 * F, "regular")[0] + 10 * F
-            lado = 11 * F * PT * 0.8
-            for (_, c), t in zip(E.COLORES_PENDIENTE, textos):
-                fig.patches.append(Rectangle((x / W, y_ley + 2 / H), lado / W, lado / H, transform=fig.transFigure,
-                                             figure=fig, fc=c, ec="#5a4a1a", lw=0.6))
-                x += lado + 5 * F
-                fig.text(x / W, y_ley, t, **kw)
-                x += _medir(fig, t, 11 * F, "regular")[0] + 14 * F
+        # leyenda: solo los tipos de parada que lleva esta ruta, en el orden de la lista (a la derecha);
+        # la de pendientes del track, a la izquierda de su fila
+        def tipos_en(y, texto):
+            fig.text(0.99, y, texto, family=[E.SANS, "Noto Emoji"], fontsize=11 * F, ha="right", va="bottom", color="#444444")
+        if tipos_en_atrib:
+            tipos_en(6 / H, lineas_ley[0])
+        for r, (pend, texto) in enumerate(filas):
+            y = (6 + (r + 1) * h_fila) / H
+            if pend:
+                _dibujar_pendiente(fig, F, W, H, y)
+            if texto:
+                tipos_en(y, texto)
 
         nombre = proyecto.salida_dir / f"infografia_{n_panel}"
         fig.savefig(f"{nombre}.png", dpi=100)
