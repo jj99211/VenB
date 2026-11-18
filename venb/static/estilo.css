@@ -245,10 +245,11 @@ dialog#resumen-actividad { width:min(860px, calc(100vw - 32px)); max-width:none;
 .documento h3 { margin:0 0 10px; font-size:1.05em; }
 .documento .vista img { display:block; width:100%; max-height:420px; object-fit:contain; background:#fff; border:1px solid var(--borde); border-radius:4px; }
 .documento .formatos { display:flex; flex-wrap:wrap; gap:6px 22px; margin:10px 0 6px; }
-.documentos-pequenos { grid-template-columns:repeat(3, minmax(0, 1fr)); }
+.documentos-pequenos { grid-template-columns:repeat(2, minmax(0, 1fr)); }   /* la ruta con waypoints a la izquierda; los demás, apilados a la derecha */
 .documento-gpx { border-color:var(--enlace); }
 .documento-web { margin-top:14px; }
 .documento-web textarea { width:100%; font:.8rem/1.4 ui-monospace, monospace; padding:6px 8px; border:1px solid var(--borde); border-radius:5px; background:var(--fondo); color:var(--texto); }
+.documentos-columna { display:flex; flex-direction:column; gap:22px; }   /* tabla de tiempos y página interactiva, juntas */
 @media (max-width: 820px) { .documentos, .documentos-pequenos { grid-template-columns:1fr; } }
 .documento a.boton { display:inline-block; padding:8px 14px; border:1px solid var(--enlace); border-radius:5px; font-weight:600; text-decoration:none; }
 .documento a.boton:hover { background:var(--bajo); }
@@ -286,3 +287,10 @@ button.ed-mapa { padding:2px 6px; margin-left:2px; }
 .cifra-tiempo { font-variant-numeric: tabular-nums; font-weight:700; }
 #limite-h, #limite-m { text-align:right; }
 label[hidden], button[hidden] { display:none !important; }
+
+/* progreso de las descargas al generar un plan */
+#gen-barra { width: 100%; max-width: 28rem; height: 0.8rem; accent-color: var(--enlace); }
+#gen-barra[hidden] { display: none; }
+
+/* resultado de «Comprobar el servidor de mapas» cuando va lento o saturado */
+.aviso-servidor { color: #8a4b00; font-weight: 600; }

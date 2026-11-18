@@ -13,6 +13,7 @@ import secrets
 import shutil
 import subprocess
 import sys
+import time
 import unicodedata
 import zipfile
 from datetime import date, datetime, timedelta
@@ -48,6 +49,7 @@ class EnMarcha(ErrorPlan):
 
 
 LATIDO_S = 15       # el proceso de análisis o generación marca que sigue vivo cada LATIDO_S segundos
+DETENER = 'detener.txt'     # si aparece en la carpeta del plan, el proceso en marcha termina enseguida
 
 
 def _latir(d):
@@ -150,6 +152,10 @@ def crear(gpx, hoja=None, evento=None):
 
 def _lanzar(d, orden):
     """Proceso aparte, con su registro; sobrevive a la petición, no a VenB (se marca como interrumpido)."""
+    try:
+        os.remove(os.path.join(d, DETENER))
+    except OSError:
+        pass
     log = open(os.path.join(d, 'registro.txt'), 'a', encoding='utf-8')
     log.write(f'\n== {orden} {datetime.now():%d/%m/%Y %H:%M:%S}\n')
     log.flush()
@@ -171,6 +177,45 @@ def en_marcha(d):
         return datetime.now().timestamp() - os.path.getmtime(os.path.join(d, 'latido.txt')) < LATIDO_S * 4
     except OSError:
         return False
+
+
+def detener(pid):
+    """Detiene el análisis o la generación en marcha. Vale aunque el proceso no sea de esta VenB (se reabrió): el
+    proceso vigila DETENER cada segundo y termina; si es de esta VenB, además se termina directamente.
+    Lo descargado (teselas, altitudes, OpenStreetMap) queda en la caché: al repetir, sigue desde ahí."""
+    d = _carpeta(pid)
+    e = _leer(d, 'estado.json', {})
+    fase = e.get('fase')
+    if fase not in ('analizando', 'generando'):
+        raise ErrorPlan('No hay ningún proceso en marcha en este plan.')
+    with open(os.path.join(d, DETENER), 'w', encoding='utf-8') as f:
+        f.write(datetime.now().isoformat(timespec='seconds'))
+    p = _procesos.get(d)
+    if p is not None and p.poll() is None:
+        p.terminate()
+        try:
+            p.wait(10)
+        except subprocess.TimeoutExpired:
+            p.kill()
+    else:       # proceso de otra VenB: se espera a que lo vea (como mucho, unos segundos)
+        for _ in range(30):
+            if not en_marcha(d) or not os.path.exists(os.path.join(d, 'latido.txt')):
+                break
+            time.sleep(0.2)
+    try:
+        os.remove(os.path.join(d, 'latido.txt'))
+    except OSError:
+        pass
+    _procesos.pop(d, None)
+    with open(os.path.join(d, 'registro.txt'), 'a', encoding='utf-8') as f:
+        f.write(f'\n== detenido {datetime.now():%d/%m/%Y %H:%M:%S}\n')
+    if fase == 'generando':
+        _estado(d, fase='listo', error=None, detenido='generar')
+    elif os.path.exists(os.path.join(d, 'analisis.json')):
+        _estado(d, fase='listo', error=None, detenido='analizar')
+    else:
+        _estado(d, fase='error', error='Has detenido el análisis. Lo que ya se había descargado queda guardado: '
+                                       'vuelve a subir la ruta para seguir desde ahí.')
 
 
 def estado(pid):
@@ -436,7 +481,7 @@ def generar(pid, datos):
         raise ErrorPlan('El plan todavía no está analizado.')
     p = validar(datos, a)
     _escribir(d, 'parametros.json', p)
-    _estado(d, fase='generando', nombre=p['nombre'], error=None, inicio_generar=datetime.now().isoformat(timespec='seconds'))
+    _estado(d, fase='generando', nombre=p['nombre'], error=None, aviso_mapas=None, detenido=None, inicio_generar=datetime.now().isoformat(timespec='seconds'))
     _lanzar(d, 'generar')
 
 
@@ -576,7 +621,7 @@ def editar_puntos(pid, datos):
     except ErrorPlan:                            # sin parámetros válidos se usan los de partida
         if os.path.exists(os.path.join(d, 'parametros.json')):
             os.remove(os.path.join(d, 'parametros.json'))
-    _estado(d, fase='analizando', error=None, inicio_analizar=datetime.now().isoformat(timespec='seconds'))
+    _estado(d, fase='analizando', error=None, detenido=None, inicio_analizar=datetime.now().isoformat(timespec='seconds'))
     _lanzar(d, 'analizar')
 
 
@@ -588,7 +633,7 @@ def quitar_edicion(pid):
     for f in ('puntos.json', 'parametros.json'):
         if os.path.exists(os.path.join(d, f)):
             os.remove(os.path.join(d, f))
-    _estado(d, fase='analizando', error=None, inicio_analizar=datetime.now().isoformat(timespec='seconds'))
+    _estado(d, fase='analizando', error=None, detenido=None, inicio_analizar=datetime.now().isoformat(timespec='seconds'))
     _lanzar(d, 'analizar')
 
 
@@ -676,6 +721,31 @@ def _perfil(track, n=400):
     return [[round(float(track.km[j]), 2), round(float(track.ele[j]))] for j in i]
 
 
+def _aviso_mapas(fallos, motivo):
+    """Texto para el plan cuando OpenStreetMap no ha dado todos los datos de los mapas (fallos=None: ninguno).
+    fallos: partes que faltan («pueblos») o que faltan en algunas zonas («pueblos (en parte)»)."""
+    y = lambda l: ', '.join(l[:-1]) + (' y ' if len(l) > 1 else '') + l[-1]
+    enteros = [f for f in fallos or [] if not f.endswith(' (en parte)')]
+    partes = [f[:-len(' (en parte)')] for f in fallos or [] if f.endswith(' (en parte)')]
+    if not fallos or len(enteros) >= 8:
+        que = 'Los mapas se han generado sin datos de OpenStreetMap (ríos, pueblos, cimas, puertos, embalses y servicios junto al track).'
+    elif enteros and partes:
+        que = f'Faltan datos en los mapas: {y(enteros)} y, en algunas zonas de la ruta, {y(partes)}.'
+    elif enteros:
+        que = f'Faltan datos en los mapas: {y(enteros)}.'
+    else:
+        que = f'Faltan datos en algunas zonas de la ruta: {y(partes)}.'
+    if motivo and any(x in motivo for x in ('Overpass', 'HTTP', 'imeout', 'onnection')):
+        codigo = motivo.replace('Overpass no responde: ', '').replace('Overpass no responde ', '')
+        porque = (f'El servidor de OpenStreetMap (Overpass) no respondió ({codigo}): suele ser una saturación pasajera, '
+                  'no un problema de la ruta ni de VenB.')
+    else:
+        porque = f'Falló la descarga ({motivo}).' if motivo else 'Falló la descarga.'
+    return (f'{que} {porque} Los documentos sirven, pero los mapas podrían ser más ricos. Lo que sí se descargó queda '
+            'guardado: genéralos de nuevo más tarde (dentro de un rato o de unas horas; a primera hora de la mañana el '
+            'servidor suele ir mejor) y VenB solo pedirá lo que falta.')
+
+
 def _generar(d):
     e = _leer(d, 'estado.json', {})
     a = _leer(d, 'analisis.json')
@@ -732,6 +802,7 @@ def _generar(d):
         print('Tabla de tiempos…', flush=True)
         exportar_excel(plan, proyecto.salida_dir / 'tabla_tiempos.xlsx')
     osm = None
+    aviso_mapas = None
     if 'infografia' in p['salidas'] or estilos:
         from generador.osm import elementos
         tr = plan.track
@@ -739,8 +810,13 @@ def _generar(d):
         try:
             osm = elementos(tr, (tr.lat.min() - 0.4, tr.lon.min() - 0.6, tr.lat.max() + 0.4, tr.lon.max() + 0.6),
                             servicios=p.get('servicios', True))
+            if osm.get('fallos'):
+                aviso_mapas = _aviso_mapas(osm['fallos'], osm.get('motivo_fallo'))
         except Exception as ex:
             print(f'  aviso: sin datos geográficos ({ex})', flush=True)
+            aviso_mapas = _aviso_mapas(None, str(ex))
+        if aviso_mapas:
+            print(f'  aviso: {aviso_mapas}', flush=True)
     if 'infografia' in p['salidas']:
         print('Infografías…', flush=True)
         from generador.infografia import generar as g
@@ -756,7 +832,7 @@ def _generar(d):
         print('Página interactiva…', flush=True)
         from generador.web import generar as g
         g(proyecto, plan)
-    _estado(d, fase='hecho', error=None, generado=datetime.now().isoformat(timespec='seconds'))
+    _estado(d, fase='hecho', error=None, aviso_mapas=aviso_mapas, generado=datetime.now().isoformat(timespec='seconds'))
     print('Hecho.', flush=True)
 
 
@@ -768,9 +844,19 @@ def _trabajo(orden, d):
     _parar_latido = threading.Event()
 
     def latido():
+        n = 0
         while not _parar_latido.is_set():
-            _latir(d)
-            _parar_latido.wait(LATIDO_S)
+            if os.path.exists(os.path.join(d, DETENER)):
+                print('\nDetenido.', flush=True)
+                try:
+                    os.remove(os.path.join(d, 'latido.txt'))
+                except OSError:
+                    pass
+                os._exit(3)     # el estado lo deja quien lo detuvo (detener)
+            if n % LATIDO_S == 0:
+                _latir(d)
+            n += 1
+            _parar_latido.wait(1)
     threading.Thread(target=latido, daemon=True).start()
     try:
         (_analizar if orden == 'analizar' else _generar)(d)

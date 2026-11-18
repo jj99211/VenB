@@ -3,6 +3,7 @@
 Los tracks exportados por Garmin Connect y similares traen la altitud muy
 suavizada y subestiman el desnivel; el MDT europeo de 25 m da cifras más realistas.
 """
+import os
 import hashlib
 import sys
 import time
@@ -50,5 +51,8 @@ def altitudes_mdt(lat, lon, dataset="eudem25m", lote=100, pausa=1.05):
     ok = ~np.isnan(salida)
     if ok.any() and not ok.all():
         salida[~ok] = np.interp(np.flatnonzero(~ok), np.flatnonzero(ok), salida[ok])
-    np.save(fichero, salida)
+    tmp = fichero.with_name(fichero.name + ".tmp")     # completo o nada (proceso detenido)
+    with open(tmp, "wb") as f:
+        np.save(f, salida)
+    os.replace(tmp, fichero)
     return salida

@@ -17,6 +17,7 @@ import unicodedata
 import requests
 
 from . import CACHE as _CACHE
+from . import guardar as _guardar
 
 CACHE = _CACHE / "ngbe"
 URL = "https://www.ign.es/wfs-inspire/ngbe"
@@ -66,7 +67,7 @@ def _celda(s, o):
                     if nombre and tipo and g.get("type") == "Point":
                         lugares.append({"nombre": nombre, "tipo": tipo, "lon": g["coordinates"][0], "lat": g["coordinates"][1]})
                 CACHE.mkdir(parents=True, exist_ok=True)
-                fichero.write_text(json.dumps(lugares, ensure_ascii=False))
+                _guardar(fichero, json.dumps(lugares, ensure_ascii=False))
                 return lugares
             ultimo = f"HTTP {r.status_code}"
         except (requests.RequestException, ValueError) as e:

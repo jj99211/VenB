@@ -24,6 +24,61 @@
     paso();
   }
 
+  // Detener el análisis o la generación en marcha: dos pulsaciones (la primera pide confirmar)
+  document.querySelectorAll('[data-detener]').forEach(b => {
+    const texto = b.textContent;
+    let armado = null;
+    b.addEventListener('click', () => {
+      if (!armado) {
+        b.textContent = '¿Detener? Pulsa otra vez';
+        armado = setTimeout(() => { b.textContent = texto; armado = null; }, 5000);
+        return;
+      }
+      clearTimeout(armado); armado = null;
+      b.disabled = true; b.textContent = 'Deteniendo…';
+      fetch(b.dataset.detener, { method: 'POST' }).then(r => r.json()).then(r => {
+        if (r.error) { b.disabled = false; b.textContent = texto; alertaEn(b, r.error); } else location.reload();
+      }).catch(() => { b.disabled = false; b.textContent = texto; });
+    });
+  });
+  // Comprobar si el servidor de OpenStreetMap está cargado (consulta mínima; el resultado, junto al botón)
+  const probar = document.getElementById('probar-servidor');
+  if (probar) probar.addEventListener('click', () => {
+    const sal = document.getElementById('estado-servidor'), texto = probar.textContent;
+    probar.disabled = true; probar.textContent = 'Comprobando…';
+    sal.className = 'suave'; sal.textContent = 'Consultando el servidor de OpenStreetMap…';
+    fetch(probar.dataset.url).then(r => r.json()).then(r => {
+      sal.textContent = (r.estado === 'bien' ? '✅ ' : r.estado === 'lento' ? '🟡 ' : '⛔ ') + r.texto;
+      sal.className = r.estado === 'bien' ? 'suave' : 'aviso-servidor';
+    }).catch(() => { sal.textContent = 'No se pudo comprobar (¿VenB sigue abierta?).'; })
+      .finally(() => { probar.disabled = false; probar.textContent = texto; });
+  });
+  function alertaEn(b, msg) {
+    let s = b.nextElementSibling;
+    if (!s || !s.classList.contains('suave')) { s = document.createElement('span'); s.className = 'suave'; b.after(s); }
+    s.textContent = ' ' + msg;
+  }
+  // Progreso de la descarga en curso (última línea del registro: «OpenStreetMap: zona 3/31 · quedan unos 12 min»,
+  // «teselas osm z9: 17/48», «IGN (Nomenclátor): celda 3/33»): texto con porcentaje y tiempo que queda, y barra.
+  // Si el proceso no da el tiempo, se estima aquí con el ritmo observado desde que empezó esa descarga.
+  let medida = null;
+  const nombreDescarga = l => l.startsWith('teselas') ? 'teselas del mapa' : l.startsWith('OpenStreetMap') ? 'datos de OpenStreetMap'
+    : l.startsWith('IGN') ? 'nombres del IGN' : l;
+  function progresoDe(reg) {
+    const ult = reg.length ? reg[reg.length - 1] : '';
+    const m = /^\s+(.+?): (?:zona |celda |lote )?(\d+)\/(\d+)(?: · (.+?))?\s*$/.exec(ult);
+    if (!m) { medida = null; return /zonas por descargar/.test(ult) ? { texto: ult.trim() } : null; }
+    const n = +m[2], total = +m[3], clave = m[1] + '/' + total;
+    if (!medida || medida.clave !== clave || n < medida.n0) medida = { clave, n0: n, t0: Date.now() };
+    let resto = m[4] || '';
+    if (!resto && n - medida.n0 >= 2) {
+      const min = Math.round((Date.now() - medida.t0) / (n - medida.n0) * (total - n) / 60000);
+      resto = min < 1 ? 'queda menos de un minuto' : `quedan unos ${min} min`;
+    }
+    const pct = Math.floor(100 * (n - 1) / total);
+    return { texto: `${nombreDescarga(m[1])}: ${n} de ${total} (${pct} %)${resto ? ', ' + resto : ''}`, pct };
+  }
+
   const prog = $('progreso');
   if (prog && prog.dataset.estado) {
     if (prog.querySelector('h2').textContent.startsWith('Analizando')) {
@@ -407,7 +462,9 @@
     seguir(X.urlEstado, pg.querySelector('pre'), ['generando'], () => location.reload(), e => {
       if (e.inicio_generar) t0 = new Date(e.inicio_generar);
       const pasos = (e.registro || []).filter(l => /^\S.*(…|\.\.\.)\s*$/.test(l));   // los pasos acaban en «…»; avisos y detalles, no
-      $('gen-paso').textContent = pasos.length ? '· ' + pasos[pasos.length - 1] : '';
+      const pr = progresoDe(e.registro || []), barra = $('gen-barra');
+      $('gen-paso').textContent = (pasos.length ? '· ' + pasos[pasos.length - 1].replace(/\s*\(.*$/, '') : '') + (pr ? ' — ' + pr.texto : '');
+      if (barra) { barra.hidden = !(pr && isFinite(pr.pct)); if (pr && isFinite(pr.pct)) barra.value = pr.pct; }
     });
   }
   // Todo lo que hay en la página (para generar o para guardarlo al editar los puntos)

@@ -1314,6 +1314,23 @@ def plan_generar(pid):
     return jsonify({'ok': True})
 
 
+@app.post('/planificador/<pid>/detener')
+def plan_detener(pid):
+    _plan(pid)
+    try:
+        PL.detener(pid)
+    except PL.ErrorPlan as e:
+        return jsonify({'error': str(e)}), 400
+    return jsonify({'ok': True})
+
+
+@app.get('/planificador/servidor-mapas')
+def plan_servidor_mapas():
+    """Consulta mínima a OpenStreetMap (Overpass) para saber si conviene generar ahora."""
+    from generador.osm import probar_servidor
+    return jsonify(probar_servidor())
+
+
 @app.post('/planificador/<pid>/puntos')
 def plan_puntos(pid):
     _plan(pid)

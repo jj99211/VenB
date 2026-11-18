@@ -1,6 +1,7 @@
 """Mapa base a partir de teselas de OpenStreetMap (con caché) y proyección Web Mercator."""
 import io
 import math
+import os
 import sys
 import time
 from pathlib import Path
@@ -77,7 +78,9 @@ def _tesela(estilo, z, x, y):
         capa = _descargar(u, estilo, z, x, y)
         img.alpha_composite(capa.resize(img.size) if capa.size != img.size else capa)
     img = img.convert("RGB")
-    img.save(fichero)
+    tmp = fichero.with_name(fichero.name + ".tmp")     # completo o nada: un proceso detenido no deja teselas a medias
+    img.save(tmp, format="PNG")
+    os.replace(tmp, fichero)
     return img
 
 

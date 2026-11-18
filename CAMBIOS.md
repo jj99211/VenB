@@ -2,6 +2,18 @@
 
 Novedades de cada versión de VenB y VenB Rutas (las dos ediciones comparten número de versión).
 
+## 3.51
+
+- **Infografía en un solo mapa:** VenB procura que todos los puntos quepan en un mapa, reduciendo las cajas (hasta dos tercios) o haciendo el mapa más alto, en lugar de repartirlos en varias hojas de 9 en 9. Si aun así no caben, hace dos: ida y vuelta, cortando en el punto más alejado de la salida, cada una encuadrada en su parte. Un BRM 1000 que antes salía en 4 hojas, con días mezclados, sale ahora en una.
+- **Cajas en el orden de la ruta:** en una ruta circular, las cajas la rodean por el borde del mapa en el sentido en que se recorre (horario o antihorario), y las líneas que las unen a sus puntos ya no se cruzan. Las etiquetas del perfil se reducen con las cajas.
+- **Descargas de OpenStreetMap más rápidas y robustas:**
+  - Se pide todo lo de cada zona en una sola consulta: unas 8 veces menos peticiones.
+  - En rutas extensas (más de 200 km de lado, como un BRM 1000) no se descargan aldeas, cascos urbanos ni servicios, que no se distinguirían a esa escala, y ríos, cumbres y embalses solo junto al track: en un BRM 1000, 20 consultas en lugar de más de 200.
+  - Si el servidor falla en una parte, se conserva el resto y el plan avisa de **Mapas incompletos**; al volver a generar, solo se pide lo que falta. Una respuesta cortada por el servidor ya no se guarda.
+- **Comprobar el servidor de mapas:** botón junto a **Generar** que hace una consulta mínima y dice si OpenStreetMap responde bien, va lento o está saturado, para decidir si generar ahora o más tarde.
+- **Detener proceso:** botón para parar un análisis o una generación en marcha (también si se lanzó desde otra ventana de VenB). Lo descargado se conserva. Barra de avance con el tiempo que queda al descargar datos de OpenStreetMap, del IGN y teselas, y aviso de que con el servidor saturado puede pasar de una hora.
+- **Ficheros generados** en dos columnas: la ruta con waypoints (GPX) a la izquierda; la tabla de tiempos y la página interactiva a la derecha.
+
 ## 3.50
 
 - **Planificador, análisis con reloj:** mientras se analiza una ruta se ven el tiempo transcurrido, el paso en curso y, al consultar las altitudes del terreno, el lote y lo que queda (un BRM 1000 tarda unos 5 minutos; el servicio público de altitudes no admite más de una consulta por segundo).

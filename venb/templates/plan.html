@@ -10,7 +10,8 @@
   {% if e.fase == 'analizando' %}
   <h2>Analizando la ruta…</h2>
   <p class="aviso-espera" role="status" data-inicio="{{ e.inicio_analizar or e.creado or '' }}"><span class="girando" aria-hidden="true">⟳</span> <span id="an-tiempo" class="cifra-tiempo">0:00</span> <span id="an-paso" class="suave"></span></p>
-  <p class="suave">Se leen la hoja y el track y se consultan las altitudes del terreno por Internet, en lotes de unos 5 km con una pausa de un segundo entre lotes (el servicio público no admite más): una ruta de 200 km tarda menos de un minuto, y un BRM 1000, unos 5 minutos. Una ruta ya analizada sale al momento. Puedes seguir usando VenB; esta página se actualiza sola.</p>
+  <p class="suave">Se leen la hoja y el track y se consultan las altitudes del terreno por Internet, en lotes de unos 5 km con una pausa de un segundo entre lotes (el servicio público no admite más): una ruta de 200 km tarda menos de un minuto, y un BRM 1000, unos 5 minutos (más si el servicio va lento). Una ruta ya analizada sale al momento. Puedes seguir usando VenB; esta página se actualiza sola.</p>
+  <p><button type="button" class="discreto" data-detener="{{ url_for('plan_detener', pid=e.id) }}">Detener proceso</button> <span class="suave">Lo ya consultado queda guardado: al repetir, sigue desde ahí.</span></p>
   {% else %}
   <h2>No se ha podido analizar la ruta</h2>
   <div class="aviso alto">{{ e.error }}</div>
@@ -134,17 +135,25 @@
     <label class="casilla"><input type="checkbox" id="servicios" checked> Marcar servicios junto al track (fuentes, bares, tiendas y gasolineras de OpenStreetMap; en la infografía, con el mapa del IGN)</label>
   </div>
   <p><button type="button" id="generar">Generar</button> <span class="suave" id="aviso-generar"></span></p>
+  <p><button type="button" class="discreto" id="probar-servidor" data-url="{{ url_for('plan_servidor_mapas') }}">Comprobar el servidor de mapas</button>
+    <span class="suave" id="estado-servidor">Antes de generar en una zona nueva, comprueba si el servidor de OpenStreetMap está cargado (tarda unos segundos).</span></p>
   <div id="progreso-generar" data-inicio="{{ e.inicio_generar or '' }}" {% if e.fase != 'generando' %}hidden{% endif %}>
     <p class="aviso-espera" role="status"><span class="girando" aria-hidden="true">⟳</span> <b>Generando…</b> <span id="gen-tiempo" class="cifra-tiempo">0:00</span> <span id="gen-paso" class="suave"></span></p>
-    <p class="suave">Mapas, teselas y datos geográficos se descargan la primera vez: en una zona nueva puede tardar de 10 a 15 minutos. Puedes seguir usando VenB; esta página se actualizará sola al terminar.</p>
+    <progress id="gen-barra" max="100" value="0" hidden></progress>
+    <p class="suave">Mapas, teselas y datos geográficos se descargan la primera vez y quedan guardados. En una zona nueva suele tardar de 10 a 15 minutos, pero <b>a veces el servidor de OpenStreetMap está saturado y la consulta puede pasar de una hora</b>. Si ves que avanza muy despacio, es mejor detenerla y generar en otro momento (a primera hora de la mañana suele ir mejor): lo descargado no se pierde y, al volver a generar, VenB seguirá desde ahí. Mientras tanto puedes seguir usando VenB; esta página se actualizará sola al terminar.</p>
+    <p><button type="button" class="discreto" data-detener="{{ url_for('plan_detener', pid=e.id) }}">Detener proceso</button></p>
     <details><summary>Ver el detalle del proceso</summary><pre class="registro"></pre></details>
   </div>
   {% if e.error and e.fase != 'generando' %}<div class="aviso alto">No se ha podido generar: {{ e.error }}</div>{% endif %}
+  {% if e.detenido == 'generar' and e.fase == 'listo' %}<div class="aviso medio"><b>Generación detenida.</b> Lo que ya se había descargado (teselas, altitudes y datos de OpenStreetMap) queda guardado: al volver a generar, seguirá desde ahí. Los documentos anteriores se borran al empezar a generar, así que hasta entonces no hay ficheros.</div>{% endif %}
+  {% if e.detenido == 'analizar' and e.fase == 'listo' %}<div class="aviso medio"><b>Análisis detenido.</b> Se mantiene el análisis anterior.</div>{% endif %}
+  {% if e.aviso_mapas and e.fase == 'hecho' %}<div class="aviso medio"><b>Mapas incompletos.</b> {{ e.aviso_mapas }}</div>{% endif %}
   {% if ficheros %}
   <h2 style="margin-top:16px">Ficheros generados{% if e.generado %} <span class="suave">({{ e.generado[8:10] }}/{{ e.generado[5:7] }}/{{ e.generado[:4] }} {{ e.generado[11:16] }})</span>{% endif %}</h2>
   <p><a href="{{ url_for('plan_zip', pid=e.id) }}">Descargar todo (ZIP)</a></p>
   {% for grupo in [documentos|selectattr('imagen')|list, documentos|rejectattr('imagen')|list] %}{% if grupo %}
   <div class="documentos{% if not grupo[0].imagen %} documentos-pequenos{% endif %}">{% for d in grupo %}
+    {% if loop.index == 2 and not grupo[0].imagen %}<div class="documentos-columna">{% endif %}
     <article class="documento{% if d.gpx %} documento-gpx{% endif %}">
       <h3>{{ d.titulo }}</h3>
       {% if d.imagen %}<a class="vista" href="{{ url_for('plan_fichero', pid=e.id, nombre=d.imagen) }}" target="_blank" rel="noopener" title="Abrir a tamaño completo"><img loading="lazy" src="{{ url_for('plan_fichero', pid=e.id, nombre=d.imagen) }}" alt="{{ d.titulo }}"></a>{% endif %}
@@ -153,7 +162,7 @@
       <p class="suave">{{ d.ficheros[0][1] }}</p>
       {% else %}<p class="formatos">{% for fmt, f in d.ficheros %}<span class="formato"><b>{{ fmt }}</b>
         {% if fmt != 'Excel' %}<a href="{{ url_for('plan_fichero', pid=e.id, nombre=f) }}" target="_blank" rel="noopener">Abrir</a> · {% endif %}<a href="{{ url_for('plan_fichero', pid=e.id, nombre=f, descargar=1) }}">Descargar</a></span>{% endfor %}</p>{% endif %}
-    </article>{% endfor %}
+    </article>{% if loop.last and loop.length > 1 and not grupo[0].imagen %}</div>{% endif %}{% endfor %}
   </div>{% endif %}{% endfor %}
   {% if 'ruta_interactiva.html' in ficheros %}
   <article class="documento documento-web" id="web">
