@@ -4,7 +4,8 @@ Uso: python venb/copia.py exportar [CARPETA]   crea VenB-copia-AAAA-MM-DD_HHMM.z
      python venb/copia.py comprobar ZIP        verifica una copia sin tocar nada
 
 Una copia contiene VenB-datos entera (salvo cachés y las copias automáticas) y, de los datos de garmindb, lo que VenB
-lee: los resúmenes JSON de las actividades y la base garmin.db (sueño, VFC, FC en reposo y peso). Los FIT originales
+lee: los resúmenes JSON de las actividades y las bases garmin.db (FC en reposo y peso; antes de garmindb 4, también sueño
+y VFC), sleep.db y hrv.db. Los FIT originales
 no entran: VenB no los usa y garmindb puede volver a descargarlos.
 No entra nada secreto: ni la contraseña de Garmin, que está en ~/.venb, ni la dirección del calendario (config/calendario_url.txt).
 Cada fichero lleva su suma SHA-256 en copia_venb.json; antes de restaurar se comprueban todas, y antes de sobrescribir
@@ -30,6 +31,8 @@ GUARDAR = 5  # copias automáticas que se conservan
 COPIAS = os.path.join(rutas.PERSISTE, 'copias')
 EXCLUIR = ('copias/', 'actividades/pendientes/', 'datos/calendario_cache.ics', 'datos/calendario_propio_cache.ics', 'datos/cortes_cache.json', 'datos/sensores_cache.json', 'config/calendario_url.txt')
 P_DATOS, P_ACT, P_DB = 'VenB-datos/', 'garmin/actividades/', 'garmin/garmin.db'
+# bases de salud de garmindb 4 (sueño y VFC), junto a garmin.db
+BASES = {P_DB: 'garmin.db', 'garmin/sleep.db': 'sleep.db', 'garmin/hrv.db': 'hrv.db'}
 
 
 class ErrorCopia(Exception):
@@ -71,9 +74,11 @@ def _ficheros():
         for f in sorted(os.listdir(act)):
             if f.endswith('.json'):
                 yield P_ACT + f, os.path.join(act, f)
-    db = rutas.ruta_garmin_db()
-    if os.path.exists(db):
-        yield P_DB, lambda: _db_consistente(db)
+    carpeta = os.path.dirname(rutas.ruta_garmin_db())
+    for nombre, fichero in BASES.items():
+        db = os.path.join(carpeta, fichero)
+        if os.path.exists(db):
+            yield nombre, (lambda db=db: _db_consistente(db))
 
 
 def _escribir_copia(destino):
@@ -117,7 +122,7 @@ def _nombre_valido(n):
         return len(partes) > 1
     if n.startswith(P_ACT):
         return len(partes) == 3 and n.endswith('.json')
-    return n in (P_DB, MANIFIESTO)
+    return n in BASES or n == MANIFIESTO
 
 
 def comprobar(ruta):
@@ -188,11 +193,12 @@ def restaurar(ruta):
                 if not os.path.exists(destino):
                     _guardar(destino, z.read(n))
                     n_act += 1
-            elif n == P_DB:
-                if os.path.exists(rutas.ruta_garmin_db()):
+            elif n in BASES:
+                destino = os.path.join(os.path.dirname(rutas.ruta_garmin_db()), BASES[n])
+                if os.path.exists(destino):
                     db = 'se conserva la actual'
                 else:
-                    _guardar(rutas.ruta_garmin_db(), z.read(n))
+                    _guardar(destino, z.read(n))
                     db = 'restaurada'
     return {'tipo': 'copia', 'fecha': m['fecha'], 'datos': n_datos, 'actividades': n_act, 'db': db, 'previa': previa}
 

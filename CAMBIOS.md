@@ -2,6 +2,18 @@
 
 Novedades de cada versión de VenB y VenB Rutas (las dos ediciones comparten número de versión).
 
+## 3.52
+
+- **Datos de Garmin protegidos ante las actualizaciones de garmindb:** el programa que descarga los datos de Garmin (garmindb) cambió en su versión 4 el formato de sus bases de datos, y la instalación de la 3.50 lo actualizó sin adaptarlas. Desde entonces las descargas se cortaban a medias: llegaban las actividades y el sueño, pero no la FC en reposo ni la VFC, y las actividades nuevas no entraban en la base (perfiles y validación de sensores). Inicio solo decía «Comprueba que el reloj se ha sincronizado». Ahora:
+  - VenB instala siempre la misma versión de garmindb, probada con VenB, en lugar de la última que haya.
+  - VenB anota con qué versión de garmindb se crearon las bases. Si cambia, o si una descarga avisa de que el formato no coincide, las rehace con los datos ya descargados en el ordenador, sin pedir nada a Garmin Connect: al instalar o, si no, antes de la siguiente descarga. Tarda entre 10 y 30 minutos, solo esa vez, y guarda una copia de las bases anteriores.
+  - Si se queda sin datos de salud recientes porque la descarga falla, Inicio dice el motivo real.
+  - VenB lee el sueño y la VFC en el formato nuevo de garmindb (bases propias) y en el antiguo, y la copia de seguridad los incluye.
+  - Si al instalar la 3.52 hay que rehacer las bases, el instalador lo avisa y tarda un poco más.
+- **Mapas e infografía en A4:** la hoja es siempre un A4, vertical, u horizontal si el track es más ancho que alto. En los mapas personal y «Juego de Tronos», el perfil va dentro del A4: el mapa deja sitio para que quepan el título y el cartucho sin tapar el track, y el cartucho se reduce en proporción. En la infografía, el mapa se encuadra para el alto que dejan la cabecera, el perfil y el pie.
+- **Servicios más visibles:** en los mapas y en la infografía, cada servicio junto al track es un disco de color con su icono en blanco (agua en azul, bar en marrón, tienda en verde, gasolinera en morado), mayor que antes, con una línea fina hasta el sitio real si hay que apartarlo. La leyenda lleva los iconos en su color.
+- **Brevets, resumen de la ruta:** botón 📈 en cada fila del historial, como en el Histórico: distancia, tiempo, perfil y recorrido de la actividad enlazada (o la que VenB deduce por fecha y distancia).
+
 ## 3.51
 
 - **Infografía en un solo mapa:** VenB procura que todos los puntos quepan en un mapa, reduciendo las cajas (hasta dos tercios) o haciendo el mapa más alto, en lugar de repartirlos en varias hojas de 9 en 9. Si aun así no caben, hace dos: ida y vuelta, cortando en el punto más alejado de la salida, cada una encuadrada en su parte. Un BRM 1000 que antes salía en 4 hojas, con días mezclados, sale ahora en una.

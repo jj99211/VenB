@@ -1,0 +1,4 @@
+# Versión fija de garmindb. Cada versión puede cambiar el formato de sus bases de datos: no se actualiza sola.
+# Al subirla, el instalador ejecuta scripts/garmin_bd.py, que rehace las bases desde los ficheros ya descargados.
+# Antes de cambiarla, probar una descarga completa y una reciente con la versión nueva.
+garmindb==4.0.1

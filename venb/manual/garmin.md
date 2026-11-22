@@ -47,6 +47,8 @@ Las actividades aparecen solas. Después, VenB trae lo nuevo de Garmin Connect c
 
 Además, el instalador programa una descarga al día que funciona aunque VenB esté cerrada, para que los datos estén al día al abrirla. En Linux, si el ordenador estaba apagado a esa hora, se hace al encenderlo.
 
+VenB instala una versión fija de garmindb, probada con VenB. Cuando una versión nueva de VenB trae otra de garmindb, que puede guardar los datos en otro formato, VenB rehace sus bases de datos con lo ya descargado, sin pedir nada a Garmin Connect. Lo hace al instalar o, si no, antes de la descarga siguiente, y tarda entre 10 y 30 minutos solo esa vez. Las bases anteriores quedan copiadas en `.venb/HealthData/DBs_copia` de tu carpeta personal.
+
 ## Vía 2. Historial completo
 
 ### 1. Solicitar la exportación

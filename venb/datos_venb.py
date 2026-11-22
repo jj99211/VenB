@@ -12,6 +12,7 @@ from carga import cargar, leer_garmin, leer_locales  # noqa: E402
 import rutas  # noqa: E402
 import bicis  # noqa: E402
 import garmin_freno as FR  # noqa: E402
+import garmin_bd as BD  # noqa: E402
 import importar  # noqa: E402
 
 DATOS, INFORMES, ESTADO, CAL_URL = rutas.DATOS, rutas.INFORMES, rutas.ESTADO, rutas.CAL_URL
@@ -99,17 +100,34 @@ def resumen_semana(df, lunes):
     return {'h': float(b.h.sum()), 'km': float(b.Distancia.sum()), 'n': len(b)}
 
 
+def _conexion_salud():
+    """garmin.db con sleep.db y hrv.db adjuntas: desde garmindb 4 el sueño y la VFC van en bases propias (antes,
+    tablas sleep y hrv de garmin.db). Devuelve (conexión, consulta de la VFC por día con columnas day y v)."""
+    c = sqlite3.connect(_uri_garmin(), uri=True, timeout=2)
+    carpeta = os.path.dirname(rutas.ruta_garmin_db())
+    esquemas = ['main']
+    for nombre in ('sleep', 'hrv'):
+        ruta = os.path.join(carpeta, nombre + '.db')
+        if os.path.exists(ruta):
+            c.execute('attach database ? as ' + nombre + 'db', (Path(ruta).as_uri() + '?mode=ro',))
+            esquemas.append(nombre + 'db')
+    tablas = {r[0] for e in esquemas for r in c.execute(f"select name from {e}.sqlite_master where type='table'")}
+    vfc = ('select day, last_night_average v from hrv_status_summary' if 'hrv_status_summary' in tablas
+           else 'select day, last_night_avg v from hrv')
+    return c, vfc
+
+
 def salud(dias=7):
     """Medias recientes de sueño, VFC y FC en reposo; None si la base no está disponible."""
     try:
-        c = sqlite3.connect(_uri_garmin(), uri=True, timeout=2)
+        c, sql_vfc = _conexion_salud()
         desde =(date.today() - timedelta(days=dias)).isoformat()
         s = pd.read_sql('select day,total_sleep,score from sleep where day>=?', c, params=(desde,))
         h = pd.to_timedelta(s.total_sleep.str.slice(0, 8)).dt.total_seconds() / 3600
         h = h[h > 0]
         fc = pd.read_sql('select avg(resting_heart_rate) v from resting_hr where day>=?', c, params=(desde,)).v[0]
-        vfc = pd.read_sql('select avg(last_night_avg) v from hrv where day>=?', c, params=(desde,)).v[0]
-        ultimo = pd.read_sql('select max(day) v from hrv', c).v[0]
+        vfc = pd.read_sql(f'select avg(v) v from ({sql_vfc}) where day>=?', c, params=(desde,)).v[0]
+        ultimo = pd.read_sql(f'select max(day) v from ({sql_vfc})', c).v[0]
         c.close()
         return {'h': h.mean() if len(h) else None, 'score': s.score.mean() if len(s) else None, 'noches': len(h), 'fc': fc, 'vfc': vfc,
                 'ultimo': pd.Timestamp(ultimo).date() if ultimo else None}
@@ -130,10 +148,10 @@ def _salud_diaria():
     """Medias móviles de 7 días de sueño, VFC y FC en reposo, por día."""
     vacio = {'f': [], 'sueno': [], 'vfc': [], 'fc': []}
     try:
-        c = sqlite3.connect(_uri_garmin(), uri=True, timeout=2)
+        c, sql_vfc = _conexion_salud()
         s = pd.read_sql('select day,total_sleep from sleep', c, parse_dates=['day']).set_index('day')
         f = pd.read_sql('select day,resting_heart_rate v from resting_hr', c, parse_dates=['day']).set_index('day')
-        v = pd.read_sql('select day,last_night_avg v from hrv', c, parse_dates=['day']).set_index('day')
+        v = pd.read_sql(sql_vfc, c, parse_dates=['day']).set_index('day')
         c.close()
     except Exception:
         return vacio
@@ -565,6 +583,12 @@ def _log_descarga():
     return os.path.join(os.path.dirname(_config_garmin()), 'descarga_venb.log')
 
 
+def _orden_garmindb(py, *opciones):
+    """garmindb_cli.py a través de scripts/garmin_bd.py, que antes rehace las bases si se crearon con otra versión
+    de garmindb (desde los ficheros ya descargados)."""
+    return [py, os.path.join(PROYECTO, 'scripts', 'garmin_bd.py'), rutas.GARMIN_CONFIG, '--', *opciones]
+
+
 def descargar_todo():
     """Lanza en segundo plano la descarga completa de garmindb (la primera; luego basta la diaria). Devuelve el error o None."""
     if estado_descarga()['en_curso']:
@@ -575,10 +599,9 @@ def descargar_todo():
     puede, motivo = FR.puede(manual=True)
     if not puede:
         return motivo
-    cli = os.path.join(os.path.dirname(py), 'garmindb_cli.py')
     log = open(_log_descarga(), 'w', encoding='utf-8')
     opciones = {'creationflags': subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW} if os.name == 'nt' else {'start_new_session': True}
-    _descarga.update(proceso=subprocess.Popen([py, cli, '-f', rutas.GARMIN_CONFIG, '--all', '--download', '--import', '--analyze'], stdout=log, stderr=subprocess.STDOUT, cwd=rutas.GARMIN_CONFIG,
+    _descarga.update(proceso=subprocess.Popen(_orden_garmindb(py, '--all', '--download', '--import', '--analyze'), stdout=log, stderr=subprocess.STDOUT, cwd=rutas.GARMIN_CONFIG,
                                               stdin=subprocess.DEVNULL, env=dict(os.environ, PYTHONIOENCODING='utf-8'), **opciones),
                      inicio=datetime.now())
     log.close()
@@ -618,11 +641,10 @@ def descargar_recientes(horas=3, forzar=False):
     puede, motivo = FR.puede(manual=forzar)
     if not puede:
         return motivo
-    cli = os.path.join(os.path.dirname(py), 'garmindb_cli.py')
     log = open(_log_reciente(), 'w', encoding='utf-8')
     opciones = {'creationflags': subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW} if os.name == 'nt' else {'start_new_session': True}
     _reciente.pop('motivo', None)
-    _reciente.update(proceso=subprocess.Popen([py, cli, '-f', rutas.GARMIN_CONFIG, '--all', '--download', '--import', '--analyze', '--latest'],
+    _reciente.update(proceso=subprocess.Popen(_orden_garmindb(py, '--all', '--download', '--import', '--analyze', '--latest'),
                                               stdout=log, stderr=subprocess.STDOUT, cwd=rutas.GARMIN_CONFIG, stdin=subprocess.DEVNULL,
                                               env=dict(os.environ, PYTHONIOENCODING='utf-8'), **opciones),
                      inicio=datetime.now())
@@ -645,6 +667,13 @@ def _motivo_fallo(codigo):
         texto = ''
     if codigo == 0 and not re.search(r'Failed to login|Traceback|ConnectionError|Max retries|HTTPError|\b429\b|\b1015\b|rate.?limit', texto, re.I):
         return None
+    if re.search(BD.FORMATO_ANTIGUO, texto, re.I):
+        # no es un fallo de inicio de sesión: las bases son de otro formato y se rehacen en la próxima descarga
+        BD.marcar_rehacer(rutas.GARMIN_CONFIG)
+        return ('Las bases de datos de Garmin tienen un formato antiguo. Se rehacen solas en la próxima descarga, '
+                'con los datos ya descargados (puede tardar entre 10 y 30 minutos).')
+    if re.search(r'No se han podido rehacer las bases', texto):
+        return 'No se han podido rehacer las bases de datos de Garmin (detalles en ' + os.path.join(rutas.GARMIN_CONFIG, 'rehacer_bases.log') + ').'
     tipo = FR.clasificar(texto)
     if tipo == 'bloqueo':      # no se pregunta a Garmin otra vez: sería otro inicio de sesión
         return FR.MENSAJES['bloqueo']
@@ -653,6 +682,22 @@ def _motivo_fallo(codigo):
         return FR.aviso()
     error, _ = probar_garmin(manual=False)  # pregunta el motivo; su resultado queda anotado en el freno
     return error or 'garmindb no ha podido completar la descarga (detalles en ' + _log_reciente() + ').'
+
+
+def _ultimo_fallo_descarga():
+    """Motivo del fallo de la última descarga (la de VenB o la diaria, la más reciente), o None si fue bien."""
+    if _reciente.get('motivo'):
+        return _reciente['motivo']
+    logs = [p for p in (_log_reciente(), os.path.join(rutas.GARMIN_CONFIG, 'descarga_diaria.log')) if os.path.exists(p)]
+    if not logs:
+        return None
+    with open(max(logs, key=os.path.getmtime), encoding='utf-8', errors='replace') as f:
+        texto = f.read()[-20000:]
+    if re.search(BD.FORMATO_ANTIGUO, texto, re.I) or 'No se han podido rehacer las bases' in texto:
+        return 'las bases de datos de Garmin tienen otro formato; se rehacen solas en la próxima descarga.'
+    if re.search(r'Failed to login|Traceback|\b429\b|\b1015\b|rate.?limit', texto, re.I):
+        return FR.MENSAJES.get(FR.clasificar(texto), FR.MENSAJES['otro'])
+    return None
 
 
 def _n_actividades():
@@ -1248,7 +1293,10 @@ def avisos():
         if s is None or not s['ultimo']:
             aviso('medio', 'No se han podido leer los datos de sueño y VFC.', 'Puede ser temporal si hay una descarga en marcha.', f'salud:{hoy}')
         elif (hoy - s['ultimo']).days > a['dias_sin_salud']:
-            aviso('medio', f"Los datos de salud llegan solo hasta el {s['ultimo']:%d/%m/%Y}.", 'Comprueba que el reloj se ha sincronizado con Garmin Connect.', f"salud:{s['ultimo']}")
+            fallo = _ultimo_fallo_descarga()
+            aviso('medio', f"Los datos de salud llegan solo hasta el {s['ultimo']:%d/%m/%Y}.",
+                  f'La última descarga de Garmin ha fallado: {fallo}' if fallo else 'Comprueba que el reloj se ha sincronizado con Garmin Connect.',
+                  f"salud:{s['ultimo']}")
     else:
         if historico().empty:
             aviso('bajo', 'Todavía no hay actividades.', 'Consulta en Ayuda cómo incorporar tus datos de Garmin o súbelas en Análisis > Importar.', 'sin_garmin', ('Importar actividades', '/importar'))

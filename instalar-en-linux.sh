@@ -184,12 +184,15 @@ fi
 if [[ "$R" =~ ^[sS] ]]; then
     echo "5. Instalando la descarga de Garmin en $GDB..."
     crear_venv "$GDB"
-    "$GDB/bin/python" -m pip install --quiet --upgrade garmindb
+    # versión fija (scripts/requirements-garmindb.txt): cada versión de garmindb puede cambiar sus bases de datos
+    "$GDB/bin/python" -m pip install --quiet -r "$DIR/scripts/requirements-garmindb.txt"
     mkdir -p "$INTERNO/garmin" && chmod 700 "$INTERNO" "$INTERNO/garmin"
     if [ ! -e "$INTERNO/garmin/GarminConnectConfig.json" ]; then
         cp "$DIR/config/GarminConnectConfig.json.plantilla" "$INTERNO/garmin/GarminConnectConfig.json"
         chmod 600 "$INTERNO/garmin/GarminConnectConfig.json"
     fi
+    # bases creadas con otra versión de garmindb: se rehacen con lo ya descargado (sin pedir nada a Garmin)
+    "$GDB/bin/python" "$DIR/scripts/garmin_bd.py" "$INTERNO/garmin" || echo "Aviso: las bases de Garmin se intentarán rehacer en la próxima descarga."
     if command -v systemctl >/dev/null; then
         U="$HOME/.config/systemd/user"; mkdir -p "$U"
         # pasa por scripts/garmin_diario.py: no inicia sesión si hace poco que falló (freno de VenB)

@@ -63,9 +63,12 @@ if defined ACTUALIZAR if /i not "%R%"=="s" goto fin
 if /i not "%R%"=="s" set /p "R=4. Instalar tambien la descarga automatica de Garmin? [s/N] "
 if /i not "%R%"=="s" goto fin
 if not exist "%GDB%\Scripts\python.exe" %PY% -m venv "%GDB%" || goto fallo
-"%GDB%\Scripts\python.exe" -m pip install --quiet --upgrade garmindb || goto fallo
+rem version fija (scripts\requirements-garmindb.txt): cada version de garmindb puede cambiar sus bases de datos
+"%GDB%\Scripts\python.exe" -m pip install --quiet -r "%DIR%scripts\requirements-garmindb.txt" || goto fallo
 if not exist "%INTERNO%\garmin" mkdir "%INTERNO%\garmin"
 if not exist "%INTERNO%\garmin\GarminConnectConfig.json" copy "%DIR%config\GarminConnectConfig.json.plantilla" "%INTERNO%\garmin\GarminConnectConfig.json" >nul
+rem bases creadas con otra version de garmindb: se rehacen con lo ya descargado (sin pedir nada a Garmin)
+"%GDB%\Scripts\python.exe" "%DIR%scripts\garmin_bd.py" "%INTERNO%\garmin" || echo Aviso: las bases de Garmin se intentaran rehacer en la proxima descarga.
 schtasks /Create /F /SC DAILY /ST 23:30 /TN "VenB Garmin" /TR "\"%GDB%\Scripts\python.exe\" \"%DIR%scripts\garmin_diario.py\" \"%GDB%\Scripts\python.exe\" \"%INTERNO%\garmin\"" || goto fallo
 findstr /R /C:"\"usar_garmin\": *false" "%PERSISTE%\config\ajustes.json" >nul 2>nul && schtasks /Change /TN "VenB Garmin" /DISABLE >nul
 echo.

@@ -919,16 +919,17 @@ def _mascara_bosque(lz):
 
 
 def _servicios(lz, servicios, F, maximo=80):
-    """Iconos de fuentes, bares, tiendas y gasolineras junto al track, sin tapar el track ni los rótulos."""
-    s = 15 * F ** 0.55                 # tamaño del icono (pt)
-    lado = s * PT * 1.25               # caja en píxeles
+    """Iconos de fuentes, bares, tiendas y gasolineras junto al track (disco de color, ver E.servicio), sin tapar
+    el track ni los rótulos; una línea fina lleva al sitio real si el icono ha tenido que apartarse."""
+    s = 22 * F ** 0.55                 # tamaño del icono (pt)
+    lado = s * PT * 1.25               # diámetro en píxeles
     puestos = 0
     for sv in servicios or []:
         if puestos >= maximo:
             break
         x, y = lz.px(sv["lon"], sv["lat"])
         sitio = None
-        for f in (0.9, 1.4, 2.0):
+        for f in (0.9, 1.4, 2.0, 2.8):
             for ang in np.radians([90, 270, 0, 180, 45, 135, 225, 315]):
                 cx, cy = x + np.cos(ang) * lado * f, y + np.sin(ang) * lado * f
                 r = (cx - lado / 2, cy - lado / 2, cx + lado / 2, cy + lado / 2)
@@ -940,9 +941,7 @@ def _servicios(lz, servicios, F, maximo=80):
         if not sitio:
             continue
         cx, cy, r = sitio
-        lz.ax.add_patch(Circle((cx, cy), lado * 0.5, fc="white", ec=lz.c["tinta"], lw=1.1 * F ** 0.4, alpha=0.92, zorder=10.6))
-        lz.ax.text(cx, cy, E.ICONOS_SERVICIO[sv["tipo"]], fontproperties=E.EMOJI, fontsize=s * 0.72, ha="center",
-                   va="center", color=lz.c["tinta"], zorder=10.7)
+        E.servicio(lz.ax, x, y, cx, cy, sv["tipo"], lado, F)
         lz.ocupado.append(r)
         puestos += 1
 
@@ -1219,35 +1218,41 @@ def _cartucho(lz, esquina, plan, marca, base):
              ("Desnivel", f"+{plan.total_asc:,.0f} m".replace(",", " ")),
              ("Controles", f"{controles}"),
              ("Tiempo límite", f"{fmt_dur(timedelta(hours=plan.limite_h))} h")]
-    tam_d = 23 * F * float(lz.cfg_mapa.get("escala_leyenda", 1.0))
-    pad = 14 * F
-    antigua = getattr(lz, "tronos", False)
-    kw_e = dict(fontsize=tam_d * (1.05 if antigua else 1), family="IM FELL English" if antigua else E.SANS)
-    kw_v = dict(fontsize=tam_d * (1.05 if antigua else 1), family="IM FELL English SC" if antigua else E.SANS,
-                weight="normal" if antigua else "bold")
-    alto_fila = lz.medir("Ág", **kw_e)[1] * 1.3
-    ancho_datos = max(lz.medir(e, **kw_e)[0] + lz.medir(v, **kw_v)[0] for e, v in datos) + tam_d * 2.5
-    ancho = max(0.25 * W, ancho_datos + 2 * pad)
-    kw_marca = dict(**lz.letra("marca", 17 * F), color=c["acento"])
-    if texto_marca:     # se reduce hasta que quepa en el ancho del cartucho
-        w_m = lz.medir(texto_marca, **kw_marca)[0]
-        if w_m > ancho - 2 * pad:
-            kw_marca["fontsize"] *= (ancho - 2 * pad) / w_m
-    alto_marca = lz.medir(texto_marca, **kw_marca)[1] * 1.15 if texto_marca else 0
-    alto_logo = min(ancho * 0.36, ancho / logo.shape[1] * logo.shape[0]) if logo is not None else 0
-    alto = pad * 3 + alto_logo + alto_marca + len(datos) * alto_fila + 6 * F
-    # se prueban posiciones pegadas al borde izquierdo y derecho, de abajo arriba
-    mejor = None
-    for xx in (0.035 * W, W - 0.035 * W - ancho):
-        for yy in np.linspace(0.03 * H + alto, H - 0.03 * H, 25):
-            r = (xx, yy - alto, xx + ancho, yy)
-            if not lz.libre(r, margen=10, track_max=1.0):
-                continue
-            pisa = lz.pisa_track(r)
-            preferida = (xx > W / 2) == derecha and (yy > H / 2) == arriba
-            clave = (round(pisa, 3), not preferida)
-            if mejor is None or clave < mejor[0]:
-                mejor = (clave, xx, yy)
+    # con el perfil dentro del A4 el mapa es más bajo que la hoja: el cartucho se reduce en la misma proporción
+    k0 = min(1.0, lz.H / (lz.W * 2 ** 0.5)) if lz.W < lz.H * 1.2 else min(1.0, lz.H / (lz.W / 2 ** 0.5))
+    for red in (1.0, 0.85, 0.72):      # si pisa el track, se prueba más pequeño
+        k = k0 * red
+        tam_d = 23 * F * float(lz.cfg_mapa.get("escala_leyenda", 1.0)) * k
+        pad = 14 * F * k
+        antigua = getattr(lz, "tronos", False)
+        kw_e = dict(fontsize=tam_d * (1.05 if antigua else 1), family="IM FELL English" if antigua else E.SANS)
+        kw_v = dict(fontsize=tam_d * (1.05 if antigua else 1), family="IM FELL English SC" if antigua else E.SANS,
+                    weight="normal" if antigua else "bold")
+        alto_fila = lz.medir("Ág", **kw_e)[1] * 1.3
+        ancho_datos = max(lz.medir(e, **kw_e)[0] + lz.medir(v, **kw_v)[0] for e, v in datos) + tam_d * 2.5
+        ancho = max(0.25 * W * k, ancho_datos + 2 * pad)
+        kw_marca = dict(**lz.letra("marca", 17 * F * k), color=c["acento"])
+        if texto_marca:     # se reduce hasta que quepa en el ancho del cartucho
+            w_m = lz.medir(texto_marca, **kw_marca)[0]
+            if w_m > ancho - 2 * pad:
+                kw_marca["fontsize"] *= (ancho - 2 * pad) / w_m
+        alto_marca = lz.medir(texto_marca, **kw_marca)[1] * 1.15 if texto_marca else 0
+        alto_logo = min(ancho * 0.36, ancho / logo.shape[1] * logo.shape[0]) if logo is not None else 0
+        alto = pad * 3 + alto_logo + alto_marca + len(datos) * alto_fila + 6 * F
+        # se prueban posiciones pegadas al borde izquierdo y derecho, de abajo arriba
+        mejor = None
+        for xx in (0.035 * W, W - 0.035 * W - ancho):
+            for yy in np.linspace(0.03 * H + alto, H - 0.03 * H, 25):
+                r = (xx, yy - alto, xx + ancho, yy)
+                if not lz.libre(r, margen=10, track_max=1.0):
+                    continue
+                pisa = lz.pisa_track(r)
+                preferida = (xx > W / 2) == derecha and (yy > H / 2) == arriba
+                clave = (round(pisa, 3), not preferida)
+                if mejor is None or clave < mejor[0]:
+                    mejor = (clave, xx, yy)
+        if mejor and mejor[0][0] == 0:
+            break
     if mejor:
         _, x0, y1 = mejor
     else:
@@ -1320,10 +1325,12 @@ def _leyenda_lineas(lz, partes, kw, ancho):
     return lineas
 
 
-def _perfil(lz, plan, lugares_ctrl):
+def _perfil(lz, plan, lugares_ctrl, solo_medir=False):
     """Perfil de elevación dibujado a mano en la franja inferior, con los controles numerados.
 
-    La franja se dimensiona según el texto: título y leyenda de controles arriba, km abajo.
+    La franja se dimensiona según el texto: título y leyenda de controles arriba, km abajo. Con `solo_medir`,
+    devuelve su alto sin dibujar nada (para encuadrar el mapa de modo que mapa y perfil sumen un A4). Si el mapa
+    se encuadró para una franja mayor (`lz.pie_previsto`), se usa esa: el espacio sobrante queda sobre la gráfica.
     """
     F, c, tr = lz.F, lz.c, plan.track
     esc = float(lz.cfg_mapa.get("escala_perfil", 3.0))     # título, leyenda y km del perfil
@@ -1347,6 +1354,9 @@ def _perfil(lz, plan, lugares_ctrl):
     margen = 24 * F
     alto_pie = int(margen + h_tit + margen * 0.5 + len(lineas) * h_ley + margen * 0.6 + h_graf
                    + margen * 0.5 + h_km + margen)
+    if solo_medir:
+        return alto_pie
+    alto_pie = max(alto_pie, getattr(lz, "pie_previsto", 0))
     lz.ajustar_pie(alto_pie)
     fig = lz.fig
     total_px = lz.H + alto_pie
@@ -1412,14 +1422,19 @@ def _perfil(lz, plan, lugares_ctrl):
 
 # ------------------------------------------------------------------ composición
 
-def _encuadre(tr, cfg):
+def _encuadre(tr, cfg, alto_pie=0):
+    """Tamaño en píxeles y recuadro en Mercator del mapa. La hoja entera (mapa más la franja del perfil,
+    `alto_pie`) es siempre un A4: vertical, u horizontal si el track es más ancho que alto."""
     X, Y = a_mercator(tr.lon, tr.lat)
     xmin, xmax, ymin, ymax = X.min(), X.max(), Y.min(), Y.max()
     w, h = xmax - xmin, ymax - ymin
     orient = cfg.get("orientacion", "auto")
     if orient == "auto":
         orient = "vertical" if h > w * 1.1 else "horizontal"
-    prop = 1.414 if orient == "horizontal" else 1 / 1.414
+    lado_largo = int(cfg.get("lado_px", 3300))
+    W, total = (lado_largo, int(lado_largo / 1.414)) if orient == "horizontal" else (int(lado_largo / 1.414), lado_largo)
+    H = max(total - int(alto_pie), int(total * 0.45))
+    prop = W / H                                    # proporción del mapa sin la franja del perfil
     margen = cfg.get("margen", 0.12) * max(w, h)
     xmin, xmax, ymin, ymax = xmin - margen, xmax + margen, ymin - margen, ymax + margen
     w, h = xmax - xmin, ymax - ymin
@@ -1429,9 +1444,28 @@ def _encuadre(tr, cfg):
     else:
         extra = (w / prop - h) / 2
         ymin, ymax = ymin - extra, ymax + extra
-    lado_largo = int(cfg.get("lado_px", 3300))
-    W, H = (lado_largo, int(lado_largo / prop)) if prop >= 1 else (int(lado_largo * prop), lado_largo)
     return W, H, xmin, ymin, xmax, ymax
+
+
+def _encuadre_con_hueco(tr, cfg, alto_pie):
+    """_encuadre para los mapas con cartucho (personal y «Juego de Tronos»): con el perfil dentro del A4 el mapa
+    es más bajo y el track puede llenarlo; se amplía el margen hasta que queden dos esquinas sin track, para el
+    título y para el cartucho."""
+    X, Y = a_mercator(tr.lon, tr.lat)
+    base = cfg.get("margen", 0.12)
+    probados = []
+    for m in (base, base + 0.05, base + 0.1, base + 0.16):
+        res = _encuadre(tr, dict(cfg, margen=m), alto_pie)
+        W, H, xmin, ymin, xmax, ymax = res
+        fx, fy = (X - xmin) / (xmax - xmin), (Y - ymin) / (ymax - ymin)
+        aw, ah = 0.3, 0.32                          # cartucho (reducido): ~0,27 del ancho y ~0,3 del alto
+        libres = sum(not np.any((fx >= x0) & (fx <= x0 + aw) & (fy >= y0) & (fy <= y0 + ah))
+                     for x0 in (0, 1 - aw) for y0 in (0, 1 - ah))
+        if libres >= 2:
+            return res
+        probados.append((libres, res))
+    # si no quedan dos, el primero que deje una (sin encoger más el track); si ninguna, el margen original
+    return next((r for n, r in probados if n >= 1), probados[0][1])
 
 
 def _terreno_tronos(lz, rng):
@@ -1538,6 +1572,18 @@ def _generar_estilo(proyecto, plan, osm, estilo):
                 float(cfg.get("escala_toponimos", 2.0)) if personal else 1.0)
     lz.cfg_mapa = cfg
     lz.tronos = tronos
+    if con_perfil:
+        # el perfil va en una franja bajo el mapa: se encuadra el mapa para que los dos sumen un A4
+        ctrl = [l for l in _lugares(plan) if l["control"]]
+        for _ in range(2):                          # el alto de la franja depende un poco del tamaño del mapa
+            pie = _perfil(lz, plan, ctrl, solo_medir=True)
+            W, H, xmin, ymin, xmax, ymax = _encuadre_con_hueco(tr, cfg, pie)
+            plt.close(lz.fig)
+            lz = Lienzo(W, H, xmin, ymin, xmax, ymax, _colores(cfg, estilo), F, 0, estilo,
+                        float(cfg.get("escala_toponimos", 2.0)) if personal else 1.0)
+            lz.cfg_mapa = cfg
+            lz.tronos = tronos
+        lz.pie_previsto = pie
     TX, TY = lz.px(tr.lon, tr.lat)
     lz.marcar_track(TX, TY, grosor=int(10 + 4 * F))
 
@@ -1683,8 +1729,13 @@ def _generar_estilo(proyecto, plan, osm, estilo):
     if personal:
         fuentes += " · Wikidata · Relieve: Terrarium (Mapzen/AWS)"
     ley = E.leyenda_servicios(servicios)
-    lz.fig.text(0.995, 0.004, (ley + "  ·  " if ley else "") + fuentes, fontsize=8 * F, family=[E.SANS, "Noto Emoji"], color="#8a8270",
-                ha="right", va="bottom")
+    lz.fig.text(0.995, 0.004, fuentes, fontsize=8 * F, family=[E.SANS, "Noto Emoji"], color="#8a8270", ha="right", va="bottom")
+    if ley:   # mayor que la atribución y con los iconos en su color: encima de ella o, con perfil, a la
+        # derecha de su título (abajo están los km)
+        alto = lz.H + lz.alto_pie
+        y = ((lz.alto_pie - 24 * F - 13 * F * PT * 1.2) / alto) if con_perfil and lz.alto_pie else 0.004 + 15 * F / alto
+        E.texto_leyenda(lz.fig, 0.96 if con_perfil and lz.alto_pie else 0.995, y, ley, 13 * F, lz.c["tinta"],
+                        fondo=lz.c["papel"])
     nombre = proyecto.salida_dir / {"alballut": "mapa_ilustrado", "personal": "mapa_personal"}.get(estilo, f"mapa_{estilo}")
     lz.fig.savefig(f"{nombre}.png", dpi=100, facecolor=lz.c["papel"])
     lz.fig.savefig(f"{nombre}.pdf", dpi=100, facecolor=lz.c["papel"])

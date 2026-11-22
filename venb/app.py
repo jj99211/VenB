@@ -1153,14 +1153,17 @@ def brevets():
     clubes = sorted({c for b in filas for c in (b['organizador'], b['inscripcion']) if c})
     try:
         hist = D.historico()
-        enlaces = {k: BR.URL_GARMIN.format(v) for k, v in BR.actividades(filas, hist).items() if str(v).isdigit()}
+        act = BR.actividades(filas, hist)
+        enlaces = {k: BR.URL_GARMIN.format(v) for k, v in act.items() if str(v).isdigit()}
     except Exception:  # sin historial de Garmin, la tabla se ve igual, sin enlaces
-        hist, enlaces = None, {}
+        hist, act, enlaces = None, {}, {}
+    # botón de resumen (perfil, recorrido y datos), como en el Histórico: con actividad de Garmin o subida a mano
+    resumenes = {k: url_for('actividad_resumen', aid=str(v)) for k, v in act.items() if es_actividad(str(v))}
     from generador.datos import LIMITES_BRM
     # % del tiempo límite oficial (RM) empleado, para el filtro «Tiempo»; solo con distancia de BRM y tiempo anotado
     pct = {b['id']: round(100 * b['horas'] / LIMITES_BRM[int(b['distancia'])]) for b in filas
            if b['horas'] and b['distancia'] and int(b['distancia']) in LIMITES_BRM and b['distancia'] == int(b['distancia'])}
-    return render_template('brevets.html', filas=filas, st=BR.estadisticas(hist), e=e, enlaces=enlaces, aviso=aviso, tipos=R.ajustes()['tipos_brevet'], clubes=clubes, hoy=fecha(date.today()),
+    return render_template('brevets.html', filas=filas, st=BR.estadisticas(hist), e=e, enlaces=enlaces, resumenes=resumenes, aviso=aviso, tipos=R.ajustes()['tipos_brevet'], clubes=clubes, hoy=fecha(date.today()),
                            pct=pct, tramos=R.ajustes()['tramos_brevet'],
                            organizadores=sorted({b['organizador'] for b in filas if b['organizador']}), inscripciones=sorted({b['inscripcion'] for b in filas if b['inscripcion']}),
                            tipos_hechos=sorted({b['tipo'] for b in filas if b['tipo']}),

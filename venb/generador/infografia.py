@@ -113,11 +113,15 @@ def _probar(fig, plan, cfg, panel, km0, km1, X, Y, W, esc, prop):
 
 
 def _mejor(fig, plan, cfg, panel, km0, km1, X, Y, W):
-    """Primera disposición en la que caben las cajas (INTENTOS); si no cabe ninguna, la menos mala."""
+    """Primera disposición en la que caben las cajas (INTENTOS); si no cabe ninguna, la menos mala. Con la hoja en
+    A4 (`_prop_fija`), la proporción del mapa está dada y solo se prueba a reducir las cajas."""
     prop0 = cfg.get("proporcion_mapa", 4 / 3)
+    fija = cfg.get("_prop_fija")
+    intentos = [(e, fija) for e in dict.fromkeys(e for e, _ in INTENTOS)] if fija else \
+        [(esc, min(prop or prop0, prop0)) for esc, prop in INTENTOS]
     probadas = []
-    for esc, prop in INTENTOS:
-        d = _probar(fig, plan, cfg, panel, km0, km1, X, Y, W, esc, min(prop or prop0, prop0))
+    for esc, prop in intentos:
+        d = _probar(fig, plan, cfg, panel, km0, km1, X, Y, W, esc, prop)
         if d["cabe"]:
             return d
         probadas.append(d)
@@ -797,8 +801,9 @@ def _toponimos(fig, ax, osm, pxll, huecos, TX, TY, F, cfg):
 # ------------------------------------------------------------------ infografía
 
 def _servicios(ax, servicios, pxll, rects, TX, TY, W, Hm, F, maximo=80):
-    """Iconos de fuentes, bares, tiendas y gasolineras junto al track, fuera de las cajas y sin tapar el track."""
-    lado = 15 * F ** 0.55 * PT * 1.25
+    """Iconos de fuentes, bares, tiendas y gasolineras junto al track (disco de color, ver E.servicio), fuera de
+    las cajas y sin tapar el track."""
+    lado = 22 * F ** 0.55 * PT * 1.25
     paso = max(1, len(TX) // 4000)
     tx, ty = np.asarray(TX)[::paso], np.asarray(TY)[::paso]
     puestos = 0
@@ -807,7 +812,7 @@ def _servicios(ax, servicios, pxll, rects, TX, TY, W, Hm, F, maximo=80):
             break
         x, y = pxll(sv["lon"], sv["lat"])
         sitio = None
-        for f in (0.9, 1.4, 2.0):
+        for f in (0.9, 1.4, 2.0, 2.8):
             for ang in np.radians([90, 270, 0, 180, 45, 135, 225, 315]):
                 cx, cy = x + np.cos(ang) * lado * f, y + np.sin(ang) * lado * f
                 r = (cx - lado / 2, cy - lado / 2, cx + lado / 2, cy + lado / 2)
@@ -824,16 +829,23 @@ def _servicios(ax, servicios, pxll, rects, TX, TY, W, Hm, F, maximo=80):
         if not sitio:
             continue
         cx, cy, r = sitio
-        ax.plot([x, cx], [y, cy], color="#1b1b1b", lw=1.2, alpha=0.7, zorder=13)
-        ax.add_patch(Circle((cx, cy), lado * 0.5, fc="white", ec="#1b1b1b", lw=1.6, zorder=13.5))
-        ax.text(cx, cy, E.ICONOS_SERVICIO[sv["tipo"]], fontproperties=E.EMOJI, fontsize=15 * F ** 0.55 * 0.72,
-                ha="center", va="center", color="#1b1b1b", zorder=14)
+        E.servicio(ax, x, y, cx, cy, sv["tipo"], lado, F, z=13)
         rects.append(r)
         puestos += 1
 
 
+def _resto_estimado(F):
+    """Alto aproximado (px) de todo lo que no es mapa: cabecera, etiquetas del perfil (dos filas), perfil, días y
+    pie (una fila de leyenda). Sirve para encuadrar el mapa de modo que la hoja sea un A4; la diferencia con lo
+    medido después la absorbe el perfil."""
+    cab = 16 + 34 * F * PT * 1.25 + 10 * F + 15 * F * PT * 1.25 + 15 * F + 15 * F * PT * 1.25 + 0.7 * 15 * F * PT + 16
+    etq = 2 * 13 * F * PT * 3.4 / 2
+    pie = 34 * F + 11 * F * PT * 1.25 + 8 * F
+    return int(cab + etq + int(220 + 90 * F) + int(22 * F) + pie + 40)
+
+
 def generar(proyecto, plan, osm=None):
-    cfg = proyecto.seccion("infografia")
+    cfg = dict(proyecto.seccion("infografia"))
     W = int(cfg.get("ancho_px", 2400))
     proporcion = cfg.get("proporcion_mapa", 4 / 3)
     estilo = cfg.get("estilo", "ign_mtn")
@@ -842,6 +854,13 @@ def generar(proyecto, plan, osm=None):
 
     # ---- cobertura del mapa base (con el encuadre de toda la ruta)
     X, Y = a_mercator(tr.lon, tr.lat)
+    # ---- hoja en A4: vertical (ancho_px de ancho) u horizontal (ancho_px de alto) si el track es más ancho que alto
+    H_a4 = None
+    if cfg.get("a4", True):
+        corto = W
+        horizontal = float(X.max() - X.min()) > float(Y.max() - Y.min())
+        W, H_a4 = (int(round(corto * 2 ** 0.5)), corto) if horizontal else (corto, int(round(corto * 2 ** 0.5)))
+        proporcion = cfg["_prop_fija"] = W / max(H_a4 - _resto_estimado(_escala(cfg)), 0.3 * H_a4)
     xmin, xmax, ymin, ymax = _encuadre(X, Y, cfg, proporcion)
     z = zoom_para(xmin, xmax, W / cfg.get("escala_rotulos", 1.0), estilo)
     if estilo.startswith("ign_") and not cubre(estilo, z, X, Y):
@@ -864,7 +883,7 @@ def generar(proyecto, plan, osm=None):
     servicios = (osm or {}).get("servicios", []) if cfg.get("servicios", True) and estilo.startswith("ign_") else []
 
     F = _escala(cfg)
-    perfil_h, dias_h, pie_base = int(220 + 90 * F), int(22 * F), int(34 * F)
+    perfil_h0, dias_h, pie_base = int(220 + 90 * F), int(22 * F), int(34 * F)
     salidas = []
     for n_panel, disp in enumerate(disposiciones, 1):
         panel = disp["panel"]
@@ -925,6 +944,9 @@ def generar(proyecto, plan, osm=None):
         filas += [(False, x) for x in reversed(resto)]
         h_fila = max(h_atrib, _medir(fig, "Ág", 11 * F, "regular")[1]) + 8 * F
         pie_h = pie_base + int(len(filas) * h_fila)
+        perfil_h = perfil_h0
+        if H_a4:   # la hoja, en A4: el perfil crece o encoge (hasta un 60 %) lo que la estimación se haya desviado
+            perfil_h = max(int(perfil_h0 * 0.6), H_a4 - (cab_h + Hm + etq_h + dias_h + pie_h + 40))
         H = cab_h + Hm + etq_h + perfil_h + dias_h + pie_h + 40
         fig.set_size_inches(W / 100, H / 100)
 
@@ -1099,7 +1121,7 @@ def generar(proyecto, plan, osm=None):
         # leyenda: solo los tipos de parada que lleva esta ruta, en el orden de la lista (a la derecha);
         # la de pendientes del track, a la izquierda de su fila
         def tipos_en(y, texto):
-            fig.text(0.99, y, texto, family=[E.SANS, "Noto Emoji"], fontsize=11 * F, ha="right", va="bottom", color="#444444")
+            E.texto_leyenda(fig, 0.99, y, texto, 11 * F, "#444444")
         if tipos_en_atrib:
             tipos_en(6 / H, lineas_ley[0])
         for r, (pend, texto) in enumerate(filas):

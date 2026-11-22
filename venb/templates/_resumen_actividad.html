@@ -1,0 +1,7 @@
+{# Ventana del resumen de una actividad (Histórico y Brevets): la abren los botones .ver-resumen (static/actividad_resumen.js) #}
+<dialog id="resumen-actividad" aria-labelledby="ra-titulo">
+  <div class="ra-cab"><div><h2 id="ra-titulo"></h2><p class="suave" id="ra-sub"></p></div>
+    <form method="dialog"><button class="discreto ra-cerrar" aria-label="Cerrar">×</button></form></div>
+  <div id="ra-cuerpo"></div>
+</dialog>
+<script src="{{ url_for('static', filename='actividad_resumen.js') }}"></script>
