@@ -81,8 +81,8 @@ table.ejemplo { width:auto; } table.ejemplo td, table.ejemplo th { padding:3px 1
 ul.lista { margin:0; padding-left:20px; } ul.lista li { margin-bottom:4px; }
 details summary { cursor:pointer; font-weight:600; }
 /* Gráficas: la tinta de datos va aparte del rojo de la marca */
-:root { --serie1:#2a78d6; --serie2:#eb6834; --serie3:#1baf7a; --serie4:#eda100; --serie5:#e87ba4; --serie6:#008300; --serie7:#6250d6; --serie8:#e34948; --gris-serie:#b5b4ad; --rejilla:#e9e8e2; --eje:#c3c2b7; --muted-eje:#6f6e69; }
-@media (prefers-color-scheme: dark) { :root { --serie1:#3987e5; --serie2:#d95926; --serie3:#199e70; --serie4:#c98500; --serie5:#d55181; --serie6:#008300; --serie7:#9085e9; --serie8:#e66767; --gris-serie:#5e5e5a; --rejilla:#2f2f2d; --eje:#4a4a47; --muted-eje:#a3a29c; } }
+:root { --serie1:#2a78d6; --serie2:#eb6834; --serie3:#1baf7a; --serie4:#eda100; --serie5:#e87ba4; --serie6:#008300; --serie7:#6250d6; --serie8:#e34948; --gris-serie:#b5b4ad; --gris1:#5f5e5a; --gris2:#878680; --gris3:#aaa9a3; --gris4:#c8c7c1; --rejilla:#e9e8e2; --eje:#c3c2b7; --muted-eje:#6f6e69; }
+@media (prefers-color-scheme: dark) { :root { --serie1:#3987e5; --serie2:#d95926; --serie3:#199e70; --serie4:#c98500; --serie5:#d55181; --serie6:#008300; --serie7:#9085e9; --serie8:#e66767; --gris-serie:#5e5e5a; --gris1:#b0afa9; --gris2:#8c8b86; --gris3:#6c6c68; --gris4:#525250; --rejilla:#2f2f2d; --eje:#4a4a47; --muted-eje:#a3a29c; } }
 .cerrar { margin-left:auto; }
 .cerrar button { background:transparent; color:#fff; border-color:#777; padding:3px 10px; font-size:.85rem; }
 .cerrar button:hover { border-color:#fff; }
@@ -96,6 +96,7 @@ svg .rejilla { stroke:var(--rejilla); stroke-width:1; display:inline; } svg .eje
 svg .cruz { stroke:var(--suave); stroke-width:1; pointer-events:none; }
 svg .marca-eje { fill:var(--muted-eje); font-size:13.5px; font-variant-numeric:tabular-nums; }
 svg .valor-fin { fill:var(--texto); font-size:13.5px; font-weight:600; font-variant-numeric:tabular-nums; }
+svg .valor-anio { fill:var(--muted-eje); font-weight:400; font-size:12px; }
 svg .anillo { stroke:var(--panel); stroke-width:2; pointer-events:none; }
 svg .barra.activa { opacity:.7; }
 .leyenda { display:flex; flex-wrap:wrap; gap:4px 16px; font-size:.85rem; color:var(--suave); margin-bottom:6px; }
@@ -124,6 +125,9 @@ label.casilla { flex-direction:row; align-items:center; gap:6px; color:var(--tex
 .ver-alto { max-height:420px; overflow:auto; }
 /* Brevets: historial en una línea por prueba, sin scroll lateral, con cabecera fija y filtros */
 /* caja con scroll a partir de ~15 filas; la cabecera queda fija dentro de la caja */
+/* Histórico: lista de actividades en una caja con scroll (unas 16 filas a la vista, sin pasar del 75 % de la pantalla), cabecera fija */
+.tabla-caja { max-height:min(52rem, 75vh); overflow:auto; border:1px solid var(--borde); border-radius:6px; }
+.tabla-caja th { position:sticky; top:0; background:var(--panel); z-index:1; box-shadow:0 1px 0 var(--borde); }
 .tabla-brevets { max-height:34rem; overflow-y:auto; overflow-x:hidden; border:1px solid var(--borde); border-radius:6px; }
 .tabla-brevets table { font-size:.85rem; table-layout:auto; }
 .tabla-brevets th, .tabla-brevets td { white-space:nowrap; padding-left:5px; padding-right:5px; }

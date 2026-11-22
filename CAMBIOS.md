@@ -2,6 +2,11 @@
 
 Novedades de cada versión de VenB y VenB Rutas (las dos ediciones comparten número de versión).
 
+## 3.53
+
+- **Histórico, lista de actividades con scroll:** en **Análisis > Histórico**, la sección **Actividades** va en una caja con unas 15 actividades a la vista y scroll para ver las demás. Los títulos de las columnas quedan fijos al bajar.
+- **Kilómetros acumulados, seis temporadas:** en **Todo tu histórico**, además de la temporada actual (azul) y la anterior (naranja), las cuatro previas, en grises cada vez más claros cuanto más antiguas y con su propia entrada en la leyenda. Cada línea termina con su total y, delante, el año y un punto de su color (por ejemplo, «2023 11.049»). Si dos totales coinciden, se apilan en lugar de ocultarse.
+
 ## 3.52
 
 - **Datos de Garmin protegidos ante las actualizaciones de garmindb:** el programa que descarga los datos de Garmin (garmindb) cambió en su versión 4 el formato de sus bases de datos, y la instalación de la 3.50 lo actualizó sin adaptarlas. Desde entonces las descargas se cortaban a medias: llegaban las actividades y el sueño, pero no la FC en reposo ni la VFC, y las actividades nuevas no entraban en la base (perfiles y validación de sensores). Inicio solo decía «Comprueba que el reloj se ha sincronizado». Ahora:

@@ -77,10 +77,10 @@
     p.textContent = 'Sin datos en este periodo.';
     cont.replaceChildren(p);
   }
-  function rejillaY(svg, e, W, y, dec = 0) {
+  function rejillaY(svg, e, W, y, dec = 0, md = M.d) {
     for (const v of e.marcas) {
       const py = y(v);
-      svgEl(svg, 'line', { x1: M.i, x2: W - M.d, y1: py, y2: py, class: v === 0 ? 'eje' : 'rejilla' });
+      svgEl(svg, 'line', { x1: M.i, x2: W - md, y1: py, y2: py, class: v === 0 ? 'eje' : 'rejilla' });
       svgEl(svg, 'text', { x: M.i - 6, y: py + 4, 'text-anchor': 'end', class: 'marca-eje' }).textContent = num(v, dec);
     }
   }
@@ -124,19 +124,20 @@
     if (!o.x.length || !validos) return vacio(cont);
     cont.replaceChildren();
     leyenda(cont, o.series.filter(s => !s.sinLeyenda), 'k-linea');
-    const W = Math.max(cont.clientWidth, 280), H = ALTO, plotW = W - M.i - M.d, plotH = H - M.a - M.b;
+    const md = o.apilar ? 108 : M.d;   // con etiquetas apiladas, sitio para «2025  8.467»
+    const W = Math.max(cont.clientWidth, 280), H = ALTO, plotW = W - M.i - md, plotH = H - M.a - M.b;
     const t0 = o.x[0], t1 = o.x[o.x.length - 1], todos = o.series.flatMap(s => s.v).filter(v => v != null);
     if (o.ref) todos.push(o.ref.y);
     const e = escala(Math.min(...todos), Math.max(...todos), 5, o.cero);
     const px = t => t1 === t0 ? M.i + plotW / 2 : M.i + (t - t0) / (t1 - t0) * plotW;
     const py = v => M.a + (e.max - v) / (e.max - e.min) * plotH;
     const svg = svgEl(cont, 'svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: 'img', tabindex: 0, 'aria-label': o.nombre + '. Usa las flechas para recorrer los valores; la tabla está en Ver datos.' });
-    rejillaY(svg, e, W, py, o.decEje || 0);
+    rejillaY(svg, e, W, py, o.decEje || 0, md);
     for (const m of marcasFecha(t0, t1, plotW, o.soloMes)) {
       svgEl(svg, 'text', { x: px(m.t), y: H - 8, 'text-anchor': 'middle', class: 'marca-eje' }).textContent = m.et;
     }
     if (o.ref) {
-      svgEl(svg, 'line', { x1: M.i, x2: W - M.d, y1: py(o.ref.y), y2: py(o.ref.y), class: 'eje' });
+      svgEl(svg, 'line', { x1: M.i, x2: W - md, y1: py(o.ref.y), y2: py(o.ref.y), class: 'eje' });
       svgEl(svg, 'text', { x: M.i + 4, y: py(o.ref.y) - 5, class: 'marca-eje' }).textContent = o.ref.t;
     }
     const finales = [];
@@ -151,12 +152,32 @@
       if (o.puntos && o.x.length <= 60) s.v.forEach((v, i) => { if (v != null) svgEl(svg, 'circle', { cx: px(o.x[i]), cy: py(v), r: 2.5, fill: s.c }); });
       if (ultimo >= 0 && !s.sinEtiqueta) {
         svgEl(svg, 'circle', { cx: px(o.x[ultimo]), cy: py(s.v[ultimo]), r: 4, fill: s.c, class: 'anillo' });
-        finales.push({ x: px(o.x[ultimo]), y: py(s.v[ultimo]), v: s.v[ultimo] });
+        finales.push({ x: px(o.x[ultimo]), y: py(s.v[ultimo]), v: s.v[ultimo], n: s.n, c: s.c });
       }
     }
-    /* Si los finales chocan no se apilan: quedan la leyenda y el tooltip. */
-    if (!finales.some((a, i) => finales.some((b, j) => i < j && Math.abs(a.y - b.y) < 14))) {
-      for (const f of finales) svgEl(svg, 'text', { x: f.x + 7, y: f.y + 4, class: 'valor-fin' }).textContent = o.ud === 'h' ? hm(f.v) : num(f.v, o.dec || 0);
+    const texto = v => o.ud === 'h' ? hm(v) : num(v, o.dec || 0);
+    if (o.apilar) {
+      /* Etiquetas apiladas: las que acaban casi a la misma x se separan en vertical, sin salirse del gráfico. */
+      const orden = finales.slice().sort((a, b) => a.y - b.y);
+      orden.forEach((f, i) => {
+        f.ty = f.y;
+        for (let k = i - 1; k >= 0; k--) if (Math.abs(orden[k].x - f.x) < 60) { f.ty = Math.max(f.ty, orden[k].ty + 14); break; }
+      });
+      const tope = H - M.b - 2;
+      for (let i = orden.length - 1; i >= 0; i--) {
+        const f = orden[i], sig = orden.slice(i + 1).find(g => Math.abs(g.x - f.x) < 60);
+        f.ty = Math.min(f.ty, sig ? sig.ty - 14 : tope);
+      }
+      for (const f of orden) {
+        // el año, con un punto de su color, delante del total: con varios grises, la leyenda sola no basta
+        svgEl(svg, 'circle', { cx: f.x + 12, cy: f.ty, r: 3.5, fill: f.c });
+        const t = svgEl(svg, 'text', { x: f.x + 19, y: f.ty + 4, class: 'valor-fin' });
+        svgEl(t, 'tspan', { class: 'valor-anio' }).textContent = f.n + ' ';
+        t.append(texto(f.v));
+      }
+    } else if (!finales.some((a, i) => finales.some((b, j) => i < j && Math.abs(a.y - b.y) < 14))) {
+      /* Si los finales chocan no se apilan: quedan la leyenda y el tooltip. */
+      for (const f of finales) svgEl(svg, 'text', { x: f.x + 7, y: f.y + 4, class: 'valor-fin' }).textContent = texto(f.v);
     }
     const cruz = svgEl(svg, 'line', { y1: M.a, y2: H - M.b, class: 'cruz', visibility: 'hidden' });
     const puntos = o.series.map(s => svgEl(svg, 'circle', { r: 4, fill: s.c, class: 'anillo', visibility: 'hidden' }));
@@ -413,8 +434,12 @@
     }
     if ($('g-acum')) {
       const c = D.acumulado, n = c.series.length;
-      const series = c.series.map((s, i) => i === n - 1 ? { n: String(s.a), v: s.km, c: azul } : i === n - 2 ? { n: String(s.a), v: s.km, c: naranja } : { n: String(s.a), v: s.km, c: gris, ancho: 1, sinEtiqueta: true, sinLeyenda: true });
-      lineas($('g-acum'), { nombre: D.temporada && D.temporada.etiqueta !== 'Año' ? 'Kilómetros acumulados por temporada' : 'Kilómetros acumulados por año', x: c.f.map(ms), series, ud: 'km', soloMes: true, cero: true });
+      // la actual y la anterior en color; las previas en grises cada vez más claros, con su total al final
+      const grises = [1, 2, 3, 4].map(k => css('--gris' + k));
+      const series = c.series.map((s, i) => i === n - 1 ? { n: String(s.a), v: s.km, c: azul } : i === n - 2 ? { n: String(s.a), v: s.km, c: naranja }
+        : { n: String(s.a), v: s.km, c: grises[Math.min(n - 3 - i, 3)] || gris, ancho: 1.5 });
+      // se dibujan de la más antigua a la actual, para que la actual quede encima
+      lineas($('g-acum'), { nombre: D.temporada && D.temporada.etiqueta !== 'Año' ? 'Kilómetros acumulados por temporada' : 'Kilómetros acumulados por año', x: c.f.map(ms), series, ud: 'km', soloMes: true, cero: true, apilar: true });
       const idx = c.f.map((_, i) => i).filter(i => c.f[i].endsWith('-01') || i === c.f.length - 1);
       tabla($('g-acum'), ['Fecha'].concat(c.series.map(s => String(s.a))), idx.map(i => [fechaMes(ms(c.f[i]))].concat(c.series.map(s => num(s.km[i])))));
     }

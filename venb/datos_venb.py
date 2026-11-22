@@ -197,7 +197,7 @@ def graficas():
     claves = rej.strftime('%m-%d')
     acum = []
     diario = b.groupby(b.fecha.dt.normalize()).km.sum()
-    for t in range(t_hoy - 4, t_hoy + 1):
+    for t in range(t_hoy - 5, t_hoy + 1):     # la actual, la anterior y las cuatro previas
         a, m = rutas.inicio_temporada(t, ini)
         ini_t = pd.Timestamp(a, m, 1)
         dias = pd.date_range(ini_t, ini_t + pd.DateOffset(years=1) - pd.Timedelta(days=1))
