@@ -100,28 +100,56 @@
 {% if rutas %}
 <section class="panel" id="clubes">
   <h2>Perfiles de club u organizador</h2>
-  <p>Cada perfil guarda el nombre, la web, el texto de la marca y uno o varios logotipos de un club u organizador. Al generar los documentos de una ruta, en el Planificador, eliges el club: su marca va en los mapas, las infografías y la página interactiva, siempre junto a la de VenB.</p>
+  <p>Cada perfil guarda el nombre, la web, el texto de la marca y uno o varios logotipos de un club u organizador. Puedes tener <b>todos los perfiles que quieras</b>: al generar los documentos de una ruta, en el Planificador, eliges cuál usar. Su marca va en los mapas, las infografías y la página interactiva, siempre junto a la de VenB.</p>
   {% if error_club %}<div class="aviso medio">{{ error_club }}</div>{% endif %}
-  {% if clubes %}<div class="tabla"><table>
-    <tr><th>Club</th><th>Web</th><th>Logotipos</th><th></th></tr>
-    {% for c in clubes %}<tr><td><b>{{ c.nombre }}</b>{% if c.texto %}<br><span class="suave">{{ c.texto }}</span>{% endif %}</td><td>{{ c.web }}</td>
-      <td>{% for l in c.logos %}<img class="logo-club" src="{{ url_for('club_logo', cid=c.id, nombre=l) }}" alt="Logotipo de {{ c.nombre }}">{% endfor %}</td>
-      <td class="nowrap"><a class="boton-enlace" href="{{ url_for('ajustes', club=c.id, _anchor='clubes') }}">Editar</a>
-        <form class="en-linea" method="post" action="{{ url_for('club_borrar', cid=c.id) }}" onsubmit="return confirm('¿Borrar el perfil de {{ c.nombre }}? Los documentos ya generados no cambian.')"><button class="discreto">Borrar</button></form></td></tr>{% endfor %}
-  </table></div>{% else %}<p class="suave">Todavía no hay ningún perfil.</p>{% endif %}
+  {% if ok_club %}<div class="aviso">{{ ok_club }}</div>{% endif %}
+  {% for x in avisos_club or [] %}<div class="aviso medio">{{ x }}</div>{% endfor %}
   {% set c = club_editar %}
-  <h3>{{ 'Editar «' ~ c.nombre ~ '»' if c else 'Nuevo perfil' }}</h3>
-  <form method="post" action="{{ url_for('club_guardar') }}" enctype="multipart/form-data">
-    {% if c %}<input type="hidden" name="id" value="{{ c.id }}">{% endif %}
+  {% macro campos(c) %}
     <div class="campo"><label for="c-club-nombre">Nombre del club u organizador</label><span class="control"><input id="c-club-nombre" name="nombre" value="{{ c.nombre if c else '' }}" maxlength="80" size="28" required></span></div>
     <div class="campo"><label for="c-club-web">Página web</label><span class="control"><input id="c-club-web" name="web" value="{{ c.web if c else '' }}" maxlength="200" size="28" placeholder="https://"></span></div>
     <div class="campo"><label for="c-club-texto">Texto de la marca</label><span class="control"><input id="c-club-texto" name="texto" value="{{ c.texto if c else '' }}" maxlength="120" size="28"></span>
       <span class="ayuda">Opcional. Sin texto, los documentos ponen «Nombre - web». Siempre se añade «VenB: vivirenbici.es».</span></div>
-    <div class="campo"><label for="c-club-logos">Logotipos (PNG con fondo transparente, mejor)</label><span class="control"><input id="c-club-logos" type="file" name="logos" accept=".png,.jpg,.jpeg,.webp" multiple></span>
-      <span class="ayuda">Hasta 4. Van seguidos, en el orden en que se suben, y después el logotipo de VenB, más pequeño.</span></div>
-    {% if c and c.logos %}<div class="campo"><span class="etiqueta-campo">Quitar logotipos</span><span class="control casillas">{% for l in c.logos %}<label class="casilla"><input type="checkbox" name="quitar_logo" value="{{ l }}"> <img class="logo-club" src="{{ url_for('club_logo', cid=c.id, nombre=l) }}" alt="Logotipo {{ loop.index }}"></label>{% endfor %}</span></div>{% endif %}
-    <p class="botones"><button>{{ 'Guardar cambios' if c else 'Crear el perfil' }}</button>{% if c %} <a href="{{ url_for('ajustes', _anchor='clubes') }}">Cancelar</a>{% endif %}</p>
+    <div class="campo"><label for="c-club-logos">{{ 'Añadir logotipos' if c and c.logos else 'Logotipos' }}</label><span class="control"><input id="c-club-logos" type="file" name="logos" accept=".png,.jpg,.jpeg,.webp" multiple>
+      <label class="casilla"><input type="checkbox" name="fondo_nuevos" value="1"> Quitar el fondo de color liso (blanco u otro)</label></span>
+      <span class="ayuda">Hasta 4. Van seguidos, en el orden en que se suben, y después el logotipo de VenB, más pequeño. Si el logotipo tiene un fondo de un solo color, VenB puede volverlo transparente; el original se guarda por si quieres recuperarlo.</span></div>
+  {% endmacro %}
+  {% if clubes %}<div class="tabla"><table>
+    <tr><th>Club</th><th>Web</th><th>Logotipos</th><th></th></tr>
+    {% for x in clubes %}<tr{% if c and c.id == x.id %} class="actual"{% endif %}><td><b>{{ x.nombre }}</b>{% if x.texto %}<br><span class="suave">{{ x.texto }}</span>{% endif %}</td><td>{{ x.web }}</td>
+      <td>{% for l in x.logos %}<img class="logo-club" src="{{ url_for('club_logo', cid=x.id, nombre=l) }}" alt="Logotipo de {{ x.nombre }}">{% endfor %}</td>
+      <td class="nowrap"><a class="boton-enlace" href="{{ url_for('ajustes', club=x.id, _anchor='clubes') }}">Editar</a>
+        <form class="en-linea" method="post" action="{{ url_for('club_borrar', cid=x.id) }}" onsubmit="return confirm('¿Borrar el perfil de {{ x.nombre }}? Los documentos ya generados no cambian.')"><button class="discreto">Borrar</button></form></td></tr>{% endfor %}
+  </table></div>{% else %}<p class="suave">Todavía no hay ningún perfil.</p>{% endif %}
+  {% if c %}
+  <div class="club-bloque">
+  <h3>Editar «{{ c.nombre }}»</h3>
+  <form method="post" action="{{ url_for('club_guardar') }}" enctype="multipart/form-data">
+    <button class="oculto-envio" tabindex="-1" aria-hidden="true">Guardar</button>{# Intro guarda, no quita fondos #}
+    <input type="hidden" name="id" value="{{ c.id }}">
+    {{ campos(c) }}
+    {% if c.logos %}<div class="campo"><span class="etiqueta-campo">Logotipos guardados</span><span class="control logos-club">
+      {% for l in c.logos %}<span class="logo-ficha"><img class="logo-club cuadros" src="{{ url_for('club_logo', cid=c.id, nombre=l) }}?v={{ range(100000)|random }}" alt="Logotipo {{ loop.index }}">
+        {% if l in (c.originales or {}) %}<button class="discreto" name="fondo_restaurar" value="{{ l }}">Recuperar el original</button>
+        {% else %}<button class="discreto" name="fondo_quitar" value="{{ l }}">Quitar el fondo</button>{% endif %}
+        <label class="casilla"><input type="checkbox" name="quitar_logo" value="{{ l }}"> Borrar</label></span>{% endfor %}
+      </span><span class="ayuda">El fondo a cuadros indica las zonas transparentes.</span></div>{% endif %}
+    <p class="botones"><button>Guardar cambios</button> <a href="{{ url_for('ajustes', _anchor='club-nuevo') }}">Cancelar</a></p>
   </form>
+  </div>
+  {% endif %}
+  <div class="club-bloque" id="club-nuevo">
+  <h3>Añadir un club u organizador</h3>
+  {% if not c %}
+  <details{% if not clubes or error_club or request.args.get('nuevo') %} open{% endif %}>
+    <summary class="boton-principal">＋ {{ 'Añadir otro club u organizador' if clubes else 'Añadir un club u organizador' }}</summary>
+    <form method="post" action="{{ url_for('club_guardar') }}" enctype="multipart/form-data">
+      {{ campos(None) }}
+      <p class="botones"><button>Crear el perfil</button></p>
+    </form>
+  </details>
+  {% else %}<p><a class="boton-enlace" href="{{ url_for('ajustes', nuevo=1, _anchor='club-nuevo') }}">＋ Añadir otro club u organizador</a> <span class="suave">(deja de editar «{{ c.nombre }}»)</span></p>{% endif %}
+  </div>
 </section>
 {% endif %}
 {% if not rutas %}

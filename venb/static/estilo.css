@@ -298,3 +298,16 @@ label[hidden], button[hidden] { display:none !important; }
 
 /* resultado de «Comprobar el servidor de mapas» cuando va lento o saturado */
 .aviso-servidor { color: #8a4b00; font-weight: 600; }
+
+/* Perfiles de club (VenB Rutas): alta en su propio bloque, logotipos con fondo a cuadros para ver la transparencia */
+.club-bloque { border-top:1px solid var(--borde); margin-top:14px; padding-top:4px; }
+summary.boton-principal { display:inline-block; cursor:pointer; list-style:none; font-weight:600; padding:7px 14px; border-radius:6px;
+  background:var(--rojo); color:#fff; margin:4px 0 10px; }
+summary.boton-principal::-webkit-details-marker { display:none; }
+details[open] > summary.boton-principal { opacity:.75; }
+.oculto-envio { position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden; }
+.logos-club { display:flex; flex-wrap:wrap; gap:12px; }
+.logo-ficha { display:flex; flex-direction:column; align-items:center; gap:4px; }
+img.logo-club.cuadros { height:70px; max-width:200px; margin:0; padding:4px;
+  background:repeating-conic-gradient(#d8d8d8 0 25%, #fff 0 50%) 0 0 / 14px 14px; }
+tr.actual td { background:var(--bajo); }

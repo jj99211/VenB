@@ -2,6 +2,13 @@
 
 Novedades de cada versión de VenB y VenB Rutas (las dos ediciones comparten número de versión).
 
+## 3.54
+
+- **VenB Rutas, varios clubes u organizadores:** en **Ajustes > Perfiles de club u organizador**, el alta va en su propio bloque, **Añadir un club u organizador**, con un botón destacado que despliega el formulario. Tras guardar un perfil, VenB recuerda que se pueden tener todos los que se necesiten; mientras editas uno, un enlace lleva al alta de otro. Al generar, el Planificador propone en cada ruta nueva el último club usado.
+- **Quitar el fondo de los logotipos:** al subir un logotipo, la casilla **Quitar el fondo de color liso** vuelve transparente el fondo de un solo color (blanco u otro): toma el color de las esquinas y borra solo la zona unida a los bordes, así que el interior del dibujo del mismo color se conserva, y suaviza el contorno sin dejar halo. En los logotipos ya guardados, el botón **Quitar el fondo** hace lo mismo. Se ven sobre un fondo a cuadros, y **Recuperar el original** deshace el cambio. Si el fondo no es liso o ya es transparente, VenB lo avisa y no cambia nada.
+- **Mapa «Juego de Tronos», título legible:** el título de la ruta y la línea de distancia y desnivel llevan un halo blanco, como los demás rótulos de ese mapa, para distinguirse del relieve. Los mapas Al-Ballut y personal no cambian.
+- **Informe semanal:** lee el sueño y la VFC con el formato de las bases de garmindb 4.
+
 ## 3.53
 
 - **Histórico, lista de actividades con scroll:** en **Análisis > Histórico**, la sección **Actividades** va en una caja con unas 15 actividades a la vista y scroll para ver las demás. Los títulos de las columnas quedan fijos al bajar.

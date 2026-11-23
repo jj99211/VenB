@@ -1118,6 +1118,13 @@ def _titulo(lz, esquina, titulo, subtitulo):
     tam = 0.045 * min(W, H) / PT * (1 + 0.3 * (lz.F - 1))
     kw = dict(**lz.letra("titulo", tam), color=t_)
     medidas = [lz.medir(l, **kw) for l in lineas]
+    # «Juego de Tronos»: el título se pierde sobre el relieve; halo blanco ancho y suave más otro estrecho y opaco
+    # (como los rótulos de ese estilo). Al-Ballut y el personal no cambian.
+    def efectos(t):
+        if not getattr(lz, "tronos", False):
+            return None
+        return [pe.withStroke(linewidth=t * 0.42, foreground="#ffffff", alpha=0.6),
+                pe.withStroke(linewidth=t * 0.2, foreground="#ffffff", alpha=1.0)]
     sub = _espaciado(subtitulo)
     # distancia y desnivel bajo el título (más grandes en el estilo personal)
     kws = dict(**lz.letra("titulo", tam * (0.32 if lz.fuentes is FUENTES["alballut"] else 0.64)),
@@ -1128,10 +1135,11 @@ def _titulo(lz, esquina, titulo, subtitulo):
     cx = W - 0.05 * W - bloque_w / 2 if derecha else 0.05 * W + bloque_w / 2
     y = H - 0.04 * H if arriba else 0.04 * H + bloque_h
     for l, (w, h) in zip(lineas, medidas):
-        lz.ax.text(cx, y, l, ha="center", va="top", zorder=13, **kw)
+        lz.ax.text(cx, y, l, ha="center", va="top", zorder=13, path_effects=efectos(kw["fontsize"]), **kw)
         y -= h * 0.92
     y -= hs * 0.4
-    lz.ax.text(cx, y, sub, ha="center", va="top", zorder=13, **kws)
+    lz.ax.text(cx, y, sub, ha="center", va="top", zorder=13,
+               path_effects=efectos(kws["fontsize"]), **kws)
     y -= hs * 1.6
     tb = tam * 0.75
     lz.ax.text(cx, y - tb * PT * 0.55, E.ICONOS["bici"], fontproperties=E.EMOJI, fontsize=tb,

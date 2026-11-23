@@ -256,6 +256,8 @@ Las rutas se guardan en `VenB-datos/planificador/` (una carpeta por ruta, con lo
 
 La marca de los documentos (texto y logotipo) es la de `planificador_marca` en `VenB-datos/config/ajustes.json`: `{"texto": "...", "logo": "/ruta/completa/al/logo.png"}` (un PNG; si tiene fondo blanco, se quita solo). Si no la cambias, es la del autor de VenB.
 
+En **VenB Rutas**, la marca se elige al generar, en **Club u organizador**, entre los perfiles de **Ajustes > Perfiles de club u organizador**. Puedes tener todos los que quieras: **Añadir un club u organizador** abre el formulario de alta (nombre, web, texto de la marca y hasta 4 logotipos). Si un logotipo tiene un fondo de un solo color, la casilla **Quitar el fondo de color liso** (al subirlo) o el botón **Quitar el fondo** (en un logotipo ya guardado) lo vuelve transparente sin tocar el interior del dibujo; la vista previa, sobre fondo a cuadros, muestra cómo queda, y **Recuperar el original** lo deshace. El Planificador propone en cada ruta nueva el último club usado.
+
 ## Ajustes
 
 Los ajustes van en tarjetas, con cada opción a la izquierda, su valor a la derecha y una ayuda breve en gris. **Guardar ajustes** guarda los de arriba; **Valores por defecto** los devuelve a los de fábrica, salvo la temporada, la bici del rodillo, tu calendario, el origen del peso y la cuenta de Garmin.

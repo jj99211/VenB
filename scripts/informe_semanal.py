@@ -27,7 +27,17 @@ def semana(df, ini, fin):
 
 def descanso(ini, fin):
     """Medias de FC en reposo, VFC y sueño entre dos fechas (None si no hay datos)."""
+    # Desde garmindb 4, sueño y VFC van en sleep.db y hrv.db (antes, tablas de garmin.db)
     d = sqlite3.connect(f'file:{GARMIN_DB}?mode=ro', uri=True)
+    esquemas = ['main']
+    for nombre in ('sleep', 'hrv'):
+        ruta = os.path.join(os.path.dirname(GARMIN_DB), nombre + '.db')
+        if os.path.exists(ruta):
+            d.execute(f'attach database ? as {nombre}db', (f'file:{ruta}?mode=ro',))
+            esquemas.append(nombre + 'db')
+    tablas = {r[0] for e in esquemas for r in d.execute(f"select name from {e}.sqlite_master where type='table'")}
+    sql_vfc = ('select avg(last_night_average) from hrv_status_summary where day>=? and day<?'
+               if 'hrv_status_summary' in tablas else 'select avg(last_night_avg) from hrv where day>=? and day<?')
     rango = (ini.strftime('%Y-%m-%d'), (fin + pd.Timedelta(days=1)).strftime('%Y-%m-%d'))
     def media(sql):
         return pd.read_sql(sql, d, params=rango).iloc[0, 0]
@@ -35,7 +45,7 @@ def descanso(ini, fin):
     horas = pd.to_timedelta(sueno.total_sleep.str.slice(0, 8)).dt.total_seconds() / 3600
     horas = horas[horas > 0]
     return {'fc': media('select avg(resting_heart_rate) from resting_hr where day>=? and day<?'),
-            'vfc': media('select avg(last_night_avg) from hrv where day>=? and day<?'),
+            'vfc': media(sql_vfc),
             'h': horas.mean(), 'score': sueno.score.mean(), 'noches': len(horas)}
 
 
@@ -77,4 +87,3 @@ E = [Paragraph(f'Informe semanal: {fecha(ini)} a {fecha(fin)}', T),
      Paragraph('Próxima semana (orientativo)', H), Paragraph('<br/>'.join(f'{i}. {p}' for i, p in enumerate(notas['plan'], 1)), N)]
 SimpleDocTemplate(os.path.join(salida, f'informe_semanal_{fin.strftime("%Y-%m-%d")}.pdf'), pagesize=A4, leftMargin=1.9 * cm, rightMargin=1.9 * cm,
                   topMargin=1.6 * cm, bottomMargin=1.5 * cm, title='Informe semanal').build(E)
-print(filas)

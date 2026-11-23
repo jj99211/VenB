@@ -205,6 +205,12 @@
   ponerLimite((P ? P.limite_h : A.limite_h) || NaN);
   const mostrarVel = () => { vel.value = ent(mediaTabla() * V.factor, 1); };
   mostrarVel();
+  // plan sin generar: el último club u organizador usado (si sigue existiendo)
+  if ($('club') && (!P || P.club === undefined)) {
+    const ultimo = localStorage.getItem('venb-ultimo-club');
+    if (ultimo && [...$('club').options].some(o => o.value === ultimo)) $('club').value = ultimo;
+  }
+  if ($('club')) $('club').addEventListener('change', () => localStorage.setItem('venb-ultimo-club', $('club').value));
   if (P) {
     document.querySelectorAll('input[name=salida]').forEach(c => { c.checked = P.salidas.includes(c.value); });
     if ($('club') && P.club) $('club').value = P.club;

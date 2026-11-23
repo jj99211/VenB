@@ -877,14 +877,21 @@ def ajustes_defecto():
 def club_guardar():
     request.max_content_length = 30 * 1024 ** 2
     cid = request.form.get('id') or None
+    f = request.form
+    subidos = [x for x in request.files.getlist('logos') if x and x.filename]
     try:
-        CL.guardar(cid, request.form.get('nombre'), request.form.get('web'), request.form.get('texto'),
-                   request.files.getlist('logos'), request.form.getlist('quitar_logo'))
+        cid, avisos = CL.guardar(cid, f.get('nombre'), f.get('web'), f.get('texto'), subidos, f.getlist('quitar_logo'),
+                                 fondo_nuevos=bool(f.get('fondo_nuevos')), fondo_quitar=f.getlist('fondo_quitar'),
+                                 fondo_restaurar=f.getlist('fondo_restaurar'))
     except CL.ErrorClub as e:
         return pagina_ajustes(error_club=str(e), club_editar=CL.club(cid) if cid else None)
     except KeyError:
         abort(404)
-    return redirect(url_for('ajustes', _anchor='clubes'))
+    # con logotipos nuevos o cambios de fondo se vuelve al perfil para ver cómo han quedado
+    if subidos or f.getlist('fondo_quitar') or f.getlist('fondo_restaurar'):
+        return pagina_ajustes(club_editar=CL.club(cid), avisos_club=avisos,
+                              ok_club='Guardado. Revisa cómo han quedado los logotipos (el fondo a cuadros es el transparente).')
+    return redirect(url_for('ajustes', club_guardado=cid, _anchor='clubes'))
 
 
 @app.post('/clubes/borrar/<cid>')
@@ -955,12 +962,15 @@ def ajustes():
         return redirect(url_for('ajustes'))
     if RUTAS and request.args.get('club'):
         return pagina_ajustes(club_editar=CL.club(request.args['club']))
+    guardado = CL.club(request.args['club_guardado']) if RUTAS and request.args.get('club_guardado') else None
+    if guardado:
+        return pagina_ajustes(ok_club=f'Perfil «{guardado["nombre"]}» guardado. Si quieres, añade otro club u organizador: puedes tener todos los que necesites.')
     return pagina_ajustes()
 
 
 def pagina_ajustes(**extra):
     # el mensaje de un apartado de abajo no se vería al recargar la página: se salta a ese apartado
-    saltar = next((s for claves, s in ((('error_club', 'club_editar'), 'clubes'), (('error_garmin', 'ok_garmin'), 'garmin'), (('error_copia', 'importado'), 'copia'), (('error_red',), 'red'))
+    saltar = next((s for claves, s in ((('error_club', 'club_editar', 'ok_club'), 'clubes'), (('error_garmin', 'ok_garmin'), 'garmin'), (('error_copia', 'importado'), 'copia'), (('error_red',), 'red'))
                    if any(extra.get(k) for k in claves)), '')
     return render_template('ajustes.html', saltar=saltar, a=R.ajustes(), meses_temporada=[(m, D.MES[m - 1].capitalize()) for m in R.MESES_TEMPORADA], mes_inicio=R.mes_inicio(), bicis=BI.activas(), conectado=D.calendario_propio(),
                            garmindb=D.garmindb_configurado(), peso_garmin=D.peso_desde_garmin(), error_peso=request.args.get('error_peso'),
