@@ -202,7 +202,7 @@ def inicio():
     meses, _ = D.proximos_eventos(12)
     prox = [e for x in meses for e in x['eventos']][:5]
     p = D.pesos()
-    return render_template('inicio.html', sp=sp, m=m, sem=sem, ant=ant, s=D.salud(), avisos=D.avisos(), nota=D.ultima_nota(), prox=prox,
+    return render_template('inicio.html', sp=sp, m=m, sem=sem, ant=ant, s=D.salud(), avisos=D.avisos(), nota=D.ultima_nota(), informe=next((i for i in D.informes() if i['semanal'] and i['pdf']), None), prox=prox,
                            peso=(date.fromisoformat(p[-1][0]), p[-1][1]) if p else None, ultimas=ultimas, hoy=fecha(date.today()), error_carga=aviso_carga,
                            error_peso=request.args.get('error_peso'), peso_enviado=request.args.get('peso_enviado'), peso_desde_garmin=D.peso_desde_garmin(),
                            garmin_listo=D.usar_garmin() and bool(D.usuario_garmin()), recientes=D.estado_recientes(), aviso_garmin=request.args.get('aviso_garmin'),

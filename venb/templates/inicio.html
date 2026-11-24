@@ -32,15 +32,43 @@
   <p><a href="{{ url_for('graficas') }}">Ver todas las gráficas</a></p>
 </section>{% elif error_carga %}<div class="aviso">Tu carga de entrenamiento aparecerá aquí cuando haya actividades: de Garmin (<a href="{{ url_for('ayuda', capitulo='garmin') }}">cómo incorporarlas</a>) o <a href="{{ url_for('importar') }}">subidas en ficheros GPX, FIT o TCX</a>.</div>{% endif %}
 
+
+{% macro fila(a) %}<tr><td class="f">{{ a['Fecha']|fecha }}</td><td>{{ a['Título'] }} <a class="suave" href="{{ url_for('actividad_nombre', aid=a['id']|string|replace('.0', ''), volver=url_for('inicio')) }}" title="Cambiar el nombre">✎</a></td><td class="num">{{ a['Distancia']|n(1) }}</td><td class="num">{{ a['h']|hm }}</td><td class="num">{{ a['tss']|n }}{% if not a['tss_real'] and a['tss'] > 0 %}*{% endif %}</td></tr>{% endmacro %}
+{% if ultimas or garmin_listo %}<section class="panel" id="ultimas">
+  <h2>Últimas actividades</h2>
+  {% if garmin_listo %}<div class="linea-campos" id="garmin-recientes" {% if recientes.en_curso %}data-en-curso="1"{% endif %}>
+    {% if recientes.en_curso %}<span class="aviso-espera"><span class="girando" aria-hidden="true">⟳</span> Conectando con Garmin Connect y trayendo lo nuevo (suele tardar menos de un minuto). Puedes seguir usando VenB; esta página se actualizará sola.</span>
+    {% else %}{% set fr = freno_garmin() %}<form method="post" action="{{ url_for('garmin_actualizar') }}" id="form-recientes"><button class="discreto" {% if fr.manual_hasta %}disabled title="Podrás volver a intentarlo a las {{ fr.manual_hasta.strftime('%H:%M') }}"{% endif %}>Traer lo nuevo de Garmin</button></form>
+      {% if aviso_garmin %}<span class="rojo">No se ha lanzado la descarga: {{ aviso_garmin }}</span>
+      {% elif recientes.resultado == 'mal' %}<span class="rojo">No se ha podido descargar de Garmin Connect ({{ recientes.inicio.strftime('%H:%M') }}): {{ recientes.motivo }} No se reintenta sola hasta que vuelvas a abrir VenB; tus datos anteriores siguen disponibles.</span>
+      {% elif recientes.resultado == 'bien' %}<span class="suave">Comprobado a las {{ recientes.inicio.strftime('%H:%M') }}: {% if recientes.nuevas %}{{ recientes.nuevas }} {{ 'actividad nueva' if recientes.nuevas == 1 else 'actividades nuevas' }}{% else %}no hay actividades nuevas{% endif %}.</span>{% endif %}{% endif %}
+  </div>{% endif %}
+  <div class="tabla"><table>
+    <tr><th>Fecha</th><th>Actividad</th><th class="num">km</th><th class="num">Horas</th><th class="num">TSS</th></tr>
+    {% for a in ultimas[:5] %}{{ fila(a) }}{% endfor %}
+  </table></div>
+  {% if ultimas|length > 5 %}<details class="ver"><summary>Ver las {{ ultimas[5:]|length }} anteriores</summary>
+  <div class="tabla"><table>
+    <tr><th>Fecha</th><th>Actividad</th><th class="num">km</th><th class="num">Horas</th><th class="num">TSS</th></tr>
+    {% for a in ultimas[5:] %}{{ fila(a) }}{% endfor %}
+  </table></div>
+  </details>{% endif %}
+  <p class="suave">* TSS estimado por duración. Pulsa ✎ para cambiar el nombre de una actividad. <a href="{{ url_for('historico') }}">Todas las actividades</a></p>
+</section>{% endif %}
+
 <div class="rejilla bloque">
   <section class="panel" id="ultimas-notas">
+    <h2>Últimos informes semanales</h2>
+    {% if informe %}<p><a href="/informes/{{ informe.carpeta }}/{{ informe.pdf[0] }}">{{ informe.titulo }}</a> (PDF)</p>
+    <p><a href="{{ url_for('informes', _anchor='informes') }}">Seguir leyendo informes</a></p>
+    {% else %}<p class="suave">El primero aparecerá el lunes siguiente a tus primeras actividades.</p>{% endif %}
     <h2>Últimas notas</h2>
     {% if nota_guardada %}<p class="suave">Nota guardada.</p>{% endif %}
     {% if nota %}<article class="nota-diario nota-reciente">
       <div class="nota-cab"><b class="f">{{ nota.fecha|iso_fecha }}</b></div>
       <p class="nota-recorte">{{ nota.texto }}</p>
     </article>
-    <p><a href="{{ url_for('informes', _anchor='notas') }}">Seguir leyendo en las Notas del Diario</a></p>
+    <p><a href="{{ url_for('informes', _anchor='notas') }}">Seguir leyendo…</a></p>
     {% else %}<p class="suave">Todavía no hay notas. Escribe cómo te has sentido, cuando quieras: es opcional.</p>{% endif %}
     <details class="ver"><summary>Escribir una nota</summary>
       <form method="post" action="{{ url_for('diario_guardar') }}">
@@ -65,29 +93,6 @@
     <p class="suave">Lo que anotas aquí manda sobre el peso de Garmin de ese día{% if peso_desde_garmin %} y se envía también a Garmin Connect{% endif %}.</p>
   </section>
 </div>
-
-{% macro fila(a) %}<tr><td class="f">{{ a['Fecha']|fecha }}</td><td>{{ a['Título'] }} <a class="suave" href="{{ url_for('actividad_nombre', aid=a['id']|string|replace('.0', ''), volver=url_for('inicio')) }}" title="Cambiar el nombre">✎</a></td><td class="num">{{ a['Distancia']|n(1) }}</td><td class="num">{{ a['h']|hm }}</td><td class="num">{{ a['tss']|n }}{% if not a['tss_real'] and a['tss'] > 0 %}*{% endif %}</td></tr>{% endmacro %}
-{% if ultimas or garmin_listo %}<section class="panel" id="ultimas">
-  <h2>Últimas actividades</h2>
-  {% if garmin_listo %}<div class="linea-campos" id="garmin-recientes" {% if recientes.en_curso %}data-en-curso="1"{% endif %}>
-    {% if recientes.en_curso %}<span class="aviso-espera"><span class="girando" aria-hidden="true">⟳</span> Conectando con Garmin Connect y trayendo lo nuevo (suele tardar menos de un minuto). Puedes seguir usando VenB; esta página se actualizará sola.</span>
-    {% else %}{% set fr = freno_garmin() %}<form method="post" action="{{ url_for('garmin_actualizar') }}" id="form-recientes"><button class="discreto" {% if fr.manual_hasta %}disabled title="Podrás volver a intentarlo a las {{ fr.manual_hasta.strftime('%H:%M') }}"{% endif %}>Traer lo nuevo de Garmin</button></form>
-      {% if aviso_garmin %}<span class="rojo">No se ha lanzado la descarga: {{ aviso_garmin }}</span>
-      {% elif recientes.resultado == 'mal' %}<span class="rojo">No se ha podido descargar de Garmin Connect ({{ recientes.inicio.strftime('%H:%M') }}): {{ recientes.motivo }} No se reintenta sola hasta que vuelvas a abrir VenB; tus datos anteriores siguen disponibles.</span>
-      {% elif recientes.resultado == 'bien' %}<span class="suave">Comprobado a las {{ recientes.inicio.strftime('%H:%M') }}: {% if recientes.nuevas %}{{ recientes.nuevas }} {{ 'actividad nueva' if recientes.nuevas == 1 else 'actividades nuevas' }}{% else %}no hay actividades nuevas{% endif %}.</span>{% endif %}{% endif %}
-  </div>{% endif %}
-  <div class="tabla"><table>
-    <tr><th>Fecha</th><th>Actividad</th><th class="num">km</th><th class="num">Horas</th><th class="num">TSS</th></tr>
-    {% for a in ultimas[:5] %}{{ fila(a) }}{% endfor %}
-  </table></div>
-  {% if ultimas|length > 5 %}<details class="ver"><summary>Ver las {{ ultimas[5:]|length }} anteriores</summary>
-  <div class="tabla"><table>
-    <tr><th>Fecha</th><th>Actividad</th><th class="num">km</th><th class="num">Horas</th><th class="num">TSS</th></tr>
-    {% for a in ultimas[5:] %}{{ fila(a) }}{% endfor %}
-  </table></div>
-  </details>{% endif %}
-  <p class="suave">* TSS estimado por duración. Pulsa ✎ para cambiar el nombre de una actividad. <a href="{{ url_for('historico') }}">Todas las actividades</a></p>
-</section>{% endif %}
 <script>
 (function () {
   var f = document.getElementById('form-recientes');

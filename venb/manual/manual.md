@@ -68,9 +68,9 @@ Resume lo que necesitas saber hoy:
 - **Avisos:** datos de Garmin atrasados, peso sin anotar, fechas clave próximas, meses por cerrar y sesiones con un sensor sin datos (ver [Sensores sin datos](#sensores-sin-datos)). Sus umbrales se cambian en Ajustes. La **×** cierra un aviso para siempre; si vuelve a darse la situación otro día u otro mes, aparece un aviso nuevo. El del cierre del mes enlaza con la página Bicis.
 - **Tu estado:** forma, fatiga y frescura, horas de la semana, km de bici del mes, sueño, VFC, FC en reposo, mejor potencia de 20 minutos de los últimos 30 días y peso.
 - **Forma y fatiga** de los últimos 3 meses.
-- **Últimas notas:** la nota más reciente de tu diario (los primeros renglones; **Seguir leyendo** lleva a las [Notas del Diario](#informes)) y **Escribir una nota**, para anotar sin salir de Inicio.
-- **Próximos eventos** y el formulario para **anotar tu peso**. Lo que anotas a mano manda sobre el peso de Garmin de ese día. Si en Ajustes el peso viene de Garmin, también se envía a Garmin Connect (con la hora actual si es de hoy, o a las 12:00 si es de otro día).
 - **Últimas actividades:** las 5 más recientes y, en el desplegable, las 20 anteriores. VenB trae lo nuevo de Garmin Connect al abrirse y cada pocas horas; **Traer lo nuevo de Garmin** lo hace en el momento (ver [Abrir VenB](garmin.md#4-abrir-venb)). Un asterisco junto al TSS indica que está estimado por duración. Con **✎** cambias el nombre de una actividad (ver [Histórico](#historico)).
+- **Últimos informes semanales y Últimas notas:** el enlace al PDF del último [informe semanal](#informes) y **Seguir leyendo informes**; debajo, la nota más reciente de tu diario (los primeros renglones; **Seguir leyendo…** lleva a las Notas del Diario) y **Escribir una nota**, para anotar sin salir de Inicio.
+- **Próximos eventos** y el formulario para **anotar tu peso**. Lo que anotas a mano manda sobre el peso de Garmin de ese día. Si en Ajustes el peso viene de Garmin, también se envía a Garmin Connect (con la hora actual si es de hoy, o a las 12:00 si es de otro día).
 
 ## Análisis
 
