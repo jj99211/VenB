@@ -20,7 +20,7 @@
       {% if e.gpx %}<label class="casilla"><input type="checkbox" name="quitar_gpx" value="1"> Quitar el track</label>{% endif %}
     </div>
     <div class="linea-campos">
-      <label>Hoja de ruta ({{ ext_hoja }}) {% if e.hoja %}<span class="suave">— <a href="{{ url_for('evento_fichero', eid=e.id, tipo='hoja') }}">{{ e.hoja }}</a></span>{% endif %}<input type="file" name="hoja"></label>
+      <label>Hoja de ruta ({{ ext_hoja }}) {% if e.hoja %}<span class="suave">— <a href="{{ url_for('evento_fichero', eid=e.id, tipo='hoja') }}" target="_blank" rel="noopener">{{ e.hoja }}</a></span>{% endif %}<input type="file" name="hoja"></label>
       {% if e.hoja %}<label class="casilla"><input type="checkbox" name="quitar_hoja" value="1"> Quitar la hoja</label>{% endif %}
     </div>
     <p><button>Guardar</button></p>

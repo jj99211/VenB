@@ -59,7 +59,7 @@
 <div class="rejilla bloque">
   <section class="panel" id="ultimas-notas">
     <h2>Últimos informes semanales</h2>
-    {% if informe %}<p><a href="/informes/{{ informe.carpeta }}/{{ informe.pdf[0] }}">{{ informe.titulo }}</a> (PDF)</p>
+    {% if informe %}<p><a href="/informes/{{ informe.carpeta }}/{{ informe.pdf[0] }}" target="_blank" rel="noopener">{{ informe.titulo }}</a> (PDF)</p>
     <p><a href="{{ url_for('informes', _anchor='informes') }}">Seguir leyendo informes</a></p>
     {% else %}<p class="suave">El primero aparecerá el lunes siguiente a tus primeras actividades.</p>{% endif %}
     <h2>Últimas notas</h2>

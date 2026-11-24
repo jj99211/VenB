@@ -48,14 +48,14 @@
   </section>
   {% for i in informes %}<details class="panel informe" {% if loop.first %}open{% endif %}>
     <summary><b>{{ i.titulo }}</b></summary>
-    {% for p in i.pdf %}<p><a href="/informes/{{ i.carpeta }}/{{ p }}">Abrir el informe en PDF</a>{% if i.pdf|length > 1 %} ({{ p }}){% endif %}</p>{% endfor %}
+    {% for p in i.pdf %}<p><a href="/informes/{{ i.carpeta }}/{{ p }}" target="_blank" rel="noopener">Abrir el informe en PDF</a>{% if i.pdf|length > 1 %} ({{ p }}){% endif %}</p>{% endfor %}
     {% if i.consejo %}<h3>Consejo</h3>
       <p>{{ i.consejo.lectura }}</p>
       {% if i.consejo.plan %}<ol>{% for p in i.consejo.plan %}<li>{{ p }}</li>{% endfor %}</ol>{% endif %}{% endif %}
     {% for r in i.revisiones %}<h3>{{ r.titulo }}</h3>
       <ul class="lista">{% for p in r.puntos %}<li>{{ p }}</li>{% endfor %}</ul>{% endfor %}
     {% if i.svg %}<details><summary>Gráficas</summary><div class="graficas">
-      {% for s in i.svg %}<a href="/informes/{{ i.carpeta }}/{{ s }}"><img loading="lazy" src="/informes/{{ i.carpeta }}/{{ s }}" alt="Gráfica {{ s }}"></a>{% endfor %}
+      {% for s in i.svg %}<a href="/informes/{{ i.carpeta }}/{{ s }}" target="_blank" rel="noopener"><img loading="lazy" src="/informes/{{ i.carpeta }}/{{ s }}" alt="Gráfica {{ s }}"></a>{% endfor %}
     </div></details>{% endif %}
   </details>{% else %}<p class="suave">Todavía no hay informes: el primero aparecerá el lunes siguiente a tus primeras actividades.</p>{% endfor %}
 </details>
