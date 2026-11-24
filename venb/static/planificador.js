@@ -252,7 +252,7 @@
   if (P) {
     document.querySelectorAll('input[name=salida]').forEach(c => { c.checked = P.salidas.includes(c.value); });
     if ($('club') && P.club) $('club').value = P.club;
-    $('paleta').value = P.paleta; $('estilo-infografia').value = P.estilo_infografia; $('auto-lugares').checked = P.auto_lugares; $('track-pendiente').checked = !!P.track_pendiente; $('servicios').checked = P.servicios !== false;
+    $('paleta').value = P.paleta; $('estilo-infografia').value = P.estilo_infografia; $('auto-lugares').checked = P.auto_lugares; $('track-pendiente').checked = !!P.track_pendiente; $('orientacion').value = ['vertical', 'horizontal'].includes(P.orientacion) ? P.orientacion : 'auto'; $('servicios').checked = P.servicios !== false;
     const paradasCtrl = P.puntos.filter((x, i) => A.puntos[i].control && i > 0 && i < N - 1).map(x => x.parada);
     if (paradasCtrl.length) comun.value = ent(paradasCtrl[0]);
   }
@@ -567,7 +567,7 @@
       puntos: filas.map((f, i) => ({ mostrar: f.querySelector('.mostrar').checked, parada: paradas()[i], tipo: f.querySelector('.tipo').value })),
       velocidades: { tramos: V.tramos.map(t => [t[0] * 100, t[1]]), resto: V.resto, fatiga_pct: V.fatiga_pct, fatiga_cada_pct: V.fatiga_cada * 100,
         fatiga_max_pct: V.fatiga_max_pct, factor: V.factor },
-      salidas, paleta: $('paleta').value, estilo_infografia: $('estilo-infografia').value, club: $('club') ? $('club').value : '', auto_lugares: $('auto-lugares').checked, track_pendiente: $('track-pendiente').checked, servicios: $('servicios').checked,
+      salidas, paleta: $('paleta').value, estilo_infografia: $('estilo-infografia').value, club: $('club') ? $('club').value : '', auto_lugares: $('auto-lugares').checked, track_pendiente: $('track-pendiente').checked, orientacion: $('orientacion').value, servicios: $('servicios').checked,
     };
   }
   boton.addEventListener('click', () => {

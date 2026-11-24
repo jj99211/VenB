@@ -30,6 +30,7 @@ PLANTILLA = r"""<!doctype html>
   .datos b { font-variant-numeric:tabular-nums; }
   .controles { display:flex; flex-wrap:wrap; gap:10px 18px; align-items:end; margin-top:10px; }
   .controles label[hidden] { display:none; }
+  .controles label.casilla { flex-direction:row; align-items:center; gap:6px; padding-bottom:7px; }
   .controles label { display:flex; flex-direction:column; font-size:16px; color:var(--gris); gap:2px; }
   .controles input, .controles select { font:inherit; padding:4px 6px; border:1px solid #ccc; border-radius:4px; }
   .controles input[type=number] { width:120px; }
@@ -59,6 +60,11 @@ PLANTILLA = r"""<!doctype html>
   .caja { color:#fff; padding:10px 14px; border:3px solid #000; font-weight:600; line-height:1.3; font-size:18px; }
   .caja b { font-size:21px; }
   .leaflet-tooltip { font-size:16px; }
+  .wpt { background:#fff; border:2px solid #333; border-radius:50%; display:flex; align-items:center; justify-content:center;
+         font-size:17px; line-height:1; box-shadow:0 1px 3px rgba(0,0,0,.45); }
+  .leaflet-tooltip.etiqueta { font-size:14px; font-weight:600; padding:1px 6px; background:rgba(255,255,255,.88);
+         border:1px solid #888; border-radius:3px; box-shadow:none; }
+  .leaflet-tooltip.etiqueta::before { display:none; }
   .leaflet-control-attribution { font-size:14px; }
   .leaflet-bar a { width:44px !important; height:44px !important; line-height:44px !important; font-size:28px !important; }
   .leaflet-popup-content { margin:0; } .leaflet-popup-content-wrapper { padding:0; border-radius:0; overflow:hidden; }
@@ -77,6 +83,7 @@ PLANTILLA = r"""<!doctype html>
     <label>Mapa base
       <select id="base"><option value="ign_mtn">IGN: topográfico (MTN)</option><option value="ign_base">IGN Base</option><option value="ign_orto">IGN: ortofoto con rótulos</option><option value="topo">OpenTopoMap</option><option value="osm">OpenStreetMap</option></select>
     </label>
+    <label class="casilla" title="Muestra junto a cada punto su nombre; sin marcar, el nombre aparece al pasar por encima"><input type="checkbox" id="nombres" checked> Nombres de los puntos</label>
     <button type="button" id="descargar-gpx" title="Track con los controles, la salida, la llegada y los demás puntos como waypoints (tipos de Garmin Connect)">Descargar GPX con waypoints</button>
     <div class="dias" id="dias"></div>
   </div>
@@ -103,6 +110,8 @@ const tarde = r => CON_LIMITE && r.margen < -TOLERANCIA;
 const retraso = min => { min = Math.round(min); return min < 60 ? `${min} min` : dur(min) + " h"; };
 const COLORES = __COLORES__;
 const ICONOS = __ICONOS__;
+const SIN_ICONO_PERFIL = ["salida", "llegada", "meta"];
+const kmTexto = k => k < 100 ? "km " + k.toFixed(1).replace(".", ",") : "km " + k.toFixed(0);
 const icono = r => r.tipo && ICONOS[r.tipo] ? ICONOS[r.tipo] + " " : "";
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const MESES_L = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
@@ -202,26 +211,54 @@ function dibujarMapa(res) {
     else tramo.push([t[0], t[1]]);
   }
   cerrar();
-  for (const r of res) {
-    if (!(r.control || r.destacado)) {
-      L.circleMarker([r.lat, r.lon], { radius: 5, color: "#333", weight: 1.5, fillColor: "#fff", fillOpacity: 1 })
-        .bindPopup(popup(r)).addTo(grupoPuntos);
-      continue;
-    }
-    L.circleMarker([r.lat, r.lon], { radius: 11, color: tarde(r) ? "#c62828" : "#111", weight: 4, fillColor: "#fff", fillOpacity: 1 })
-      .bindPopup(popup(r)).bindTooltip(esc((r.control || "") + " " + r.nombre), { direction: "right" }).addTo(grupoPuntos);
-  }
+  // puntos de la ruta: los controles y los destacados, círculo grande; los demás, el icono de su tipo (o un círculo
+  // pequeño si no tiene). El nombre, siempre visible salvo que se desmarque «Nombres de los puntos».
+  const fijos = document.getElementById("nombres").checked, ultimo = res.length - 1;
+  res.forEach((r, i) => {
+    // llegada en el mismo sitio que la salida: sin rótulo propio, que taparía el de la salida
+    const repetido = i === ultimo && i > 0 && Math.abs(r.lat - res[0].lat) < 0.002 && Math.abs(r.lon - res[0].lon) < 0.002;
+    let m;
+    if (r.control || r.destacado)
+      m = L.circleMarker([r.lat, r.lon], { radius: 11, color: tarde(r) ? "#c62828" : "#111", weight: 4, fillColor: "#fff", fillOpacity: 1 });
+    else if (r.tipo && ICONOS[r.tipo])
+      m = L.marker([r.lat, r.lon], { icon: L.divIcon({ className: "wpt", html: ICONOS[r.tipo], iconSize: [30, 30] }), riseOnHover: true,
+                                     zIndexOffset: i === 0 ? 1000 : 0 });   // la salida, por encima de la llegada
+    else
+      m = L.circleMarker([r.lat, r.lon], { radius: 6, color: "#333", weight: 2, fillColor: "#fff", fillOpacity: 1 });
+    m.bindPopup(popup(r));
+    if (!repetido)
+      m.bindTooltip(esc((r.control ? r.control + " " : "") + r.nombre),
+                    { direction: "right", offset: [14, 0], permanent: fijos, className: fijos ? "etiqueta" : "" });
+    m.addTo(grupoPuntos);
+  });
 }
 
 // ---------- perfil (SVG)
 function dibujarPerfil(res) {
   const svg = document.getElementById("perfil");
-  const W = svg.clientWidth || 800, H = svg.clientHeight || 340, m = { l: 80, r: 12, t: 26, b: 52 };
+  const conIcono = res.filter(r => r.tipo && ICONOS[r.tipo] && !SIN_ICONO_PERFIL.includes(r.tipo));
+  const R = 13, FILA = 2 * R + 20;
+  const W = svg.clientWidth || 800, m = { l: 80, r: 12, t: 26, b: 52 };
+  const total = D.total_km, maxTrack = Math.max(...D.track.map(t => t[2]));
+  // fila de cada icono (sube una si toca al anterior); el perfil deja arriba sitio para todas
+  const filaDe = [], puestos = [];
+  for (const r of conIcono) {
+    const x = r.km / total * (W - m.l - m.r);
+    let n = 0; while (puestos.some(([a, b]) => b === n && Math.abs(a - x) < 2 * R + 30)) n++;
+    puestos.push([x, n]); filaDe.push(n);
+  }
+  const nFilas = filaDe.length ? Math.max(...filaDe) + 1 : 0;
+  // 340 px de alto (como en la hoja de estilo) más lo que ocupen las filas de iconos a partir de la segunda
+  const H = 340 + Math.max(0, nFilas - 1) * FILA;
+  svg.style.height = H + "px";
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
-  const maxE = Math.max(...D.track.map(t => t[2])) * 1.1, total = D.total_km;
+  const hueco = nFilas * FILA + (nFilas ? 6 : 0);
+  const maxE = maxTrack * 1.1 * (H - m.t - m.b) / Math.max(H - m.t - m.b - hueco, 60);
+  const fila0 = m.t + hueco - 6;   // línea base del km de la primera fila (la más baja)
   const X = km => m.l + km / total * (W - m.l - m.r), Y = e => H - m.b - e / maxE * (H - m.t - m.b);
   let s = "";
-  for (let e = 0; e < maxE; e += maxE > 2600 ? 500 : 250)
+  const techo = maxTrack * 1.1;   // las altitudes rotuladas, solo hasta el perfil (no en la fila de iconos)
+  for (let e = 0; e < techo; e += techo > 2600 ? 500 : 250)
     s += `<line x1="${m.l}" x2="${W-m.r}" y1="${Y(e)}" y2="${Y(e)}" stroke="#eee"/><text x="${m.l-4}" y="${Y(e)+4}" font-size="19" text-anchor="end" fill="#666">${e}</text>`;
   const pend = __PENDIENTES__;
   for (let i = 0; i < D.track.length - 1; i++) {
@@ -239,12 +276,27 @@ function dibujarPerfil(res) {
     if (d !== d0) { banda(ini, km, d0); ini = km; d0 = d; }
   }
   banda(ini, total, d0);
-  for (let k = 0; k <= total; k += total > 600 ? 100 : 25)
+  // rejilla vertical (cada 10 km; más espaciada en rutas largas) y km rotulados donde caben
+  const rej = total <= 300 ? 10 : total <= 1000 ? 50 : 100;
+  const rot = [1, 2, 5, 10, 20, 50].map(f => f * rej).find(p => (W - m.l - m.r) * p / total >= 50) || 50 * rej;
+  for (let k = rej; k < total; k += rej)
+    s += `<line x1="${X(k)}" x2="${X(k)}" y1="${m.t}" y2="${Y(0)}" stroke="#000" stroke-opacity=".16" stroke-width="1"/>`;
+  for (let k = 0; k <= total; k += rot)
     s += `<text x="${X(k)}" y="${H-8}" font-size="19" text-anchor="middle" fill="#666">${k}</text>`;
   for (const r of res) if (r.control) {
     s += `<line x1="${X(r.km)}" x2="${X(r.km)}" y1="${Y(r.alt)}" y2="${m.t}" stroke="${tarde(r) ? "#c62828" : "#555"}" stroke-width="2.5"/>`
        + `<text x="${X(r.km)+4}" y="${m.t-6}" font-size="19" font-weight="700" fill="#333">${r.control}</text>`;
   }
+  // iconos de los puntos (café, puerto, población…) en una fila sobre el perfil, con su km y una línea
+  // hasta el eje; si dos se tocan, el segundo sube una fila. La salida y la llegada no llevan: son los extremos.
+  conIcono.forEach((r, i) => {
+    const x = X(r.km), n = filaDe[i];
+    const yk = fila0 - n * FILA, y = yk - 14 - R;
+    s += `<g><title>${esc(r.nombre)}</title><line x1="${x}" x2="${x}" y1="${Y(0)}" y2="${yk}" stroke="#333" stroke-width="1.2" stroke-dasharray="4 3"/>`
+       + `<text x="${x}" y="${yk}" font-size="14" text-anchor="middle" fill="#333" stroke="#fff" stroke-width="4" paint-order="stroke">${kmTexto(r.km)}</text>`
+       + `<circle cx="${x}" cy="${y}" r="${R}" fill="#fff" stroke="#333" stroke-width="1.5"/>`
+       + `<text x="${x}" y="${y + 1}" font-size="15" text-anchor="middle" dominant-baseline="central">${ICONOS[r.tipo]}</text></g>`;
+  });
   svg.innerHTML = s;
 }
 
@@ -323,6 +375,7 @@ if (!(CON_LIMITE && !OBJETIVO && D.puntos.some((p, i) => p.control && i > 0 && i
 if (OBJETIVO) document.getElementById("etiqueta-limite").textContent = "Objetivo (h)";
 if (!CON_SALIDA) document.querySelector("footer").insertAdjacentHTML("beforeend", "<br>Tiempos en horas:minutos desde la salida, con las paradas previstas; cambia las paradas en la tabla.");
 // GPX hecho aquí mismo (la página se comparte suelta, sin servidor): track y puntos como waypoints
+document.getElementById("nombres").onchange = () => todo();
 document.getElementById("descargar-gpx").onclick = () => {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([D.gpx.texto], {type: "application/gpx+xml"}));

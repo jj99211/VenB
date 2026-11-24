@@ -2,6 +2,14 @@
 
 Novedades de cada versión de VenB y VenB Rutas (las dos ediciones comparten número de versión).
 
+## 3.61
+
+- **Puntos en el mapa interactivo:** cada punto lleva el icono de su tipo (⛰️ puerto, 🏘️ población, ☕ café…) y su nombre al lado. La casilla **Nombres de los puntos** los oculta; sin ella, el nombre aparece al pasar por encima. Si la llegada está en el mismo sitio que la salida, se ve la salida y un solo nombre.
+- **Iconos en el perfil:** en la página interactiva, la infografía y los tres mapas ilustrados, los puntos con tipo aparecen en una fila sobre el perfil, con su kilómetro debajo («km 42,8») y una línea hasta el eje. Si dos se tocan, uno sube una fila. La salida y la llegada no llevan icono: son los extremos del perfil.
+- **Líneas cada 10 km:** el perfil lleva líneas verticales cada 10 km (cada 50 km en rutas de más de 300 km y cada 100 km en las de más de 1.000 km), y los km del eje coinciden con ellas.
+- **Orientación de la hoja:** en Generar, **Orientación de la hoja (infografía y mapas)**: automática, según la forma de la ruta (como hasta ahora), vertical o apaisada.
+- **Corregido:** los mapas personal y «Juego de Tronos» fallaban en rutas sin controles.
+
 ## 3.60
 
 - **Página interactiva, trazado exacto:** el mapa dibuja el track con los puntos del GPX original, de modo que las curvas de carreteras y calles salen completas. Antes usaba un punto cada 250 m y las curvas cerradas quedaban cortadas en recta. En las rectas se quitan los puntos que no aportan nada (los que se desvían menos de 1,5 m), para que la página no pese de más. Las páginas ya generadas hay que volver a generarlas.

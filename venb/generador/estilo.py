@@ -119,3 +119,75 @@ def color_pendiente(pct):
         if pct < lim:
             return c
     return COLORES_PENDIENTE[-1][1]
+
+
+# ---------------------------------------------------------------- iconos en el perfil
+
+SIN_ICONO_PERFIL = {"salida", "llegada", "meta"}     # en los extremos del perfil: no hace falta
+
+
+def puntos_con_icono(plan):
+    """[(km, icono, nombre)] de los puntos del plan cuyo tipo tiene icono, para marcarlos en el perfil."""
+    return [(p.km, ICONOS[p.tipo_parada], p.nombre) for p in plan.puntos
+            if p.tipo_parada in ICONOS and p.tipo_parada not in SIN_ICONO_PERFIL]
+
+
+def paso_rejilla_km(total_km):
+    """Separación de las líneas verticales del perfil: cada 10 km; en rutas largas, más espaciadas."""
+    return 10 if total_km <= 300 else 50 if total_km <= 1000 else 100
+
+
+def paso_rotulos_km(total_km, ancho_px, ancho_rotulo_px):
+    """Paso de los km rotulados en el eje: el menor múltiplo de la rejilla en que los rótulos no se tocan."""
+    g = paso_rejilla_km(total_km)
+    return next((p for p in (g, 2 * g, 5 * g, 10 * g, 20 * g, 50 * g)
+                 if ancho_px * p / max(total_km, 1e-9) >= ancho_rotulo_px * 1.6), 50 * g)
+
+
+def rejilla_km(ax, total_km, zorder=2.5):
+    """Líneas verticales del perfil en cada paso de la rejilla, sobre el relleno y bajo la línea."""
+    g = paso_rejilla_km(total_km)
+    for k in np.arange(g, total_km, g):
+        ax.axvline(k, color="#000000", alpha=0.16, lw=0.8, zorder=zorder)
+
+
+def km_texto(k):
+    return f"km {k:.1f}".replace(".", ",") if k < 100 else f"km {k:.0f}"
+
+
+def iconos_en_perfil(ax, puntos, km, ele, tam, ancho_ax_px, alto_ax_px, base, y_fila, borde="#333333", zorder=7,
+                     perfil_min=0.3):
+    """Iconos de los puntos en una fila sobre el perfil (eje `ax`, en km y metros, con el pie en `base`), a partir
+    de la altura `y_fila`: cada uno en un disco blanco, con su km debajo y una línea vertical hasta el eje X.
+    Si dos se tocan, el segundo sube una fila. Fija el alto del eje para que quepan y devuelve su tope (m).
+    Si el eje es bajo, los iconos se reducen para dejar al perfil al menos `perfil_min` del alto."""
+    if not puntos:
+        return y_fila
+    diam = tam * 1.9 * 100 / 72                        # disco, en píxeles (las figuras van a 100 ppp)
+    alto_km = tam * 0.75 * 1.25 * 100 / 72             # rótulo del km bajo el disco
+    fila_px = diam + alto_km + 8                       # alto de una fila
+    ancho = max(diam, tam * 0.75 * 0.45 * 8 * 100 / 72) * 1.15 * (km[-1] - km[0]) / ancho_ax_px
+    filas = []
+    for k, icono, _ in sorted(puntos):
+        n = 0
+        while any(abs(k - kk) < ancho and nn == n for kk, nn, _ in filas):
+            n += 1
+        filas.append((k, n, icono))
+    n_filas = max(n for _, n, _ in filas) + 1
+    if n_filas * fila_px > alto_ax_px * (1 - perfil_min) - 4:    # no caben: iconos más pequeños
+        f = (alto_ax_px * (1 - perfil_min) - 4) / (n_filas * fila_px)
+        tam, diam, alto_km, fila_px = tam * f, diam * f, alto_km * f, fila_px * f
+    # el alto del eje que deja n_filas de iconos por encima de y_fila: (tope - base) = (y_fila - base) + filas en m
+    libre = max(alto_ax_px - n_filas * fila_px - 4, alto_ax_px * perfil_min)   # perfil_min: parte para el perfil
+    tope = base + (y_fila - base) * alto_ax_px / libre
+    px_m = alto_ax_px / (tope - base)
+    ax.set_ylim(base, tope)
+    for k, n, icono in filas:
+        y_km = y_fila + (n * fila_px + 2) / px_m                     # base del rótulo del km
+        y = y_km + (alto_km + 3 + diam / 2) / px_m                 # centro del disco
+        ax.plot([k, k], [base, y_km], color=borde, lw=0.9, ls=(0, (3, 2)), zorder=zorder - 1)
+        ax.text(k, y_km, km_texto(k), fontsize=tam * 0.75, family=SANS, ha="center", va="bottom", color=borde,
+                zorder=zorder, bbox=dict(boxstyle="square,pad=0.1", fc="white", ec="none", alpha=0.85))
+        ax.text(k, y, icono, fontproperties=EMOJI, fontsize=tam, ha="center", va="center", color="#222222",
+                zorder=zorder, bbox=dict(boxstyle="circle,pad=0.28", fc="white", ec=borde, lw=1.2))
+    return tope

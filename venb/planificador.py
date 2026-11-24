@@ -649,7 +649,10 @@ def validar(datos, a, borrador=False):
             'estilo_infografia': datos.get('estilo_infografia') if datos.get('estilo_infografia') in ESTILOS_INFOGRAFIA else 'ign_mtn',
             # VenB Rutas: club u organizador cuya marca llevan los documentos ('' = la de VenB)
             'club': datos.get('club') if R.RUTAS and datos.get('club') and _club_valido(datos.get('club')) else '',
-            'auto_lugares': bool(datos.get('auto_lugares', True)), 'track_pendiente': bool(datos.get('track_pendiente')), 'servicios': bool(datos.get('servicios', True)), 'altitud_gpx': bool(datos.get('altitud_gpx'))}
+            'auto_lugares': bool(datos.get('auto_lugares', True)), 'track_pendiente': bool(datos.get('track_pendiente')),
+            # hoja de la infografía y los mapas: automática (según la forma del track), vertical u horizontal
+            'orientacion': datos.get('orientacion') if datos.get('orientacion') in ('vertical', 'horizontal') else 'auto',
+            'servicios': bool(datos.get('servicios', True)), 'altitud_gpx': bool(datos.get('altitud_gpx'))}
 
 
 def editar_puntos(pid, datos):
@@ -918,8 +921,9 @@ def _generar(d):
            'destacados': destacados, 'paradas': paradas, 'tipos_parada': tipos, 'velocidades': p['velocidades'],
            'altitud': {'fuente': 'gpx' if p.get('altitud_gpx') else 'mdt'},
            'infografia': {'estilo': p['estilo_infografia'], 'sin_caja': sin_caja, 'track_pendiente': bool(p.get('track_pendiente')),
-                          'servicios': p.get('servicios', True)},
-           'mapa': {'titulo': p['nombre'], 'estilos': estilos, 'paleta': p['paleta'], 'servicios': p.get('servicios', True)}, 'marca': marca}
+                          'servicios': p.get('servicios', True), 'orientacion': p.get('orientacion', 'auto')},
+           'mapa': {'titulo': p['nombre'], 'estilos': estilos, 'paleta': p['paleta'], 'servicios': p.get('servicios', True),
+                    'orientacion': p.get('orientacion', 'auto')}, 'marca': marca}
     salida_dir = os.path.join(d, 'salida')
     if os.path.isdir(salida_dir):
         shutil.rmtree(salida_dir)

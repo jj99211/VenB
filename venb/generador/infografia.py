@@ -600,7 +600,9 @@ def _dibujar_perfil(fig, rect_perfil, rect_etiquetas, rect_dias, plan, panel, pu
     ax.set_ylim(0, tope)
     ax.set_yticks(np.arange(0, tope, 250 if tope < 2600 else 500))
     ax.yaxis.set_major_formatter(lambda v, _: f"{v:,.0f} m".replace(",", " "))
-    ax.set_xticks(np.arange(0, total + 1, 60 if total > 600 else 20))
+    w_px, h_px = fig.get_size_inches() * 100
+    ax.set_xticks(np.arange(0, total + 1, E.paso_rotulos_km(total, rect_perfil[2] * w_px, 10 * F * PT * 3.2)))
+    E.rejilla_km(ax, total)
     ax.xaxis.set_major_formatter(lambda v, _: f"{v:.0f} km")
     ax.tick_params(labelsize=10 * F, length=3 * F)
     for lab in ax.get_xticklabels() + ax.get_yticklabels():
@@ -629,6 +631,14 @@ def _dibujar_perfil(fig, rect_perfil, rect_etiquetas, rect_dias, plan, panel, pu
         destacado = id(p) in ids_panel
         ax.plot([p.km, p.km], [0, tope], color="#555555" if destacado else "#9a9a9a",
                 lw=(3 if destacado else 1) * F ** 0.5, alpha=0.9 if destacado else 0.5, zorder=3)
+
+    # iconos de los puntos (café, puerto, población…) en una fila sobre el perfil, con su km y una línea al eje
+    pts = E.puntos_con_icono(plan)
+    if pts:
+        E.iconos_en_perfil(ax, pts, km, ele, 12 * F, rect_perfil[2] * w_px, rect_perfil[3] * h_px, 0,
+                           ele.max() * 1.15, perfil_min=0.55)
+        # altitudes rotuladas solo hasta el perfil, no en la fila de iconos
+        ax.set_yticks(np.arange(0, ele.max() * 1.12, 250 if tope < 2600 else 500))
 
     # etiquetas del panel en filas sin solaparse
     ae = fig.add_axes(rect_etiquetas, sharex=ax)
@@ -867,8 +877,12 @@ def generar(proyecto, plan, osm=None):
     H_a4 = None
     if cfg.get("a4", True):
         corto = W
-        horizontal = float(X.max() - X.min()) > float(Y.max() - Y.min())
+        orient = cfg.get("orientacion", "auto")      # "vertical", "horizontal" o "auto" (según la forma del track)
+        horizontal = (orient == "horizontal" or
+                      (orient not in ("vertical", "horizontal") and float(X.max() - X.min()) > float(Y.max() - Y.min())))
         W, H_a4 = (int(round(corto * 2 ** 0.5)), corto) if horizontal else (corto, int(round(corto * 2 ** 0.5)))
+        if horizontal != (float(X.max() - X.min()) > float(Y.max() - Y.min())) and "margen" not in cfg:
+            cfg["margen"] = 0.09     # hoja elegida a contrapelo del track: más aire en los lados justos
         proporcion = cfg["_prop_fija"] = W / max(H_a4 - _resto_estimado(_escala(cfg)), 0.3 * H_a4)
     xmin, xmax, ymin, ymax = _encuadre(X, Y, cfg, proporcion)
     z = zoom_para(xmin, xmax, W / cfg.get("escala_rotulos", 1.0), estilo)

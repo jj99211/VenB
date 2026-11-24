@@ -136,6 +136,7 @@
     {% if rutas %}<label>Club u organizador (marca de los documentos)<select id="club"><option value="">— Solo VenB —</option>{% for c in clubes %}<option value="{{ c.id }}">{{ c.nombre }}</option>{% endfor %}</select>
       <a class="suave" href="{{ url_for('ajustes', _anchor='clubes') }}">Gestionar los perfiles de club</a></label>{% endif %}
     <label>Mapa de la infografía<select id="estilo-infografia">{% for k, t in estilos.items() %}<option value="{{ k }}" {% if k == aj.plan_mapa_base %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></label>
+    <label title="Automática: apaisada si la ruta es más ancha que alta, vertical si es más alta que ancha">Orientación de la hoja (infografía y mapas)<select id="orientacion"><option value="auto">Automática, según la forma de la ruta</option><option value="vertical">Vertical</option><option value="horizontal">Apaisada</option></select></label>
     <label>Colores del mapa personal<select id="paleta">{% for x in paletas %}<option>{{ x }}</option>{% endfor %}</select></label>
     <label class="casilla"><input type="checkbox" id="auto-lugares" checked> Rotular también otras localidades bien repartidas</label>
     <label class="casilla"><input type="checkbox" id="track-pendiente"> Colorear el track de la infografía según la pendiente</label>

@@ -1361,6 +1361,8 @@ def _perfil(lz, plan, lugares_ctrl, solo_medir=False):
     h_ley = lz.medir("Ág", **kw_ley)[1] * 1.15
     h_km = lz.medir("0", **kw_km)[1]
     h_graf = 0.13 * min(lz.W, lz.H)
+    if E.puntos_con_icono(plan):
+        h_graf += 52 * F                                # fila de iconos sobre el perfil
     margen = 24 * F
     alto_pie = int(margen + h_tit + margen * 0.5 + len(lineas) * h_ley + margen * 0.6 + h_graf
                    + margen * 0.5 + h_km + margen)
@@ -1395,8 +1397,7 @@ def _perfil(lz, plan, lugares_ctrl, solo_medir=False):
     ln.set_sketch_params(0.6, 50, 2)
     # km bajo el eje, con el mismo paso que quepa sin solaparse
     ancho_px = x_der - x_izq
-    paso_km = next((p for p in (10, 20, 25, 50, 100, 200, 250, 500)
-                    if ancho_px / (tr.total_km / p) > w_num * 1.8), 500)
+    paso_km = E.paso_rotulos_km(tr.total_km, ancho_px, w_num * 1.15)
     for k in np.arange(0, tr.total_km + 1, paso_km):
         fig.text((x_izq + k / tr.total_km * ancho_px) / lz.W, fy(y_graf0 - margen * 0.3), f"{k:.0f}",
                  ha="center", va="top", **kw_km)
@@ -1417,11 +1418,17 @@ def _perfil(lz, plan, lugares_ctrl, solo_medir=False):
             y_n += paso_y
         colocados.append((p.km, y_n))
         numeros.append((p, y_n))
-    tope = max(ele.max() * 1.08, max(v for _, v in numeros) + paso_y * 1.1)
+    tope = max(ele.max() * 1.08, max((v for _, v in numeros), default=0) + paso_y * 1.1)   # puede no haber controles
     ax.set_ylim(base, tope)
     i = int(np.argmax(ele))
     ax.text(km[i], ele[i] + rango * 0.03, f"{ele[i]:.0f} m", **lz.letra("perfil", 12 * F),
             color=c["relieve"], ha="left", va="bottom")
+    # iconos de los puntos (café, puerto, población…) en una fila sobre el perfil y los controles, con su km
+    # y una línea hasta el eje
+    pts = E.puntos_con_icono(plan)
+    if pts:
+        tope = E.iconos_en_perfil(ax, pts, km, ele, 11 * F, ancho_px, h_graf, base, tope, borde=c["tinta"])
+    E.rejilla_km(ax, tr.total_km)
     for p, y_n in numeros:
         ax.plot([p.km, p.km], [base, y_n], color=c["acento"], lw=1.2 * F ** 0.5, ls=(0, (2, 2)), zorder=2)
         ax.text(p.km, y_n, p.control[1:], fontsize=tam_num, family=E.SANS,
