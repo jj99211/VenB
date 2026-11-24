@@ -2,6 +2,10 @@
 
 Novedades de cada versión de VenB y VenB Rutas (las dos ediciones comparten número de versión).
 
+## 3.56
+
+- **Inicio, nuevo orden:** **Últimas actividades** sube una fila, justo después de «Forma y fatiga». En la última fila, la tarjeta de la izquierda reúne **Últimos informes semanales** (enlace al PDF del último informe y **Seguir leyendo informes**) y **Últimas notas** (la nota más reciente, recortada, con **Seguir leyendo…** y el formulario desplegable **Escribir una nota**). A la derecha siguen Próximos eventos y Anotar peso.
+
 ## 3.55
 
 - **Informe semanal automático:** cada lunes, al abrir VenB, se prepara el informe de la semana anterior (de lunes a domingo) en un PDF de una página: horas, km y salidas de bici frente a la semana anterior y a la media de cuatro semanas; forma, fatiga y frescura (CTL, ATL y TSB); TSS; sueño, FC en reposo y VFC si el reloj los registra; y las gráficas de carga y de horas por semana. Si se está descargando de Garmin, espera a que termine para que entren las actividades del domingo. Solo se hace si ha habido actividades en las cuatro semanas anteriores. **Rehacer el informe de la última semana** lo prepara de nuevo tras añadir actividades.
