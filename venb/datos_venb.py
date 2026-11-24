@@ -1191,16 +1191,9 @@ def _fecha_de(nombre):
         return None
 
 
-def _leer_estado(f):
-    with open(f, encoding='utf-8') as fh:
-        lineas = fh.read().splitlines()
-    return {'titulo': lineas[0].lstrip('# ') if lineas else os.path.basename(f), 'puntos': [l[2:] for l in lineas[1:] if l.startswith('- ')]}
-
-
 def informes():
-    """Una entrada por carpeta de informes/ (PDF, gráficas y, en las semanales, las notas del Diario de esa semana) con las revisiones de estado/ de esa
-    semana: la del domingo anterior más cercano (o del mismo día si la carpeta no es semanal), a 7 días como mucho.
-    Las revisiones sin carpeta van como entrada propia. De la más reciente a la más antigua."""
+    """Una entrada por carpeta de informes/ (PDF, gráficas y, en las semanales, las notas del Diario de esa semana), de la
+    más reciente a la más antigua. Los ficheros de estado/ no se muestran desde la 3.57."""
     migrar_notas_json()
     salida = []
     for d in glob.glob(os.path.join(INFORMES, '*')):
@@ -1210,19 +1203,10 @@ def informes():
         f = _fecha_de(nombre)
         semanal = nombre.endswith('_semanal') and f
         titulo = (f'Semana del {f - timedelta(days=6):%d/%m/%Y} al {f:%d/%m/%Y}' if semanal else f'Informe del {f:%d/%m/%Y}' if f else nombre)
-        salida.append({'carpeta': nombre, 'titulo': titulo, 'fecha': f or date.min, 'semanal': bool(semanal), 'revisiones': [],
+        salida.append({'carpeta': nombre, 'titulo': titulo, 'fecha': f or date.min, 'semanal': bool(semanal),
                        'pdf': [n for n in nombres if n.endswith('.pdf')], 'svg': [n for n in nombres if n.endswith('.svg')]})
-    for ruta in sorted(glob.glob(os.path.join(ESTADO, 'estado_*.md'))):
-        d = _fecha_de(os.path.basename(ruta)[len('estado_'):])
-        cand = [e for e in salida if d and e['fecha'] != date.min and 0 <= (d - e['fecha']).days <= 7 and (not e['semanal'] or d > e['fecha'])]
-        if cand:
-            min(cand, key=lambda e: ((d - e['fecha']).days, e['semanal'])) ['revisiones'].append(_leer_estado(ruta))
-        else:
-            salida.append({'carpeta': None, 'titulo': f'Revisión del {d:%d/%m/%Y}' if d else os.path.basename(ruta), 'fecha': d or date.min,
-                           'semanal': False, 'revisiones': [_leer_estado(ruta)], 'pdf': [], 'svg': []})
     import informe_semanal as IS
     for e in salida:
-        e['revisiones'].reverse()   # la última revisión de esa semana, primero
         e['notas'] = IS.notas_semana(e['fecha']) if e['semanal'] else []
     return sorted(salida, key=lambda e: (e['fecha'], e['semanal']), reverse=True)
 

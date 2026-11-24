@@ -2,6 +2,12 @@
 
 Novedades de cada versión de VenB y VenB Rutas (las dos ediciones comparten número de versión).
 
+## 3.57
+
+- **Informe semanal en tres partes:** primero el resumen de actividades, después las gráficas y, al final, las **notas del Diario** con fecha de esa semana (de lunes a domingo). En la página Informes, cada semana muestra lo mismo: el PDF, sus gráficas y sus notas. Para que un resumen escrito el lunes entre en el informe de la semana anterior, ponle la fecha del domingo. **Rehacer el informe de la última semana** recoge también las notas añadidas después.
+- **Sin consejos aparte:** el consejo que salía de un fichero `notas.json` en la carpeta de un informe desaparece. Al abrir esta versión, cada `notas.json` pasa a ser una nota del Diario («Análisis de la semana» y «Pautas para la próxima semana») con la fecha del domingo de su semana, y el fichero se conserva como `notas.json.migrado`. Los ficheros de `VenB-datos/estado/` ya no se muestran en Informes.
+- **PDF en otra pestaña:** el informe en PDF (en Inicio y en Informes), las gráficas de cada informe y la hoja de ruta de una prueba del calendario se abren en una pestaña nueva, como los documentos del Planificador.
+
 ## 3.56
 
 - **Inicio, nuevo orden:** **Últimas actividades** sube una fila, justo después de «Forma y fatiga». En la última fila, la tarjeta de la izquierda reúne **Últimos informes semanales** (enlace al PDF del último informe y **Seguir leyendo informes**) y **Últimas notas** (la nota más reciente, recortada, con **Seguir leyendo…** y el formulario desplegable **Escribir una nota**). A la derecha siguen Próximos eventos y Anotar peso.

@@ -538,7 +538,7 @@ def garmin_usar():
 
 @app.route('/informes')
 def informes():
-    """Informes: el diario (escribir y leer notas), los informes y las revisiones."""
+    """Informes: el diario (escribir y leer notas) y los informes semanales."""
     notas = DI.todas()
     e = next((n for n in notas if n['id'] == request.args.get('editar')), None)
     if not D._descarga_en_curso():

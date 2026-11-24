@@ -194,10 +194,7 @@ Reúne tu diario y tus informes. Arriba, tres tarjetas llevan a cada sección; c
 - **Escribir una nota** y **Notas del Diario:** un sitio opcional para escribir lo que quieras sobre tus sesiones, tus sensaciones o tus rutas: fecha y texto libre. Puedes editar y borrar cada nota. Si no escribes nada, no cambia ningún cálculo. La última nota aparece también en Inicio, donde puedes escribir otra. Se guarda en `VenB-datos/datos/diario.csv`.
 - **Informes:** cada lunes, VenB prepara el informe de la semana anterior (de lunes a domingo) en PDF, en tres partes: primero, el **resumen de actividades** (horas, km y salidas de bici frente a la semana anterior y a la media de cuatro semanas; forma, fatiga y frescura —CTL, ATL y TSB—; TSS; sueño, FC en reposo y VFC si tu reloj los registra); después, las **gráficas** de carga y de horas por semana; y por último, las **notas del Diario** que tengan fecha de esa semana. Se hace al abrir VenB (si se está descargando de Garmin, espera a que termine, para que entren las actividades del domingo) y solo si has tenido actividades en las cuatro semanas anteriores. Si añades actividades o notas después, **Rehacer el informe de la última semana** lo prepara de nuevo. Cada informe se despliega con su título («Semana del … al …»), con el enlace al PDF, sus gráficas y sus notas, y se guarda en `VenB-datos/informes/AAAA-MM-DD_semanal/` (la fecha es la del domingo). Para que un resumen que escribes el lunes entre en el informe de la semana anterior, ponle la fecha del domingo.
 
-En la misma carpeta puedes guardar informes y revisiones propios, que aparecen junto al de su semana:
-
-- **Otros informes:** cualquier subcarpeta de `VenB-datos/informes/` cuyo nombre empiece por una fecha (`AAAA-MM-DD`) aparece con sus PDF y sus gráficas SVG.
-- **Revisiones:** un fichero `VenB-datos/estado/estado_AAAA-MM-DD.md` se muestra dentro del informe de la semana anterior a esa fecha. La primera línea es el título, y las que empiezan por `- `, sus puntos.
+- **Otros informes:** puedes guardar informes propios en una subcarpeta de `VenB-datos/informes/` cuyo nombre empiece por una fecha (`AAAA-MM-DD`): aparecen en la lista con sus PDF y sus gráficas SVG.
 
 ## Planificador
 
