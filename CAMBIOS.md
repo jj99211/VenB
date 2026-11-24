@@ -2,6 +2,11 @@
 
 Novedades de cada versión de VenB y VenB Rutas (las dos ediciones comparten número de versión).
 
+## 3.59
+
+- **Fuera de cierre, solo con retraso real:** el aviso «¡FUERA DE CIERRE!» y el margen en rojo salen solo si llegas más de 5 minutos tarde. Con menos, suele ser cosa del redondeo. Se aplica a la infografía, la tabla de tiempos, la Previsión y la página interactiva.
+- **Cierres solo en las pruebas oficiales:** en un recorrido libre, el tiempo deseado es un objetivo. La infografía y la página interactiva dicen «11 min después del objetivo» (o «1:05 h…») en lugar del margen y de «fuera de cierre», sin ensanchar las cajas. La tabla de tiempos, los mapas y la página interactiva hablan de «Objetivo» en lugar de «Cierre» o «Tiempo límite».
+
 ## 3.58
 
 - **Planificador, Planificación temporal:** «Datos de la ruta» queda con el nombre y el subtítulo. La salida, el tipo de ruta, la distancia y los tiempos pasan a una tarjeta nueva, **Planificación temporal**, que incluye también las etapas. En **Nueva ruta**, el desplegable **¿Y los horarios?** explica que ahí se decide cómo se temporiza la ruta.

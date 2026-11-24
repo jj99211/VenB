@@ -91,6 +91,27 @@ def con_tiempos(plan):
     return con_salida(plan) or con_limite(plan)
 
 
+# Llegar tarde solo cuenta a partir de este retraso (un margen de −1 min suele ser redondeo)
+TOLERANCIA_MIN = 5
+
+
+def es_objetivo(plan):
+    """Ruta libre: el «límite» es un objetivo, no un cierre (los cierres son de las pruebas oficiales)."""
+    return getattr(plan, "horario", {}).get("objetivo", False)
+
+
+def retraso_min(margen):
+    """Minutos de retraso sobre el cierre u objetivo (0 si llega a tiempo o dentro de la tolerancia)."""
+    m = -margen.total_seconds() / 60
+    return m if m > TOLERANCIA_MIN else 0
+
+
+def fmt_retraso(minutos):
+    """«11 min» o, desde una hora, «1:05 h»."""
+    m = int(round(minutos))
+    return f"{m} min" if m < 60 else f"{m // 60}:{m % 60:02d} h"
+
+
 def fmt_momento(plan, t):
     """Hora del reloj («07:30») o, sin hora de salida, tiempo desde la salida («+5:40»)."""
     return fmt_hora(t) if con_salida(plan) else "+" + fmt_dur(t - plan.salida)
@@ -123,14 +144,14 @@ def exportar_excel(plan, ruta):
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Hoja de ruta"
-    cs, cl = con_salida(plan), con_limite(plan)
+    cs, cl, obj = con_salida(plan), con_limite(plan), es_objetivo(plan)
     # sin hora de salida, los tiempos son desde la salida («+5:40»); sin límite, no hay cierre, margen ni apertura
     t = (lambda x: x) if cs else (lambda x: fmt_momento(plan, x) if x else None)
     cab = ["Control", "Ubicación", "km hoja", "km", "km parciales", "Altitud", "Asc. total",
            "Ascenso parc", "Descenso parc", "% medio", "% completo", "Veloc", "Parada (min)",
            "Tipo parada", "Llegada" if cs else "Llegada (desde la salida)", "Salida" if cs else "Salida (desde la salida)"]
     if cl:
-        cab += ["Cierre", "Margen (h)", "Margen", "Apertura", "Aviso"]
+        cab += ["Objetivo" if obj else "Cierre", "Margen (h)", "Margen", "Apertura", "Aviso"]
     ws.append(cab)
     for p in plan.puntos:
         margen = p.margen
@@ -141,8 +162,9 @@ def exportar_excel(plan, ruta):
         if cl:
             fila += [t(p.cierre), round(margen.total_seconds() / 3600, 2), fmt_dur(margen, signo=True),
                      t(p.apertura_hoja),
-                     "llega antes de la apertura" if p.antes_de_apertura else
-                     ("fuera de cierre" if margen.total_seconds() < 0 else None)]
+                     "llega antes de la apertura" if p.antes_de_apertura and not obj else
+                     (None if not retraso_min(margen) else f"{fmt_retraso(retraso_min(margen))} después del objetivo"
+                      if obj else "fuera de cierre")]
         ws.append(fila)
     n = ws.max_row
     for fila in ws.iter_rows(min_row=2):
@@ -161,8 +183,9 @@ def exportar_excel(plan, ruta):
     rojo = PatternFill("solid", fgColor="F4C7C3")
     verde = PatternFill("solid", fgColor="D9EAD3")
     if cl:
-        ws.conditional_formatting.add(f"R2:R{n}", CellIsRule(operator="lessThan", formula=["0"], fill=rojo))
-        ws.conditional_formatting.add(f"R2:R{n}", CellIsRule(operator="greaterThanOrEqual", formula=["0"],
+        tol = f"{-TOLERANCIA_MIN / 60:.4f}"
+        ws.conditional_formatting.add(f"R2:R{n}", CellIsRule(operator="lessThan", formula=[tol], fill=rojo))
+        ws.conditional_formatting.add(f"R2:R{n}", CellIsRule(operator="greaterThanOrEqual", formula=[tol],
                                                              fill=verde))
     anchos = [9, 24, 8, 8, 9, 8, 9, 9, 9, 8, 9, 7, 9, 11, 13, 13, 13, 9, 8, 13, 22]
     for i, a in enumerate(anchos, 1):
@@ -175,7 +198,7 @@ def exportar_excel(plan, ruta):
     if cs:
         resumen.append(("Salida", plan.salida))
     if cl:
-        resumen.append(("Tiempo límite (h)", plan.limite_h))
+        resumen.append(("Tiempo objetivo (h)" if obj else "Tiempo límite (h)", plan.limite_h))
     if cs:
         resumen.append(("Llegada prevista", plan.llegada_final))
     resumen.append(("Tiempo total previsto", fmt_dur(plan.llegada_final - plan.salida)))

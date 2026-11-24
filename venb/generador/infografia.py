@@ -12,7 +12,7 @@ from matplotlib.patches import Circle, FancyBboxPatch, Rectangle
 
 from . import estilo as E
 from .datos import hora_en_km
-from .proyecto import con_limite, con_salida, con_tiempos, dia_de, etiqueta_dia, fmt_dur, fmt_momento
+from .proyecto import es_objetivo, fmt_retraso, retraso_min, con_limite, con_salida, con_tiempos, dia_de, etiqueta_dia, fmt_dur, fmt_momento
 from .teselas import ESTILOS, a_mercator, cubre, mapa_base, zoom_para
 
 HALO = [pe.withStroke(linewidth=4, foreground="white")]
@@ -219,8 +219,14 @@ class Caja:
         if cl and p.antes_de_apertura:
             self.lineas.append((f"¡abre a las {fmt_momento(plan, p.apertura_hoja)} h!" if con_salida(plan)
                                 else f"¡abre a {fmt_momento(plan, p.apertura_hoja)} h!", txt * 0.87, "bold"))
-        if cl and p.km > 0:
-            aviso = "  ¡FUERA DE CIERRE!" if margen.total_seconds() < 0 else ""
+        # llegar tarde: en las pruebas oficiales, fuera de cierre; en la ruta libre, después del objetivo (esa frase
+        # sustituye a la del margen, para que la caja no se ensanche). Solo con más de 5 min de retraso.
+        tarde = retraso_min(margen) if cl and p.km > 0 else 0
+        self.i_margen = len(self.lineas)
+        if tarde and es_objetivo(plan):
+            self.lineas.append((f"{fmt_retraso(tarde)} después del objetivo", txt * 0.87, "regular"))
+        elif cl and p.km > 0:
+            aviso = "  ¡FUERA DE CIERRE!" if tarde else ""
             self.lineas.append((f"margen {fmt_dur(margen, signo=True)} h{aviso}",
                                 txt * 0.87, "regular"))
         medidas = [_medir(fig, t, s, w) for t, s, w in self.lineas]
@@ -233,7 +239,7 @@ class Caja:
         self.w = max([m[0] + (hueco if i < 2 else 0) for i, m in enumerate(medidas)]) + 2 * self.pad
         self.h = sum(self.alto_linea) + 2 * self.pad - 4 * F
         self.color = E.color_dia(_dia(plan, p.llegada))
-        self.fuera = cl and margen.total_seconds() < 0
+        self.fuera = bool(tarde)
         self.x = self.y = 0.0     # esquina superior izquierda
         self.lado = "izq"
 
@@ -242,8 +248,8 @@ class Caja:
                                     boxstyle="square,pad=0", fc=self.color, ec="black",
                                     lw=2.5 * self.F ** 0.5, zorder=20))
         y = self.y - self.pad + 2
-        for (texto, tam, peso), alto in zip(self.lineas, self.alto_linea):
-            color = "#ffe14d" if self.fuera and texto.startswith("margen") else "white"
+        for i, ((texto, tam, peso), alto) in enumerate(zip(self.lineas, self.alto_linea)):
+            color = "#ffe14d" if self.fuera and i == self.i_margen else "white"
             ax.text(self.x + self.pad, y, texto, fontsize=tam, family=E.SANS, weight=peso,
                     color=color, va="top", ha="left", zorder=21)
             y -= alto
@@ -908,7 +914,7 @@ def generar(proyecto, plan, osm=None):
         if con_salida(plan):
             partes.append(f"salida {plan.salida:%d/%m %H:%M} h")
         if con_limite(plan):
-            partes.append(f"límite {fmt_dur(timedelta(hours=plan.limite_h))} h")
+            partes.append(f"{'objetivo' if es_objetivo(plan) else 'límite'} {fmt_dur(timedelta(hours=plan.limite_h))} h")
         if con_tiempos(plan):
             partes.append(f"tiempo previsto {fmt_dur(total_h)} h")
         if con_limite(plan):

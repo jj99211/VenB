@@ -855,7 +855,8 @@ def _generar(d):
            'salida': salida, 'carpeta_salida': 'salida', 'ajuste_km': 'auto',
            # con la regla de RM, el límite es siempre el oficial (planes guardados antes con el de la hoja)
            'limite_horas': limite or 400,
-           'horario': {'salida': con_salida, 'limite': con_limite},
+           # en la ruta libre, el límite es un objetivo («X min después del objetivo»), no un cierre
+           'horario': {'salida': con_salida, 'limite': con_limite, 'objetivo': p.get('modalidad') == 'libre'},
            'regla': regla,
            'destacados': destacados, 'paradas': paradas, 'tipos_parada': tipos, 'velocidades': p['velocidades'],
            'altitud': {'fuente': 'gpx' if p.get('altitud_gpx') else 'mdt'},

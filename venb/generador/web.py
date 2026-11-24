@@ -65,7 +65,7 @@ PLANTILLA = r"""<!doctype html>
   <div class="datos" id="resumen"></div>
   <div class="controles">
     <label>Salida <input type="datetime-local" id="salida"></label>
-    <label>Límite (h) <input type="number" id="limite" step="0.5" min="1"></label>
+    <label><span id="etiqueta-limite">Límite (h)</span> <input type="number" id="limite" step="0.5" min="1"></label>
     <label>Parada por defecto en controles (min) <input type="number" id="defecto" step="5" min="0"></label>
     <label>Mapa base
       <select id="base"><option value="ign_mtn">IGN: topográfico (MTN)</option><option value="ign_base">IGN Base</option><option value="ign_orto">IGN: ortofoto con rótulos</option><option value="topo">OpenTopoMap</option><option value="osm">OpenStreetMap</option></select>
@@ -90,6 +90,10 @@ const D = __DATOS__;
 // horario del plan (Planificador): sin hora de salida, tiempos desde la salida; sin límite, sin cierres ni márgenes
 const CON_SALIDA = !FICHA && (!D.horario || D.horario.salida !== false);
 const CON_LIMITE = !FICHA && (!D.horario || D.horario.limite !== false);
+// ruta libre: el límite es un objetivo, no un cierre; llegar tarde cuenta a partir de 5 min (antes suele ser redondeo)
+const OBJETIVO = !!(D.horario && D.horario.objetivo), TOLERANCIA = 5;
+const tarde = r => CON_LIMITE && r.margen < -TOLERANCIA;
+const retraso = min => { min = Math.round(min); return min < 60 ? `${min} min` : dur(min) + " h"; };
 const COLORES = __COLORES__;
 const ICONOS = __ICONOS__;
 const icono = r => r.tipo && ICONOS[r.tipo] ? ICONOS[r.tipo] + " " : "";
@@ -170,7 +174,7 @@ function horaEnKm(res, km) {
 function popup(r) {
   const tit = icono(r) + esc((r.control ? r.control + " - " : "") + r.nombre.toUpperCase());
   const linea = `${hora(r.llegada)} h${r.parada ? ` (+${r.parada} min)` : ""}` + (CON_LIMITE ? ` &lt; ${hora(r.cierre)} h<br>
-    margen ${dur(r.margen, true)} h` : "");
+    ${OBJETIVO && tarde(r) ? `${retraso(-r.margen)} después del objetivo` : `margen ${dur(r.margen, true)} h`}` : "");
   return `<div class="caja" style="background:${color(r.dia)}"><b>${tit}</b><br>
     km ${r.km.toFixed(0)} (+${r.asc_total.toFixed(0)} m) · ${r.alt.toFixed(0)} m<br>
     ${linea}</div>`;
@@ -196,7 +200,7 @@ function dibujarMapa(res) {
         .bindPopup(popup(r)).addTo(grupoPuntos);
       continue;
     }
-    L.circleMarker([r.lat, r.lon], { radius: 11, color: CON_LIMITE && r.margen < 0 ? "#c62828" : "#111", weight: 4, fillColor: "#fff", fillOpacity: 1 })
+    L.circleMarker([r.lat, r.lon], { radius: 11, color: tarde(r) ? "#c62828" : "#111", weight: 4, fillColor: "#fff", fillOpacity: 1 })
       .bindPopup(popup(r)).bindTooltip(esc((r.control || "") + " " + r.nombre), { direction: "right" }).addTo(grupoPuntos);
   }
 }
@@ -230,7 +234,7 @@ function dibujarPerfil(res) {
   for (let k = 0; k <= total; k += total > 600 ? 100 : 25)
     s += `<text x="${X(k)}" y="${H-8}" font-size="19" text-anchor="middle" fill="#666">${k}</text>`;
   for (const r of res) if (r.control) {
-    s += `<line x1="${X(r.km)}" x2="${X(r.km)}" y1="${Y(r.alt)}" y2="${m.t}" stroke="${CON_LIMITE && r.margen < 0 ? "#c62828" : "#555"}" stroke-width="2.5"/>`
+    s += `<line x1="${X(r.km)}" x2="${X(r.km)}" y1="${Y(r.alt)}" y2="${m.t}" stroke="${tarde(r) ? "#c62828" : "#555"}" stroke-width="2.5"/>`
        + `<text x="${X(r.km)+4}" y="${m.t-6}" font-size="19" font-weight="700" fill="#333">${r.control}</text>`;
   }
   svg.innerHTML = s;
@@ -239,7 +243,7 @@ function dibujarPerfil(res) {
 // ---------- tabla
 function dibujarTabla(res) {
   const cab = ["", "Lugar", "km", "Tramo", "Alt.", "Asc. tramo", "Asc. total", "% medio", "Vel.", "Parada (min)", "Llegada", "Salida"]
-    .concat(CON_LIMITE ? ["Cierre", "Margen", "Apertura"] : []);
+    .concat(CON_LIMITE ? [OBJETIVO ? "Objetivo" : "Cierre", "Margen", "Apertura"] : []);
   let s = "<thead><tr>" + cab.map(c => `<th>${c}</th>`).join("") + "</tr></thead><tbody>";
   res.forEach((r, i) => {
     const valor = estado.paradas[i] === null ? "" : estado.paradas[i];
@@ -252,7 +256,7 @@ function dibujarTabla(res) {
       <td>${i ? `<input type="number" min="0" step="5" data-i="${i}" value="${valor}" placeholder="${marcador}">` : ""}</td>
       <td>${momento(r.llegada)}</td><td>${momento(r.salida)}</td>` + (!CON_LIMITE ? "</tr>" : `
       <td>${momento(r.cierre)}</td>
-      <td class="${r.margen < 0 ? "neg" : "pos"}">${i ? dur(r.margen, true) : ""}</td>
+      <td class="${r.margen < -TOLERANCIA ? "neg" : "pos"}">${i ? dur(r.margen, true) : ""}</td>
       <td class="${r.antes ? "neg" : ""}">${r.apertura ? hora(r.apertura) + (r.antes ? " ⚠" : "") : ""}</td></tr>`);
   });
   document.getElementById("tabla").innerHTML = s + "</tbody>";
@@ -272,7 +276,7 @@ function dibujarResumen(res) {
     document.getElementById("resumen").innerHTML =
       `<span><b>${D.total_km.toFixed(0)}</b> km</span><span><b>+${Math.round(D.total_asc).toLocaleString("es")}</b> m</span>
        <span>tiempo previsto <b>${dur(totalMin)}</b> h</span>` + (dias.length > 1 ? `<span><b>${dias.length}</b> días</span>` : "")
-       + (CON_LIMITE ? `<span>límite <b>${dur(estado.limite * 60)}</b> h</span><span>margen en meta <b class="${fin.margen < 0 ? "neg" : "pos"}">${dur(fin.margen, true)}</b> h</span>` : "");
+       + (CON_LIMITE ? `<span>${OBJETIVO ? "objetivo" : "límite"} <b>${dur(estado.limite * 60)}</b> h</span><span>margen en meta <b class="${fin.margen < -TOLERANCIA ? "neg" : "pos"}">${dur(fin.margen, true)}</b> h</span>` : "");
     document.getElementById("dias").innerHTML = dias.length > 1 ? dias.map(d => `<span class="chip" style="background:${color(d)}">Día ${d + 1}</span>`).join("") : "";
     return;
   }
@@ -280,8 +284,8 @@ function dibujarResumen(res) {
     `<span><b>${D.total_km.toFixed(0)}</b> km</span><span><b>+${Math.round(D.total_asc).toLocaleString("es")}</b> m</span>
      <span>llegada <b>${fin.llegada.getDate()}/${fin.llegada.getMonth()+1} ${hhmm(fin.llegada)}</b></span>
      <span>tiempo previsto <b>${dur(totalMin)}</b> h</span>` + (!CON_LIMITE ? "" : `
-     <span>margen en meta <b class="${fin.margen < 0 ? "neg" : "pos"}">${dur(fin.margen, true)}</b> h</span>
-     <span>margen mínimo <b class="${peor.margen < 0 ? "neg" : "pos"}">${dur(peor.margen, true)}</b> h (${esc(peor.control)} ${esc(peor.nombre)})</span>`);
+     <span>margen en meta <b class="${fin.margen < -TOLERANCIA ? "neg" : "pos"}">${dur(fin.margen, true)}</b> h</span>
+     <span>margen mínimo <b class="${peor.margen < -TOLERANCIA ? "neg" : "pos"}">${dur(peor.margen, true)}</b> h (${esc(peor.control)} ${esc(peor.nombre)})</span>`);
   document.getElementById("dias").innerHTML = dias.map(d => {
     const f = new Date(estado.salida.getFullYear(), estado.salida.getMonth(), estado.salida.getDate() + d);
     return `<span class="chip" style="background:${color(d)}">${f.getDate()} ${MESES_L[f.getMonth()]}</span>`;
@@ -303,6 +307,7 @@ window.addEventListener("resize", () => dibujarPerfil(calcular()));
 // en la ficha (o sin hora de salida) no hay fecha; en la ficha (o sin límite), tampoco tiempo límite
 if (!CON_SALIDA) inSalida.closest("label").hidden = true;
 if (!CON_LIMITE) inLimite.closest("label").hidden = true;
+if (OBJETIVO) document.getElementById("etiqueta-limite").textContent = "Objetivo (h)";
 if (!CON_SALIDA) document.querySelector("footer").insertAdjacentHTML("beforeend", "<br>Tiempos en horas:minutos desde la salida, con las paradas previstas; cambia las paradas en la tabla.");
 // GPX hecho aquí mismo (la página se comparte suelta, sin servidor): track y puntos como waypoints
 document.getElementById("descargar-gpx").onclick = () => {

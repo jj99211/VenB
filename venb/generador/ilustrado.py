@@ -19,7 +19,7 @@ from PIL import Image, ImageFilter
 from shapely.geometry import LineString
 
 from . import estilo as E
-from .proyecto import con_limite, con_salida, fmt_dur
+from .proyecto import con_limite, con_salida, es_objetivo, fmt_dur
 from .teselas import a_mercator, mapa_base, zoom_para
 
 PT = 100 / 72
@@ -1226,7 +1226,8 @@ def _cartucho(lz, esquina, plan, marca, base):
              ("Distancia", f"{plan.total_km:.0f} km"),
              ("Desnivel", f"+{plan.total_asc:,.0f} m".replace(",", " ")),
              ("Controles", f"{controles}")] + (
-             [("Tiempo límite", f"{fmt_dur(timedelta(hours=plan.limite_h))} h")] if con_limite(plan) else [])
+             [("Tiempo objetivo" if es_objetivo(plan) else "Tiempo límite",
+               f"{fmt_dur(timedelta(hours=plan.limite_h))} h")] if con_limite(plan) else [])
     # con el perfil dentro del A4 el mapa es más bajo que la hoja: el cartucho se reduce en la misma proporción
     k0 = min(1.0, lz.H / (lz.W * 2 ** 0.5)) if lz.W < lz.H * 1.2 else min(1.0, lz.H / (lz.W / 2 ** 0.5))
     for red in (1.0, 0.85, 0.72):      # si pisa el track, se prueba más pequeño

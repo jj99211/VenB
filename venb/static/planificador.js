@@ -8,6 +8,9 @@
   const ent = (x, d = 1) => isFinite(x) ? String(+(+x).toFixed(d)).replace('.', ',') : '';
   const z = n => String(n).padStart(2, '0');
   const fechaHora = d => d && isFinite(d) && (d = new Date(Math.round(d / 6e4) * 6e4)) ? `${z(d.getDate())}/${z(d.getMonth() + 1)} ${z(d.getHours())}:${z(d.getMinutes())}` : '–';
+  // llegar tarde cuenta a partir de 5 min (un margen de −1 min suele ser redondeo)
+  const TOLERANCIA = 5;
+  const retraso = min => { min = Math.round(min); return min < 60 ? `${min} min` : dur(min) + ' h'; };
   const dur = (min, signo) => {
     if (!isFinite(min)) return '–';
     const neg = min < 0; min = Math.round(Math.abs(min));
@@ -372,7 +375,7 @@
     const cs = conSalida(), cl = conLimite();
     let t = 'Es la media en movimiento de toda la ruta: en cada tramo, la velocidad varía con la pendiente y la fatiga, y las paradas y los descansos se suman aparte. ';
     t += cs ? 'Con ella, VenB calcula la hora de paso por cada punto' : 'Con ella, VenB calcula el tiempo desde la salida («+5:40») hasta cada punto';
-    t += cl ? (libre() ? ' y el margen frente al tiempo deseado.' : ' y el margen frente a los cierres. El tiempo límite no cambia la velocidad: si es baja, la Previsión marca en rojo los controles a los que llegas fuera de cierre.') : '.';
+    t += cl ? (libre() ? ' y el margen frente al tiempo deseado.' : ' y el margen frente a los cierres. El tiempo límite no cambia la velocidad: si es baja, la Previsión marca en rojo los controles a los que llegas fuera de cierre (más de 5 min tarde).') : '.';
     if (!cs && sinLimite.checked) t += ' Sin hora de salida ni límite, los mapas y las infografías no llevan tiempos: la velocidad sirve para esta Previsión, la tabla de tiempos y la página interactiva.';
     if (c && !c.error) t += ` Para cambiarla sin escribirla, cambia el ${nombre}.`;
     $('vel-nota').textContent = t;
@@ -399,21 +402,23 @@
       f.querySelector('.cierre').textContent = cl && (ctrl || A.puntos[i].cierre_hoja) ? momento(r.cierre, t0) : '';
       const m = f.querySelector('.margen');
       m.textContent = cl && ctrl ? dur(r.margen, true) : '';
-      m.style.color = cl && ctrl && r.margen < 0 ? 'var(--rojo)' : '';
-      m.style.fontWeight = cl && ctrl && r.margen < 0 ? '700' : '';
+      m.style.color = cl && ctrl && r.margen < -TOLERANCIA ? 'var(--rojo)' : '';
+      m.style.fontWeight = cl && ctrl && r.margen < -TOLERANCIA ? '700' : '';
+      m.title = cl && ctrl && r.margen < -TOLERANCIA ? (libre() ? `${retraso(-r.margen)} después del objetivo` : 'Fuera de cierre') : '';
     });
     const ctrls = res.filter((r, i) => A.puntos[i].control && i > 0);
     const peor = ctrls.reduce((a, r) => (!a || r.margen < a.margen ? r : a), null);
     const iPeor = res.indexOf(peor);
     const mov = res.reduce((s, r, i) => s + (i ? A.puntos[i].km_tramo / r.vel : 0), 0);
-    const fuera = cl ? ctrls.filter(r => r.margen < 0).length : 0, antes = cl ? res.filter(r => r.antes).length : 0;
+    const fuera = cl ? ctrls.filter(r => r.margen < -TOLERANCIA).length : 0, antes = cl ? res.filter(r => r.antes).length : 0;
     $('resumen').innerHTML = cifra('Distancia', fmt(TOTAL, 1) + ' km', A.meta.distancia ? `oficial ${fmt(A.meta.distancia)} km` : '')
       + cifra('Desnivel', fmt(A.total_asc) + ' m', A.meta.desnivel ? `oficial ${fmt(A.meta.desnivel)} m` : 'modelo del terreno')
       + cifra('Tiempo total', dur((fin.llegada - t0) / 60e3), `${dur(mov * 60)} en movimiento`)
       + (conSalida() ? cifra('Llegada', fechaHora(fin.llegada), `media ${fmt(TOTAL / ((fin.llegada - t0) / 36e5), 1)} km/h con paradas`)
         : cifra('Media', fmt(TOTAL / ((fin.llegada - t0) / 36e5), 1) + ' km/h', 'con paradas'))
       + (cl ? cifra('Margen en meta', dur(fin.margen, true), peor && iPeor >= 0 ? `mínimo ${dur(peor.margen, true)} en ${esc(A.puntos[iPeor].control)}` : '') : '');
-    $('aviso-generar').textContent = fuera ? `Atención: llegas fuera de cierre a ${fuera} control${fuera > 1 ? 'es' : ''}.` : antes ? `Llegas a ${antes} control${antes > 1 ? 'es' : ''} antes de su apertura.` : '';
+    $('aviso-generar').textContent = fuera ? (libre() ? `Llegas más de ${TOLERANCIA} min después del objetivo a ${fuera} control${fuera > 1 ? 'es' : ''}.`
+      : `Atención: llegas fuera de cierre a ${fuera} control${fuera > 1 ? 'es' : ''}.`) : antes ? `Llegas a ${antes} control${antes > 1 ? 'es' : ''} antes de su apertura.` : '';
     perfil(res);
     resumenEtapas(res);
     explicarVelocidad(res);
