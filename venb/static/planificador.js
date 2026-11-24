@@ -7,7 +7,7 @@
   // Valores de las casillas: sin separador de miles, para poder leerlos de nuevo
   const ent = (x, d = 1) => isFinite(x) ? String(+(+x).toFixed(d)).replace('.', ',') : '';
   const z = n => String(n).padStart(2, '0');
-  const fechaHora = d => d && isFinite(d) ? `${z(d.getDate())}/${z(d.getMonth() + 1)} ${z(d.getHours())}:${z(d.getMinutes())}` : '–';
+  const fechaHora = d => d && isFinite(d) && (d = new Date(Math.round(d / 6e4) * 6e4)) ? `${z(d.getDate())}/${z(d.getMonth() + 1)} ${z(d.getHours())}:${z(d.getMinutes())}` : '–';
   const dur = (min, signo) => {
     if (!isFinite(min)) return '–';
     const neg = min < 0; min = Math.round(Math.abs(min));
@@ -140,7 +140,8 @@
   }
 
   // ---------- campos generales
-  const salida = FechaHora($('salida')), limite = $('limite'), limH = $('limite-h'), limM = $('limite-m'), vel = $('velocidad'), comun = $('parada-comun');
+  const salida = FechaHora($('salida')), vel = $('velocidad'), comun = $('parada-comun');
+  const sinSalida = $('sin-salida'), sinLimite = $('sin-limite'), objH = $('obj-h'), objM = $('obj-m');
   const modalidad = $('modalidad'), distBrm = $('distancia-brm');
   // distancias que se pueden elegir: las estándar del brevet, 600 en la SR y de 1.200 a 2.000 en los Super Brevets
   const distancias = m => m === 'brevet' ? R.brevet : m === 'sb' ? R.sb : m === 'sr' ? [600] : [];
@@ -158,53 +159,86 @@
   if (m0 === 'brevet' && +d0 === 1200) m0 = 'sb';   // planes anteriores: el 1200 era un brevet
   modalidad.value = m0;
   opcionesDistancia(d0);
-  // tiempo del reglamento (NaN en el recorrido libre) y si el escrito es otro: entonces los cálculos son personales
+  // Tiempo del reglamento (NaN en el recorrido libre): no se cambia. El ritmo propio va en el tiempo objetivo (en el
+  // libre, el tiempo deseado, que hace a la vez de límite para la columna «Objetivo").
+  const libre = () => modalidad.value === 'libre';
   const oficial = () => modalidad.value === 'sr' ? R.sr600 : ['brevet', 'sb'].includes(modalidad.value) ? R.limites[distBrm.value] : NaN;
-  const personal = () => isFinite(oficial()) && isFinite(num(limite.value)) && Math.abs(num(limite.value) - oficial()) > 0.01;
-  const brevet = () => ['brevet', 'sb'].includes(modalidad.value) && R.limites[distBrm.value] && !personal();
-  function explicarModalidad(cambio) {
+  const brevet = () => ['brevet', 'sb'].includes(modalidad.value) && !!R.limites[distBrm.value];
+  function objetivo() {
+    if (objH.value === '') return NaN;
+    const h = +objH.value + (+objM.value || 0) / 60;
+    return h > 0 ? h : NaN;
+  }
+  const limiteH = () => libre() ? objetivo() : oficial();
+  const conSalida = () => !sinSalida.checked;
+  const conLimite = () => !sinLimite.checked && limiteH() > 0;
+  // Desplegables del tiempo objetivo: horas hasta el límite oficial (o 400 en el libre) y minutos de 5 en 5
+  function opcionesObjetivo() {
+    const antes = objetivo(), max = libre() ? 400 : Math.floor(oficial());
+    let o = '<option value="">—</option>';
+    for (let h = 0; h <= max; h++) o += `<option value="${h}">${h}</option>`;
+    objH.innerHTML = o;
+    if (!objM.options.length) { let m = ''; for (let i = 0; i < 60; i += 5) m += `<option value="${i}">${z(i)}</option>`; objM.innerHTML = m; }
+    ponerObjetivo(!libre() && antes > oficial() ? oficial() : antes);
+  }
+  function ponerObjetivo(h) {
+    if (!(h > 0)) { objH.value = ''; objM.value = '0'; return; }
+    const t = Math.round(h * 60), hh = Math.floor(t / 60), mm = t % 60;
+    if (![...objH.options].some(o => o.value === String(hh))) objH.add(new Option(hh, hh));
+    if (![...objM.options].some(o => +o.value === mm)) {      // minutos que no son múltiplo de 5 (planes antiguos)
+      const sig = [...objM.options].find(o => +o.value > mm);
+      objM.add(new Option(z(mm), mm), sig || null);
+    }
+    objH.value = String(hh); objM.value = String(mm);
+  }
+  function explicarModalidad() {
     const m = modalidad.value;
     $('campo-distancia').hidden = m === 'libre';
-    $('etiqueta-limite').textContent = m === 'libre' ? 'Tiempo deseado' : 'Tiempo límite';
-    if (cambio && m !== 'libre') ponerLimite(oficial());
+    $('campo-limite').hidden = m === 'libre';
+    $('limite-oficial').textContent = isFinite(oficial()) ? horasTexto(oficial()) : '';
+    $('etiqueta-objetivo').innerHTML = m === 'libre' ? 'Tiempo deseado' : 'Tiempo objetivo <span class="suave">(opcional)</span>';
     const hoja = A.puntos.some(p => p.cierre_hoja);
     $('explica-modalidad').textContent = m === 'brevet'
       ? 'Brevet: apertura y cierre de los controles según la tabla de Randonneurs Mondiaux' + (hoja ? '; en los intermedios mandan las horas de la hoja del organizador.' : '.') + ' La meta cierra en el tiempo límite oficial.'
       : m === 'sb' ? 'Super Brevet (1.200 km o más): tiempo límite del reglamento de Randonneurs Mondiaux (90 h en 1.200 km; 12 km/h de media de 1.300 a 1.800 km; 10 km/h desde 1.900 km). Apertura según la tabla de RM; cierres intermedios a la media mínima' + (hoja ? ', salvo donde la hoja del organizador trae hora.' : '.')
       : m === 'sr' ? 'Super Randonnée (600 km): sin horas de control; el cierre de cada punto reparte el tiempo límite (60 h) en proporción a la distancia.'
-      : 'Recorrido libre: la distancia es la del track y el tiempo, el que quieras emplear. La columna «Objetivo» reparte ese tiempo en proporción a la distancia.';
+      : 'Recorrido libre: la distancia es la del track y el tiempo, el que quieras emplear. La columna «Objetivo» reparte ese tiempo en proporción a la distancia, y la velocidad se calcula para cumplirlo.';
     explicarLimite();
     verEtapas();
   }
-  // Tiempo cambiado a mano y aviso de velocidad media poco realista en bici
+  // Límite oficial, objetivo, horario de los documentos y aviso de media poco realista en bici
   function explicarLimite() {
-    const m = modalidad.value, pers = personal(), lim = num(limite.value);
-    $('titulo-cierre').textContent = m === 'libre' || pers ? 'Objetivo' : 'Cierre';
-    $('limite-oficial').hidden = !pers;
-    $('explica-limite').textContent = m === 'libre' ? '' : pers
-      ? `Tiempo personal (el oficial es ${horasTexto(oficial())}): los cálculos no siguen la tabla oficial. El tiempo se reparte en proporción a la distancia y no se usan las horas de control de la hoja.`
-      : 'El tiempo límite es el del reglamento. Puedes cambiarlo (por ejemplo, en una SR en modalidad cicloturista, que tiene más tiempo): entonces los cálculos pasan a ser personales, no los de la tabla oficial.';
-    const v = TOTAL / lim, avisa = (m === 'libre' || pers) && lim > 0 && (v < 12 || v > 28);
+    const m = modalidad.value, o = objetivo();
+    $('titulo-cierre').textContent = m === 'libre' ? 'Objetivo' : 'Cierre';
+    $('explica-limite').textContent = m === 'libre' ? '' : 'El tiempo límite es el del reglamento y no se cambia. Para planificar a tu ritmo, pon un tiempo objetivo (como mucho, el límite): VenB calcula la velocidad para cumplirlo y los márgenes siguen siendo frente a los cierres oficiales.';
+    const v = TOTAL / o, avisa = o > 0 && (v < 12 || v > 28);
     $('aviso-velocidad').hidden = !avisa;
-    if (avisa) $('aviso-velocidad').textContent = `Con ${fmt(TOTAL, 0)} km en ${horasTexto(lim)}, la media neta sería de ${fmt(v, 1)} km/h, ${v < 12 ? 'por debajo de 12' : 'por encima de 28'} km/h: en bici, esos tiempos podrían no ser realistas. Si planificas la ruta con otro medio de transporte, no hace falta cambiarlo.`;
+    if (avisa) $('aviso-velocidad').textContent = `Con ${fmt(TOTAL, 0)} km en ${horasTexto(o)}, la media con paradas sería de ${fmt(v, 1)} km/h, ${v < 12 ? 'por debajo de 12' : 'por encima de 28'} km/h: en bici, esos tiempos podrían no ser realistas. Si planificas la ruta con otro medio de transporte, no hace falta cambiarlo.`;
+    const lleg = $('llegada-objetivo'), t0 = new Date(salida.value);
+    lleg.hidden = !(o > 0 && conSalida() && isFinite(t0));
+    if (!lleg.hidden) lleg.textContent = `Con ese tiempo, la llegada sería el ${fechaHora(new Date(t0.getTime() + o * 36e5))}.`;
+    // horario de los documentos
+    salida.disabled = sinSalida.checked;
+    $('campo-salida').classList.toggle('desactivado', sinSalida.checked);
+    $('campo-limite').classList.toggle('desactivado', sinLimite.checked);
+    const cs = conSalida(), cl = !sinLimite.checked;
+    $('explica-horario').textContent = cs && cl ? 'Los documentos llevan la hora de paso por cada punto y, con el límite, los cierres y los márgenes.'
+      : cl ? 'Sin hora de salida: los documentos cuentan el tiempo desde la salida («+5:40»), también los cierres, y los días son de 24 h.'
+      : cs ? 'Sin límite de tiempo: los documentos llevan la hora de paso prevista por cada punto, sin cierres ni márgenes.'
+      : 'Sin hora de salida ni límite: los mapas y las infografías no llevan información de tiempo; la tabla de tiempos y la página interactiva cuentan el tiempo desde la salida.';
   }
   $('nombre').value = P ? P.nombre : A.nombre;
   $('subtitulo').value = P ? P.subtitulo : '';
   salida.value = (P ? P.salida : A.salida) || '';
-  // Tiempo en horas y minutos (desplegables que admiten escribir); #limite guarda las horas con decimales
-  function ponerLimite(h) {
-    limite.value = isFinite(h) && h > 0 ? String(h) : '';
-    const total = Math.round(h * 60);
-    limH.value = limite.value ? Math.floor(total / 60) : '';
-    limM.value = limite.value ? z(total % 60) : '';
-  }
-  function leerLimite() {
-    const h = num(limH.value), m = num(limM.value);
-    limite.value = isFinite(h) || isFinite(m) ? String((isFinite(h) ? h : 0) + (isFinite(m) ? m : 0) / 60) : '';
-  }
-  ponerLimite((P ? P.limite_h : A.limite_h) || NaN);
+  sinSalida.checked = !!(P && P.sin_salida);
+  sinLimite.checked = !!(P && P.sin_limite);
+  opcionesObjetivo();
+  ponerObjetivo(P ? (P.objetivo_h || (m0 === 'libre' ? P.limite_h : NaN)) : (m0 === 'libre' ? A.limite_h : NaN));
   const mostrarVel = () => { vel.value = ent(mediaTabla() * V.factor, 1); };
   mostrarVel();
+  // ¿la velocidad sigue al tiempo objetivo? ¿la escribió el usuario? (para avisar antes de sustituirla)
+  let velObj = !!(P && P.vel_objetivo && objetivo() > 0);
+  let velManual = !!(P && !P.vel_objetivo && Math.abs((P.velocidades.factor || 1) - 1) > 1e-6);
   // plan sin generar: el último club u organizador usado (si sigue existiendo)
   if ($('club') && (!P || P.club === undefined)) {
     const ultimo = localStorage.getItem('venb-ultimo-club');
@@ -221,25 +255,18 @@
 
   // ---------- etapas (BRM de 400 km o más, SR, Super Brevets y recorridos libres)
   const rec = $('usar-reciente');
-  const etActivas = $('et-activas'), etLlegada = FechaHora($('et-llegada')), etDescanso = $('et-descanso'), etCuerpo = document.querySelector('#et-tabla tbody');
+  const etActivas = $('et-activas'), etDescanso = $('et-descanso'), etCuerpo = document.querySelector('#et-tabla tbody');
   const E0 = P && P.etapas && P.etapas.activas ? P.etapas : null;
   let ET = (E0 ? E0.paradas : []).map((k, n) => ({ km: k, nombre: (A.puntos.find(p => Math.abs(p.km_hoja - k) < 0.01) || {}).nombre || '',
     descanso: E0.descansos && E0.descansos[n] !== undefined ? E0.descansos[n] : E0.descanso_h }));
   let etPendiente = false;
   etActivas.checked = !!E0;
-  etLlegada.value = E0 && E0.llegada || '';
   etDescanso.value = ent(E0 ? E0.descanso_h : 8, 1);
   const etapasPosibles = () => ['sr', 'sb', 'libre'].includes(modalidad.value) || (modalidad.value === 'brevet' && +distBrm.value >= 400);
   const etapas = () => etapasPosibles() && etActivas.checked;
   function verEtapas() {
-    $('panel-etapas').hidden = !etapasPosibles();
+    $('bloque-etapas').hidden = !etapasPosibles();
     $('et-campos').hidden = !etapas();
-    const fija = etapas() && !!etLlegada.value;   // con llegada prevista, la velocidad sale de ella
-    vel.readOnly = fija;
-    vel.title = fija ? 'Calculada a partir de la llegada prevista de Etapas' : '';
-    $('vel-bloqueada').hidden = !fija;
-    $('quitar-llegada').hidden = !fija;
-    if (rec) rec.disabled = fija;
   }
   function dibujarEtapas() {
     etCuerpo.innerHTML = ET.map((x, i) => `<tr data-i="${i}"><td>${i + 1}</td>
@@ -279,8 +306,13 @@
   const paradas = () => filas.map((f, i) => i === 0 ? 0 : Math.max(0, num(f.querySelector('.parada').value) || 0));
 
   // ---------- cálculo (como datos.calcular)
+  // Sin hora de salida, se calcula desde una salida de referencia (la de la hoja, para que sus horas de cierre sigan
+  // valiendo, o una cualquiera) y se muestra el tiempo desde la salida
+  // (la escrita, aunque no se use, o la de la hoja); sin ninguna, una cualquiera y sin las horas de la hoja
+  const salidaRef = () => { const v = new Date(salida.value); return isFinite(v) ? v : A.salida ? new Date(A.salida) : null; };
+  const inicio = () => conSalida() ? new Date(salida.value) : salidaRef() || new Date(2000, 0, 1, 0, 0);
   function calcular() {
-    const t0 = new Date(salida.value), lim = num(limite.value), par = paradas(), sinHoja = personal();
+    const t0 = inicio(), lim = limiteH(), par = paradas(), horasHoja = conSalida() || !!salidaRef();
     let ant = null;
     return A.puntos.map((p, i) => {
       const r = {};
@@ -291,8 +323,7 @@
         r.salida = new Date(r.llegada.getTime() + par[i] * 60e3);
       }
       const d = brevet(), rm = d ? horasBrm(p.km_hoja, +distBrm.value, i === N - 1) : null;
-      // con un tiempo personal no valen las horas de la hoja: todo se reparte en proporción a la distancia
-      const ch = sinHoja ? null : p.cierre_hoja, ah = sinHoja ? null : p.apertura_hoja;
+      const ch = horasHoja ? p.cierre_hoja : null, ah = horasHoja ? p.apertura_hoja : null;
       // en un brevet, la meta cierra siempre en el tiempo límite oficial
       r.cierre = !isFinite(t0) && !ch ? null : rm && i === N - 1 ? new Date(t0.getTime() + rm[1] * 3600e3)
         : ch ? new Date(ch) : !isFinite(t0) ? null : rm ? new Date(t0.getTime() + rm[1] * 3600e3)
@@ -304,55 +335,88 @@
       return r;
     });
   }
+  // hora del reloj o, sin hora de salida, tiempo desde la salida
+  const momento = (d, t0) => !d || !isFinite(d) ? '–' : conSalida() ? fechaHora(d) : '+' + dur((d - t0) / 60e3);
 
   function cifra(t, v, s = '') { return `<div class="cifra"><h3>${t}</h3><b>${v}</b><span>${s}</span></div>`; }
-  // Con etapas y llegada prevista, la velocidad en movimiento sale de la llegada: tiempo total menos paradas
-  function ajustarALlegada() {
-    if (!etapas() || !etLlegada.value || !salida.value) return null;
-    const mov = (new Date(etLlegada.value) - new Date(salida.value)) / 36e5 - paradas().reduce((s, x) => s + x, 0) / 60;
-    if (!(mov > 0)) return { error: true };
-    let h1 = 0;
-    A.puntos.forEach((p, i) => { if (i) h1 += p.km_tramo / (base(p.pendiente) * fatiga(p.km / TOTAL)); });
-    if (h1 > 0) { V.factor = h1 / mov; mostrarVel(); }
-    return { kmh: TOTAL / mov };
+  // Velocidad para cumplir el tiempo objetivo: horas de la tabla sin escalar / (objetivo − paradas y descansos)
+  function horasTabla() {
+    let h = 0;
+    A.puntos.forEach((p, i) => { if (i) h += p.km_tramo / (base(p.pendiente) * fatiga(p.km / TOTAL)); });
+    return h;
+  }
+  function calculoObjetivo() {
+    const o = objetivo();
+    if (!(o > 0)) return null;
+    const mov = o - paradas().reduce((s, x) => s + x, 0) / 60, h1 = horasTabla();
+    return mov > 0 && h1 > 0 ? { factor: h1 / mov, kmh: TOTAL / mov } : { error: true };
+  }
+  function ajustarAObjetivo() {
+    if (!velObj) return;
+    const c = calculoObjetivo();
+    if (c && !c.error) { V.factor = c.factor; mostrarVel(); }
+  }
+  function explicarVelocidad(res) {
+    const o = objetivo(), c = calculoObjetivo(), t0 = res[0].llegada, total = (res[N - 1].llegada - t0) / 36e5;
+    const nombre = libre() ? 'tiempo deseado' : 'tiempo objetivo';
+    const vo = $('vel-objetivo'), aj = $('ajustar-objetivo');
+    vo.hidden = !c; aj.hidden = !c || c.error || velObj;
+    aj.textContent = `Ajustar la velocidad al ${nombre}`;
+    if (c && c.error) vo.textContent = `Con ese ${nombre} (${horasTexto(o)}) no queda tiempo para pedalear: revisa el tiempo o las paradas y los descansos.`;
+    else if (c && velObj) vo.textContent = `Velocidad calculada para cumplir el ${nombre} (${horasTexto(o)}). Si la cambias a mano, deja de seguirlo.`;
+    else if (c) {
+      const dif = (total - o) * 60;
+      vo.textContent = `Con esta velocidad, el tiempo previsto es de ${horasTexto(total)}: ` + (Math.abs(dif) < 1 ? `justo tu ${nombre}.`
+        : `${dur(Math.abs(dif))} h ${dif > 0 ? 'después' : 'antes'} de tu ${nombre} (${horasTexto(o)}).`);
+    }
+    const cs = conSalida(), cl = conLimite();
+    let t = 'Es la media en movimiento de toda la ruta: en cada tramo, la velocidad varía con la pendiente y la fatiga, y las paradas y los descansos se suman aparte. ';
+    t += cs ? 'Con ella, VenB calcula la hora de paso por cada punto' : 'Con ella, VenB calcula el tiempo desde la salida («+5:40») hasta cada punto';
+    t += cl ? (libre() ? ' y el margen frente al tiempo deseado.' : ' y el margen frente a los cierres. El tiempo límite no cambia la velocidad: si es baja, la Previsión marca en rojo los controles a los que llegas fuera de cierre.') : '.';
+    if (!cs && sinLimite.checked) t += ' Sin hora de salida ni límite, los mapas y las infografías no llevan tiempos: la velocidad sirve para esta Previsión, la tabla de tiempos y la página interactiva.';
+    if (c && !c.error) t += ` Para cambiarla sin escribirla, cambia el ${nombre}.`;
+    $('vel-nota').textContent = t;
   }
   function resumenEtapas(res) {
     if (!etapas()) return;
-    const aj = ajustarALlegada(), t0 = res[0].llegada, fin = res[N - 1].llegada, dias = (fin - t0) / 864e5;
+    const t0 = res[0].llegada, fin = res[N - 1].llegada, dias = (fin - t0) / 864e5;
     const noches = A.puntos.filter((p, i) => filas[i] && filas[i].querySelector('.tipo').value === 'dormir').length;
-    let s = aj && aj.error ? 'Con esa llegada no queda tiempo para pedalear: revisa la llegada, las paradas o el descanso. '
-      : aj ? `Para llegar a esa hora, la media en movimiento debe ser de ${fmt(aj.kmh, 1)} km/h (el campo de velocidad la toma de aquí). ` : '';
+    let s = '';
     if (isFinite(dias)) s += `La ruta dura ${fmt(dias, 1)} días, con ${noches} parada${noches === 1 ? '' : 's'} de tipo «Dormir».`;
     if (dias > R.max_etapas) s += ` Atención: pasa de ${R.max_etapas} días.`;
     $('et-resumen').textContent = s;
   }
   function pintar() {
-    if (etapas()) ajustarALlegada();
-    const res = calcular(), fin = res[N - 1], t0 = res[0].llegada;
+    ajustarAObjetivo();
+    const res = calcular(), fin = res[N - 1], t0 = res[0].llegada, cl = conLimite();
+    document.getElementById('puntos').classList.toggle('sin-limite', !cl);
+    $('titulo-llegada').textContent = conSalida() ? 'Llegada' : 'Llegada (desde la salida)';
     res.forEach((r, i) => {
       const f = filas[i], ctrl = A.puntos[i].control;
       f.querySelector('.vel').textContent = i ? fmt(r.vel, 1) : '';
-      f.querySelector('.llegada').textContent = fechaHora(r.llegada) + (r.antes ? ' ⚠' : '');
-      f.querySelector('.llegada').title = r.antes ? 'Llegas antes de que abra el control' : '';
-      f.querySelector('.cierre').textContent = ctrl || A.puntos[i].cierre_hoja ? fechaHora(r.cierre) : '';
+      f.querySelector('.llegada').textContent = momento(r.llegada, t0) + (cl && r.antes ? ' ⚠' : '');
+      f.querySelector('.llegada').title = cl && r.antes ? 'Llegas antes de que abra el control' : '';
+      f.querySelector('.cierre').textContent = cl && (ctrl || A.puntos[i].cierre_hoja) ? momento(r.cierre, t0) : '';
       const m = f.querySelector('.margen');
-      m.textContent = ctrl ? dur(r.margen, true) : '';
-      m.style.color = ctrl && r.margen < 0 ? 'var(--rojo)' : '';
-      m.style.fontWeight = ctrl && r.margen < 0 ? '700' : '';
+      m.textContent = cl && ctrl ? dur(r.margen, true) : '';
+      m.style.color = cl && ctrl && r.margen < 0 ? 'var(--rojo)' : '';
+      m.style.fontWeight = cl && ctrl && r.margen < 0 ? '700' : '';
     });
     const ctrls = res.filter((r, i) => A.puntos[i].control && i > 0);
     const peor = ctrls.reduce((a, r) => (!a || r.margen < a.margen ? r : a), null);
     const iPeor = res.indexOf(peor);
     const mov = res.reduce((s, r, i) => s + (i ? A.puntos[i].km_tramo / r.vel : 0), 0);
-    const fuera = ctrls.filter(r => r.margen < 0).length, antes = res.filter(r => r.antes).length;
+    const fuera = cl ? ctrls.filter(r => r.margen < 0).length : 0, antes = cl ? res.filter(r => r.antes).length : 0;
     $('resumen').innerHTML = cifra('Distancia', fmt(TOTAL, 1) + ' km', A.meta.distancia ? `oficial ${fmt(A.meta.distancia)} km` : '')
       + cifra('Desnivel', fmt(A.total_asc) + ' m', A.meta.desnivel ? `oficial ${fmt(A.meta.desnivel)} m` : 'modelo del terreno')
       + cifra('Tiempo total', dur((fin.llegada - t0) / 60e3), `${dur(mov * 60)} en movimiento`)
-      + cifra('Llegada', fechaHora(fin.llegada), `media ${fmt(TOTAL / ((fin.llegada - t0) / 36e5), 1)} km/h con paradas`)
-      + cifra('Margen en meta', dur(fin.margen, true), peor && iPeor >= 0 ? `mínimo ${dur(peor.margen, true)} en ${esc(A.puntos[iPeor].control)}` : '');
+      + (conSalida() ? cifra('Llegada', fechaHora(fin.llegada), `media ${fmt(TOTAL / ((fin.llegada - t0) / 36e5), 1)} km/h con paradas`)
+        : cifra('Media', fmt(TOTAL / ((fin.llegada - t0) / 36e5), 1) + ' km/h', 'con paradas'))
+      + (cl ? cifra('Margen en meta', dur(fin.margen, true), peor && iPeor >= 0 ? `mínimo ${dur(peor.margen, true)} en ${esc(A.puntos[iPeor].control)}` : '') : '');
     $('aviso-generar').textContent = fuera ? `Atención: llegas fuera de cierre a ${fuera} control${fuera > 1 ? 'es' : ''}.` : antes ? `Llegas a ${antes} control${antes > 1 ? 'es' : ''} antes de su apertura.` : '';
     perfil(res);
     resumenEtapas(res);
+    explicarVelocidad(res);
   }
 
   // ---------- perfil con los controles
@@ -375,16 +439,26 @@
   }
 
   // ---------- eventos
-  salida.addEventListener('input', pintar);
-  [limH, limM].forEach(c => c.addEventListener('input', () => { leerLimite(); explicarLimite(); pintar(); }));
-  limM.addEventListener('change', () => { const m = num(limM.value); if (isFinite(m) && m >= 60) { leerLimite(); ponerLimite(num(limite.value)); } });
-  modalidad.addEventListener('change', () => { opcionesDistancia(distBrm.value); explicarModalidad(true); pintar(); });
-  distBrm.addEventListener('change', () => { explicarModalidad(true); pintar(); });
-  $('limite-oficial').addEventListener('click', () => { ponerLimite(oficial()); explicarLimite(); pintar(); });
-  explicarModalidad(modalidad.value !== 'libre' && !isFinite(num(limite.value)));
+  salida.addEventListener('input', () => { explicarLimite(); pintar(); });
+  [sinSalida, sinLimite].forEach(c => c.addEventListener('change', () => { explicarLimite(); pintar(); }));
+  // Cambiar el tiempo objetivo recalcula la velocidad; si la había escrito el usuario, se pregunta antes
+  function cambioObjetivo() {
+    const c = calculoObjetivo();
+    if (!c || c.error) velObj = false;
+    else if (!velObj) {
+      const antes = num(vel.value), nueva = c.kmh;
+      velObj = !velManual || confirm(`Con este tiempo, la velocidad media en movimiento pasa de ${fmt(antes, 1)} a ${fmt(nueva, 1)} km/h.\n\n`
+        + 'Es la media en movimiento de toda la ruta, descontadas las paradas y los descansos: en cada tramo varía con la pendiente y la fatiga.\n\n'
+        + '¿Recalcular la velocidad? (Si no, se queda la que escribiste y VenB te dirá cuánto te separa del tiempo.)');
+      if (velObj) velManual = false;
+    }
+    explicarLimite(); pintar();
+  }
+  [objH, objM].forEach(c => c.addEventListener('change', cambioObjetivo));
+  modalidad.addEventListener('change', () => { opcionesDistancia(distBrm.value); opcionesObjetivo(); explicarModalidad(); cambioObjetivo(); });
+  distBrm.addEventListener('change', () => { opcionesObjetivo(); explicarModalidad(); cambioObjetivo(); });
+  explicarModalidad();
   etActivas.addEventListener('change', () => { verEtapas(); pintar(); });
-  etLlegada.addEventListener('input', () => { verEtapas(); pintar(); });
-  etLlegada.campo.addEventListener('change', () => { verEtapas(); if (!etLlegada.value) { V.factor = V.factor || 1; mostrarVel(); } pintar(); });
   // el descanso diario es el de partida: las noches que lo tenían cambian con él
   let descansoAnterior = num(etDescanso.value);
   etDescanso.addEventListener('input', () => {
@@ -413,15 +487,15 @@
     ET.push({ km: Math.round(k), nombre: '', descanso: num(etDescanso.value) || 0 }); dibujarEtapas(); marcarEtapas();
   });
   cuerpo.addEventListener('input', pintar);
-  vel.addEventListener('input', () => { const v = num(vel.value), m = mediaTabla(); if (v > 0 && m > 0) { V.factor = v / m; pintar(); } });
+  vel.addEventListener('input', () => { const v = num(vel.value), m = mediaTabla(); if (v > 0 && m > 0) { V.factor = v / m; velObj = false; velManual = true; pintar(); } });
   vel.addEventListener('change', mostrarVel);
   $('rellenar').addEventListener('click', () => {
     const v = Math.max(0, num(comun.value) || 0);
     filas.forEach((f, i) => { if (A.puntos[i].control && i > 0 && i < N - 1 && f.querySelector('.tipo').value !== 'dormir') f.querySelector('.parada').value = ent(v); });
     pintar();
   });
-  $('quitar-llegada').addEventListener('click', () => { etLlegada.value = ''; verEtapas(); mostrarVel(); pintar(); vel.focus(); vel.select(); });
-  if (rec && X.reciente) rec.addEventListener('click', () => { V.factor = X.reciente.kmh / mediaTabla(); mostrarVel(); pintar(); });
+  $('ajustar-objetivo').addEventListener('click', () => { velObj = true; velManual = false; pintar(); });
+  if (rec && X.reciente) rec.addEventListener('click', () => { V.factor = X.reciente.kmh / mediaTabla(); velObj = false; velManual = true; mostrarVel(); pintar(); });
 
   // ---------- ventana de la tabla de velocidades
   const dlg = $('dialogo-vel'), tv = document.querySelector('#tabla-vel tbody');
@@ -477,9 +551,10 @@
   function recoger() {
     const salidas = [...document.querySelectorAll('input[name=salida]:checked')].map(c => c.value);
     return {
-      nombre: $('nombre').value, subtitulo: $('subtitulo').value, salida: salida.value, limite_h: num(limite.value),
+      nombre: $('nombre').value, subtitulo: $('subtitulo').value, salida: salida.value, limite_h: limiteH() || null,
+      sin_salida: sinSalida.checked, sin_limite: sinLimite.checked, objetivo_h: objetivo() || null, vel_objetivo: velObj,
       modalidad: modalidad.value, distancia_brm: modalidad.value === 'libre' ? null : +distBrm.value,
-      etapas: etapas() ? { activas: true, llegada: etLlegada.value || null, descanso_h: num(etDescanso.value) || 0,
+      etapas: etapas() ? { activas: true, llegada: null, descanso_h: num(etDescanso.value) || 0,
         paradas: ET.filter(x => isFinite(num(x.km))).map(x => num(x.km)), descansos: ET.filter(x => isFinite(num(x.km))).map(x => isFinite(x.descanso) ? x.descanso : num(etDescanso.value) || 0) } : null,
       puntos: filas.map((f, i) => ({ mostrar: f.querySelector('.mostrar').checked, parada: paradas()[i], tipo: f.querySelector('.tipo').value })),
       velocidades: { tramos: V.tramos.map(t => [t[0] * 100, t[1]]), resto: V.resto, fatiga_pct: V.fatiga_pct, fatiga_cada_pct: V.fatiga_cada * 100,
@@ -488,9 +563,10 @@
     };
   }
   boton.addEventListener('click', () => {
-    if (pendiente) { $('aviso-generar').textContent = 'Antes de generar, pulsa «Actualizar» para aplicar los cambios en los puntos.'; return; }
+    if (pendiente) { $('aviso-generar').textContent = 'Antes de generar, pulsa «Actualizar los puntos» para aplicar los cambios en los puntos.'; return; }
     const datos = recoger();
-    if (!salida.value || !(datos.limite_h > 0)) { $('aviso-generar').textContent = modalidad.value === 'libre' ? 'Indica la salida y el tiempo deseado.' : 'Indica la salida y el tiempo límite.'; return; }
+    if (!sinSalida.checked && !salida.value) { $('aviso-generar').textContent = 'Indica la fecha y la hora de salida, o marca «Sin hora de salida concreta» en Planificación temporal.'; return; }
+    if (libre() && !sinLimite.checked && !(objetivo() > 0)) { $('aviso-generar').textContent = 'Indica el tiempo deseado, o marca «Sin límite de tiempo» en Planificación temporal.'; return; }
     boton.disabled = true;
     fetch(X.urlGenerar, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos) })
       .then(r => r.json().then(j => ({ ok: r.ok, j })))
@@ -507,7 +583,7 @@
   let pendiente = false;
   const marcarPendiente = () => {
     pendiente = true; actualizar.disabled = false;
-    aviso.textContent = 'Has cambiado los puntos: pulsa «Actualizar» para recalcular.';
+    aviso.textContent = 'Has cambiado los puntos: pulsa «Actualizar los puntos» para recalcular.';
   };
   cuerpo.addEventListener('input', ev => { if (ev.target.matches('.ed-nombre, .ed-km, .ed-control')) marcarPendiente(); });
   cuerpo.addEventListener('change', ev => { if (ev.target.matches('.ed-control')) marcarPendiente(); });

@@ -2,6 +2,15 @@
 
 Novedades de cada versión de VenB y VenB Rutas (las dos ediciones comparten número de versión).
 
+## 3.58
+
+- **Planificador, Planificación temporal:** «Datos de la ruta» queda con el nombre y el subtítulo. La salida, el tipo de ruta, la distancia y los tiempos pasan a una tarjeta nueva, **Planificación temporal**, que incluye también las etapas. En **Nueva ruta**, el desplegable **¿Y los horarios?** explica que ahí se decide cómo se temporiza la ruta.
+- **Hora en desplegables:** la hora de salida se elige en dos desplegables, horas y minutos de 5 en 5, junto a la fecha y su calendario. Los tiempos objetivo y deseado también van en desplegables, sin escribir ni autocompletar.
+- **Sin hora de salida o sin límite:** dos casillas nuevas. **Sin hora de salida concreta**: los documentos cuentan el tiempo desde la salida («+5:40»), también los cierres y los márgenes, y los días son de 24 h («Día 2»). **Sin límite de tiempo**: la hora de paso prevista, sin cierres ni márgenes. Con las dos, los mapas y las infografías salen sin información de tiempo. Se aplica a la Previsión, la tabla de tiempos, las infografías, los mapas ilustrados y la página interactiva.
+- **Tiempo objetivo:** en un brevet, una SR o un Super Brevet, el tiempo límite es el del reglamento y ya no se cambia. Para planificar a tu ritmo, pon un **tiempo objetivo** (como mucho, el límite): VenB calcula la velocidad media en movimiento para cumplirlo, descontadas las paradas y los descansos, y los márgenes siguen siendo frente a los cierres oficiales. En un recorrido libre, el tiempo deseado hace lo mismo. Si habías escrito la velocidad a mano, VenB pregunta antes de sustituirla. Si la cambias después, dice cuánto llegarías antes o después del objetivo, y **Ajustar la velocidad al tiempo objetivo** la recalcula. La **llegada prevista** de Etapas se sustituye por el tiempo objetivo.
+- **Planes anteriores:** un tiempo límite cambiado a mano pasa a ser el tiempo objetivo si era menor que el oficial; si era mayor, se quita y el plan lo avisa. La llegada prevista de Etapas pasa a ser el tiempo objetivo.
+- **Textos de ayuda:** «Velocidad y paradas» explica que la velocidad es la media en movimiento de toda la ruta (varía en cada tramo con la pendiente y la fatiga) y para qué se usa según el horario elegido. En la Previsión, una nota explica cómo añadir puntos; **Añadir punto** es un botón normal y «Actualizar» pasa a **Actualizar los puntos**.
+
 ## 3.57
 
 - **Informe semanal en tres partes:** primero el resumen de actividades, después las gráficas y, al final, las **notas del Diario** con fecha de esa semana (de lunes a domingo). En la página Informes, cada semana muestra lo mismo: el PDF, sus gráficas y sus notas. Para que un resumen escrito el lunes entre en el informe de la semana anterior, ponle la fecha del domingo. **Rehacer el informe de la última semana** recoge también las notas añadidas después.

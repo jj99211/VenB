@@ -55,6 +55,8 @@ class Proyecto:
                              c.get("ajuste_km", "auto"), alt.get("umbral_m", 3.0), self.nombre,
                              leer_waypoints(self.base / c["gpx"]), self.seccion("velocidades"), c.get("regla"))
         self.plan.meta = self.meta
+        # qué información de tiempo llevan los documentos (Planificador: sin hora de salida, sin límite o ninguna)
+        self.plan.horario = {"salida": True, "limite": True, **(c.get("horario") or {})}
         return self.plan
 
 
@@ -74,6 +76,44 @@ def fmt_fecha(t):
     return f"{t.day} / {MESES[t.month - 1].capitalize()} / {t.year}"
 
 
+# ---- horario de los documentos: con hora de salida, horas del reloj y fechas; sin ella, tiempo desde la salida
+# («+5:40») y días de 24 h («Día 2»). Sin límite, ni cierres ni márgenes.
+def con_salida(plan):
+    return getattr(plan, "horario", {}).get("salida", True)
+
+
+def con_limite(plan):
+    return getattr(plan, "horario", {}).get("limite", True)
+
+
+def con_tiempos(plan):
+    """Sin hora de salida ni límite, los mapas y las infografías no llevan información de tiempo."""
+    return con_salida(plan) or con_limite(plan)
+
+
+def fmt_momento(plan, t):
+    """Hora del reloj («07:30») o, sin hora de salida, tiempo desde la salida («+5:40»)."""
+    return fmt_hora(t) if con_salida(plan) else "+" + fmt_dur(t - plan.salida)
+
+
+def dia_de(plan, t):
+    """Día de la ruta (0 = el de la salida): por fecha o, sin hora de salida, por bloques de 24 h. Sin información
+    de tiempo, todo es un solo día (un solo color, sin fechas)."""
+    if not con_tiempos(plan):
+        return 0
+    if con_salida(plan):
+        return (t.date() - plan.salida.date()).days
+    return int((t - plan.salida).total_seconds() // 86400)
+
+
+def etiqueta_dia(plan, d, corta=False):
+    """«12 ago» / «12 / Agosto / 2026» o, sin hora de salida, «Día 3»."""
+    if not con_salida(plan):
+        return f"Día {d + 1}"
+    f = plan.salida.date() + timedelta(days=int(d))
+    return f"{f.day} {MESES[f.month - 1][:3]}" if corta else fmt_fecha(f)
+
+
 def exportar_excel(plan, ruta):
     import openpyxl
     from openpyxl.formatting.rule import CellIsRule
@@ -83,26 +123,34 @@ def exportar_excel(plan, ruta):
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Hoja de ruta"
+    cs, cl = con_salida(plan), con_limite(plan)
+    # sin hora de salida, los tiempos son desde la salida («+5:40»); sin límite, no hay cierre, margen ni apertura
+    t = (lambda x: x) if cs else (lambda x: fmt_momento(plan, x) if x else None)
     cab = ["Control", "Ubicación", "km hoja", "km", "km parciales", "Altitud", "Asc. total",
            "Ascenso parc", "Descenso parc", "% medio", "% completo", "Veloc", "Parada (min)",
-           "Tipo parada", "Llegada", "Salida", "Cierre", "Margen (h)", "Margen", "Apertura", "Aviso"]
+           "Tipo parada", "Llegada" if cs else "Llegada (desde la salida)", "Salida" if cs else "Salida (desde la salida)"]
+    if cl:
+        cab += ["Cierre", "Margen (h)", "Margen", "Apertura", "Aviso"]
     ws.append(cab)
     for p in plan.puntos:
         margen = p.margen
-        ws.append([p.control, p.nombre, p.km_hoja, round(p.km, 1), round(p.km_tramo, 1),
-                   round(p.alt), round(p.asc_total), round(p.asc_tramo), round(p.desc_tramo),
-                   p.pendiente, p.fraccion, round(p.velocidad, 2) if p.velocidad else None,
-                   p.parada_min or None, p.tipo_parada or None, p.llegada, p.salida, p.cierre,
-                   round(margen.total_seconds() / 3600, 2), fmt_dur(margen, signo=True),
-                   p.apertura_hoja,
-                   "llega antes de la apertura" if p.antes_de_apertura else
-                   ("fuera de cierre" if margen.total_seconds() < 0 else None)])
+        fila = [p.control, p.nombre, p.km_hoja, round(p.km, 1), round(p.km_tramo, 1),
+                round(p.alt), round(p.asc_total), round(p.asc_tramo), round(p.desc_tramo),
+                p.pendiente, p.fraccion, round(p.velocidad, 2) if p.velocidad else None,
+                p.parada_min or None, p.tipo_parada or None, t(p.llegada), t(p.salida)]
+        if cl:
+            fila += [t(p.cierre), round(margen.total_seconds() / 3600, 2), fmt_dur(margen, signo=True),
+                     t(p.apertura_hoja),
+                     "llega antes de la apertura" if p.antes_de_apertura else
+                     ("fuera de cierre" if margen.total_seconds() < 0 else None)]
+        ws.append(fila)
     n = ws.max_row
     for fila in ws.iter_rows(min_row=2):
         fila[9].number_format = "0.0%"
         fila[10].number_format = "0.0%"
-        for c in fila[14:17] + (fila[19],):
-            c.number_format = "dd/mm hh:mm"
+        if cs:
+            for c in fila[14:17] + ((fila[19],) if cl else ()):
+                c.number_format = "dd/mm hh:mm"
         if fila[0].value:
             for c in fila:
                 c.font = Font(bold=True)
@@ -112,9 +160,10 @@ def exportar_excel(plan, ruta):
         c.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
     rojo = PatternFill("solid", fgColor="F4C7C3")
     verde = PatternFill("solid", fgColor="D9EAD3")
-    ws.conditional_formatting.add(f"R2:S{n}", CellIsRule(operator="lessThan", formula=["0"], fill=rojo))
-    ws.conditional_formatting.add(f"R2:R{n}", CellIsRule(operator="greaterThanOrEqual", formula=["0"],
-                                                         fill=verde))
+    if cl:
+        ws.conditional_formatting.add(f"R2:R{n}", CellIsRule(operator="lessThan", formula=["0"], fill=rojo))
+        ws.conditional_formatting.add(f"R2:R{n}", CellIsRule(operator="greaterThanOrEqual", formula=["0"],
+                                                             fill=verde))
     anchos = [9, 24, 8, 8, 9, 8, 9, 9, 9, 8, 9, 7, 9, 11, 13, 13, 13, 9, 8, 13, 22]
     for i, a in enumerate(anchos, 1):
         ws.column_dimensions[get_column_letter(i)].width = a
@@ -122,11 +171,16 @@ def exportar_excel(plan, ruta):
 
     r = wb.create_sheet("Resumen")
     resumen = [("Ruta", plan.nombre), ("Distancia (km)", round(plan.total_km, 1)),
-               ("Desnivel positivo (m)", round(plan.total_asc)),
-               ("Salida", plan.salida), ("Tiempo límite (h)", plan.limite_h),
-               ("Llegada prevista", plan.llegada_final),
-               ("Tiempo total previsto", fmt_dur(plan.llegada_final - plan.salida)),
-               ("Margen en meta", fmt_dur(plan.puntos[-1].margen, signo=True))]
+               ("Desnivel positivo (m)", round(plan.total_asc))]
+    if cs:
+        resumen.append(("Salida", plan.salida))
+    if cl:
+        resumen.append(("Tiempo límite (h)", plan.limite_h))
+    if cs:
+        resumen.append(("Llegada prevista", plan.llegada_final))
+    resumen.append(("Tiempo total previsto", fmt_dur(plan.llegada_final - plan.salida)))
+    if cl:
+        resumen.append(("Margen en meta", fmt_dur(plan.puntos[-1].margen, signo=True)))
     meta = getattr(plan, "meta", {}) or {}
     if meta.get("distancia"):
         resumen.append(("Distancia oficial (km)", meta["distancia"]))
@@ -136,8 +190,9 @@ def exportar_excel(plan, ruta):
         resumen.append(("Aviso", aviso))
     for fila in resumen:
         r.append(fila)
-    for c in ("B4", "B6"):
-        r[c].number_format = "dd/mm/yyyy hh:mm"
+    for fila in r.iter_rows(min_col=2, max_col=2):
+        if isinstance(fila[0].value, datetime):
+            fila[0].number_format = "dd/mm/yyyy hh:mm"
     r.column_dimensions["A"].width = 24
     r.column_dimensions["B"].width = 20
     wb.save(ruta)

@@ -12,7 +12,7 @@ from matplotlib.patches import Circle, FancyBboxPatch, Rectangle
 
 from . import estilo as E
 from .datos import hora_en_km
-from .proyecto import MESES, fmt_dur, fmt_fecha, fmt_hora
+from .proyecto import con_limite, con_salida, con_tiempos, dia_de, etiqueta_dia, fmt_dur, fmt_momento
 from .teselas import ESTILOS, a_mercator, cubre, mapa_base, zoom_para
 
 HALO = [pe.withStroke(linewidth=4, foreground="white")]
@@ -22,7 +22,7 @@ PT = 100 / 72  # píxeles por punto tipográfico (las figuras se dibujan a 100 p
 # ------------------------------------------------------------------ utilidades
 
 def _dia(plan, t):
-    return (t.date() - plan.salida.date()).days
+    return dia_de(plan, t)
 
 
 def _txt_parada(minutos):
@@ -210,12 +210,16 @@ class Caja:
         self.lineas = [
             (_etiqueta_control(p), tit, "bold"),
             (f"km {p.km:.0f}  (+{p.asc_total:.0f} m)", txt, "medium"),
-            (f"{fmt_hora(p.llegada)} h{_txt_parada(p.parada_min)} < {fmt_hora(p.cierre)} h",
-             txt, "medium"),
         ]
-        if p.antes_de_apertura:
-            self.lineas.append((f"¡abre a las {fmt_hora(p.apertura_hoja)} h!", txt * 0.87, "bold"))
-        if p.km > 0:
+        # tiempos: hora (o tiempo desde la salida) de paso y, con límite, cierre y margen; sin salida ni límite, nada
+        cl = con_limite(plan)
+        if con_tiempos(plan):
+            self.lineas.append((f"{fmt_momento(plan, p.llegada)} h{_txt_parada(p.parada_min)}"
+                                + (f" < {fmt_momento(plan, p.cierre)} h" if cl else ""), txt, "medium"))
+        if cl and p.antes_de_apertura:
+            self.lineas.append((f"¡abre a las {fmt_momento(plan, p.apertura_hoja)} h!" if con_salida(plan)
+                                else f"¡abre a {fmt_momento(plan, p.apertura_hoja)} h!", txt * 0.87, "bold"))
+        if cl and p.km > 0:
             aviso = "  ¡FUERA DE CIERRE!" if margen.total_seconds() < 0 else ""
             self.lineas.append((f"margen {fmt_dur(margen, signo=True)} h{aviso}",
                                 txt * 0.87, "regular"))
@@ -229,7 +233,7 @@ class Caja:
         self.w = max([m[0] + (hueco if i < 2 else 0) for i, m in enumerate(medidas)]) + 2 * self.pad
         self.h = sum(self.alto_linea) + 2 * self.pad - 4 * F
         self.color = E.color_dia(_dia(plan, p.llegada))
-        self.fuera = margen.total_seconds() < 0
+        self.fuera = cl and margen.total_seconds() < 0
         self.x = self.y = 0.0     # esquina superior izquierda
         self.lado = "izq"
 
@@ -647,9 +651,8 @@ def _dibujar_perfil(fig, rect_perfil, rect_etiquetas, rect_dias, plan, panel, pu
         d = dias[idx[0]]
         a, b = kms[idx[0]], kms[min(idx[-1] + 1, len(kms) - 1)]
         ad.add_patch(Rectangle((a, 0), b - a, 1, color=E.color_dia(d), lw=0))
-        fecha = plan.salida.date() + timedelta(days=int(d))
-        etiqueta = f"{fecha.day} {MESES[fecha.month - 1][:3]}"
-        if (b - a) / total > 0.04:
+        etiqueta = etiqueta_dia(plan, d, corta=True)
+        if con_tiempos(plan) and (b - a) / total > 0.04:
             ad.text((a + b) / 2, 0.5, etiqueta, ha="center", va="center", color="white",
                     fontsize=10 * F, family=E.SANS, weight="bold")
     return ax
@@ -901,10 +904,16 @@ def generar(proyecto, plan, osm=None):
         # cabecera: alto medido de cada línea (título, datos y fechas) para que no se pisen
         titulo = proyecto.nombre.upper()
         total_h = plan.llegada_final - plan.salida
-        datos = (f"{plan.total_km:.0f} km  ·  +{plan.total_asc:,.0f} m  ·  salida "
-                 f"{plan.salida:%d/%m %H:%M} h  ·  límite {fmt_dur(timedelta(hours=plan.limite_h))} h  ·  "
-                 f"tiempo previsto {fmt_dur(total_h)} h  ·  margen en meta "
-                 f"{fmt_dur(plan.puntos[-1].margen, signo=True)} h").replace(",", " ")
+        partes = [f"{plan.total_km:.0f} km", f"+{plan.total_asc:,.0f} m"]
+        if con_salida(plan):
+            partes.append(f"salida {plan.salida:%d/%m %H:%M} h")
+        if con_limite(plan):
+            partes.append(f"límite {fmt_dur(timedelta(hours=plan.limite_h))} h")
+        if con_tiempos(plan):
+            partes.append(f"tiempo previsto {fmt_dur(total_h)} h")
+        if con_limite(plan):
+            partes.append(f"margen en meta {fmt_dur(plan.puntos[-1].margen, signo=True)} h")
+        datos = "  ·  ".join(partes).replace(",", " ")
         pad_chip = 0.35 * 15 * F * PT
         h_tit = _medir(fig, titulo, 34 * F, "bold")[1]
         h_dat = _medir(fig, datos, 15 * F, "medium")[1]
@@ -1025,8 +1034,8 @@ def generar(proyecto, plan, osm=None):
         rects.append((x0 - 25 * F, y0 - 25 * F, x0 + 25 * F, y0 + 25 * F))
         for d in np.unique(dias_track[en_panel])[1:]:
             i = int(np.argmax((dias_track == d) & en_panel))
-            fecha = plan.salida.date() + timedelta(days=int(d))
-            texto = f"00:00 · {fecha.day} {MESES[fecha.month - 1][:3]}"
+            texto = (f"00:00 · {etiqueta_dia(plan, d, corta=True)}" if con_salida(plan)
+                     else f"+{24 * int(d)}:00 · {etiqueta_dia(plan, d)}")
             tw, th = _medir(fig, texto, 11 * F, "bold")
             sep = 12 * F
             opciones = [(TX[i] + sep, "left"), (TX[i] - sep, "right")]
@@ -1098,11 +1107,10 @@ def generar(proyecto, plan, osm=None):
                 ac.text(x_sub, cab_h - 16 - (h_tit - _medir(fig, texto_sub, tam_sub, "medium")[1]) / 2,
                         texto_sub, fontsize=tam_sub, family=E.SANS, weight="medium", color="#444444", va="top")
         # chips con los días
-        dias = sorted({_dia(plan, p.llegada) for p in plan.puntos})
+        dias = sorted({_dia(plan, p.llegada) for p in plan.puntos}) if con_tiempos(plan) else []
         xc = 28 + pad_chip
         for d in dias:
-            fecha = plan.salida.date() + timedelta(days=d)
-            t = fmt_fecha(fecha)
+            t = etiqueta_dia(plan, d)
             wt = _medir(fig, t, 15 * F, "bold")[0]
             ac.text(xc, 16 + pad_chip, t, fontsize=15 * F, family=E.SANS, weight="bold",
                     color="white", va="bottom", ha="left",

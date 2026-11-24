@@ -226,6 +226,12 @@ form.en-linea { display: inline; margin: 0; }
 .cal-dias button.elegido { background:var(--rojo); color:#fff; border-color:var(--rojo); }
 .cal-hora { display:flex; align-items:center; gap:4px; margin-top:8px; } .cal-hora label { flex-direction:row; align-items:center; gap:6px; }
 .cal-hora input { width:2.6em; text-align:center; padding:3px; } .cal-hora .cal-cerrar { margin-left:auto; }
+.cal-hora .suave { font-size:.85em; }
+.hora-desplegables { display:inline-flex; align-items:center; gap:2px; margin-left:4px; }
+/* Planificador: tiempo límite oficial (solo lectura), campos desactivados por las casillas de horario y columnas sin límite */
+.valor-fijo { display:block; padding:5px 0; font-weight:700; }
+.desactivado { opacity:.45; }
+#puntos.sin-limite .cierre, #puntos.sin-limite .margen { display:none; }
 /* Histórico: ventana de resumen de una actividad */
 .oculto { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 button.ver-resumen { display:inline-grid; place-items:center; padding:3px 6px; color:var(--suave); }

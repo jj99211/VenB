@@ -33,44 +33,49 @@
   <div class="linea-campos">
     <label>Nombre<input id="nombre" maxlength="80" size="28"></label>
     <label>Subtítulo <span class="suave">(opcional)</span><input id="subtitulo" maxlength="120" size="28" placeholder="Madrid · Gijón · Madrid"></label>
-    <label>Salida<input id="salida" required></label>
   </div>
-  <div class="linea-campos">
-    <label>Tipo de ruta<select id="modalidad">{% for k, t in modalidades.items() %}<option value="{{ k }}">{{ t }}</option>{% endfor %}</select></label>
-    <label id="campo-distancia">Distancia<select id="distancia-brm"></select></label>
-    <label><span id="etiqueta-limite">Tiempo límite</span>
-      <span class="ajuste"><input id="limite-h" list="lista-horas" inputmode="numeric" size="4" aria-label="Horas" autocomplete="off"> h
-      <input id="limite-m" list="lista-minutos" inputmode="numeric" size="3" aria-label="Minutos" autocomplete="off"> min</span>
-      <input type="hidden" id="limite"></label>
-    <datalist id="lista-horas">{% for h in range(1, 201) %}<option value="{{ h }}">{% endfor %}</datalist>
-    <datalist id="lista-minutos">{% for m in range(0, 60, 5) %}<option value="{{ '%02d' % m }}">{% endfor %}</datalist>
-    <button type="button" class="discreto" id="limite-oficial" hidden>Volver al tiempo oficial</button>
-  </div>
-  <p class="suave" id="explica-modalidad"></p>
-  <p class="suave" id="explica-limite"></p>
-  <div class="aviso medio" id="aviso-velocidad" hidden></div>
   <p class="suave" id="origen-hoja">{{ a.puntos|length }} puntos de la hoja, {{ a.puntos|selectattr('control')|list|length }} controles.
     {% if a.anclas %}Controles colocados con {{ a.anclas }} waypoints del GPX.{% endif %}
-    {% if a.salida %}La salida y el límite vienen de la hoja de ruta.{% else %}La hoja no trae salida ni límite: rellénalos.{% endif %}</p>
+    {% if a.salida %}La salida y el límite vienen de la hoja de ruta.{% else %}La hoja no trae salida ni límite: rellénalos en «Planificación temporal».{% endif %}</p>
 </section>
 
-<section class="panel" id="panel-etapas" hidden>
-  <h2>Etapas</h2>
-  <label class="casilla"><input type="checkbox" id="et-activas"> Organizar la ruta en varias etapas (hasta {{ reglas.max_etapas }} días)</label>
-  <div id="et-campos" hidden>
-    <p class="suave">Indica dónde duermes (hasta {{ reglas.max_etapas - 1 }} paradas) y cuánto descansas (ocio en el lugar de parada, alojamiento y desayuno). El descanso diario es el de partida de cada parada nueva; después puedes cambiar el de cada noche. Si pones también la llegada prevista, VenB calcula la velocidad media en movimiento necesaria para llegar a esa hora: mientras haya llegada prevista, la velocidad de «Velocidad y paradas» queda calculada y no se puede editar. Para escribirla tú, borra la llegada prevista.</p>
-    <div class="linea-campos">
-      <label>Llegada prevista <span class="suave">(opcional)</span><input id="et-llegada"></label>
-      <label>Descanso diario (h)<input id="et-descanso" inputmode="decimal" size="5"></label>
+<section class="panel" id="panel-horario">
+  <h2>Planificación temporal</h2>
+  {% if p and p.aviso_migracion %}<div class="aviso medio">{{ p.aviso_migracion }}</div>{% endif %}
+  <div class="linea-campos">
+    <label class="casilla"><input type="checkbox" id="sin-salida"> Sin hora de salida concreta</label>
+    <label class="casilla"><input type="checkbox" id="sin-limite"> Sin límite de tiempo (sin cierres ni márgenes)</label>
+  </div>
+  <div class="linea-campos">
+    <label id="campo-salida">Salida<input id="salida"></label>
+    <label>Tipo de ruta<select id="modalidad">{% for k, t in modalidades.items() %}<option value="{{ k }}">{{ t }}</option>{% endfor %}</select></label>
+    <label id="campo-distancia">Distancia<select id="distancia-brm"></select></label>
+    <label id="campo-limite">Tiempo límite<output id="limite-oficial" class="valor-fijo"></output></label>
+    <label><span id="etiqueta-objetivo">Tiempo objetivo</span>
+      <span class="ajuste"><select id="obj-h" aria-label="Horas"></select> h <select id="obj-m" aria-label="Minutos"></select> min</span></label>
+  </div>
+  <p class="suave" id="llegada-objetivo" hidden></p>
+  <p class="suave" id="explica-modalidad"></p>
+  <p class="suave" id="explica-limite"></p>
+  <p class="suave" id="explica-horario"></p>
+  <div class="aviso medio" id="aviso-velocidad" hidden></div>
+  <div id="bloque-etapas" hidden>
+    <h3>Etapas</h3>
+    <label class="casilla"><input type="checkbox" id="et-activas"> Organizar la ruta en varias etapas (hasta {{ reglas.max_etapas }} días)</label>
+    <div id="et-campos" hidden>
+      <p class="suave">Indica dónde duermes (hasta {{ reglas.max_etapas - 1 }} paradas) y cuánto descansas (ocio en el lugar de parada, alojamiento y desayuno). El descanso diario es el de partida de cada parada nueva; después puedes cambiar el de cada noche. Para llegar en un tiempo concreto, pon el tiempo objetivo: la velocidad se calcula descontando también los descansos.</p>
+      <div class="linea-campos">
+        <label>Descanso diario (h)<input id="et-descanso" inputmode="decimal" size="5"></label>
+      </div>
+      <div class="tabla"><table id="et-tabla"><thead><tr><th>Noche</th><th class="num">km</th><th>Lugar</th><th></th><th class="num">Descanso (h)</th><th></th></tr></thead><tbody></tbody></table></div>
+      <div class="linea-campos">
+        <button type="button" class="discreto" id="et-anadir">Añadir parada para dormir</button>
+        <button type="button" id="et-aplicar">Aplicar las etapas a los puntos</button>
+        <span class="suave" id="et-aviso" role="status"></span>
+      </div>
+      <p class="suave" id="et-resumen"></p>
+      <p class="suave">«Aplicar» pone cada parada en la tabla de Previsión como punto de tipo «Dormir» con su descanso (si ya hay un punto a menos de 1 km, se usa ese) y vuelve a calcular la ruta.</p>
     </div>
-    <div class="tabla"><table id="et-tabla"><thead><tr><th>Noche</th><th class="num">km</th><th>Lugar</th><th></th><th class="num">Descanso (h)</th><th></th></tr></thead><tbody></tbody></table></div>
-    <div class="linea-campos">
-      <button type="button" class="discreto" id="et-anadir">Añadir parada para dormir</button>
-      <button type="button" id="et-aplicar">Aplicar las etapas a los puntos</button>
-      <span class="suave" id="et-aviso" role="status"></span>
-    </div>
-    <p class="suave" id="et-resumen"></p>
-    <p class="suave">«Aplicar» pone cada parada en la tabla de Previsión como punto de tipo «Dormir» con su descanso (si ya hay un punto a menos de 1 km, se usa ese) y vuelve a calcular la ruta.</p>
   </div>
 </section>
 
@@ -80,12 +85,13 @@
     <label>Velocidad media en movimiento (km/h)
       <span class="ajuste"><input id="velocidad" inputmode="decimal" size="6">
       <button type="button" class="discreto" id="ayuda-vel" aria-haspopup="dialog" title="Cómo se calcula la velocidad">?</button></span></label>
-    <button type="button" class="discreto" id="quitar-llegada" hidden>Quitar la llegada prevista y escribir la velocidad</button>
     {% if reciente %}<button type="button" class="discreto" id="usar-reciente">Usar mi media reciente: {{ reciente.kmh|n(1) }} km/h</button>{% endif %}
     <label>Parada en cada control (min)<input id="parada-comun" inputmode="numeric" size="5" value="{{ aj.plan_parada_min }}"></label>
     <button type="button" id="rellenar">Rellenar todas las paradas con este valor</button>
   </div>
-  <p class="suave" id="vel-bloqueada" hidden>Hay una llegada prevista en Etapas: la velocidad media queda calculada para llegar a esa hora y no se puede editar. Para escribirla tú, quita la llegada prevista.</p>
+  <p class="suave" id="vel-objetivo" hidden></p>
+  <p><button type="button" class="discreto" id="ajustar-objetivo" hidden>Ajustar la velocidad al tiempo objetivo</button></p>
+  <p class="suave" id="vel-nota"></p>
   {% if reciente %}<p class="suave">Tu media reciente sale de {{ reciente.n }} salidas en exterior de {{ reciente.km_min }} km o más del último año (tiempo en movimiento). La de partida es la de la tabla por defecto, según el perfil de esta ruta.</p>{% endif %}
 </section>
 
@@ -93,18 +99,19 @@
   <h2>Previsión</h2>
   <div class="cifras" id="resumen"></div>
   <div class="graf" id="perfil" aria-label="Perfil de la ruta"></div>
+  <p>Aquí puedes completar la ruta con puntos de paso o de control. En cada punto, 📍 lo sitúa en el mapa; indica la parada en minutos (si la dejas vacía, se usa la de «Velocidad y paradas») y elige su tipo. Cuando termines, pulsa <b>Actualizar los puntos</b>: VenB los ordena por km, renumera los controles y recalcula la ruta.</p>
   <div class="linea-campos">
-    <button type="button" class="discreto" id="ed-anadir">Añadir punto</button>
-    <button type="button" id="ed-guardar" disabled>Actualizar</button>
+    <button type="button" id="ed-anadir">Añadir punto</button>
+    <button type="button" id="ed-guardar" disabled>Actualizar los puntos</button>
     <span class="suave" id="ed-aviso" role="status"></span>
     {% if a.editados and e.hoja %}<form method="post" action="{{ url_for('plan_puntos_hoja', pid=e.id) }}" onsubmit="return confirm('¿Descartar los cambios en los puntos y volver a los de la hoja de ruta? También se descartan las paradas.')"><button class="discreto">Volver a los puntos de la hoja</button></form>{% endif %}
   </div>
-  <p class="suave">📍 elige el punto exacto en un mapa. Paradas, tipo y «Mapa» (caja en la infografía y rótulo en los mapas) se recalculan al momento; los cambios de nombre, km, «Control», «Quitar» o «Añadir punto» se aplican con <b>Actualizar</b>, que ordena los puntos por km y renumera los controles.{% if a.editados %} Los puntos están editados: mandan sobre la hoja de ruta.{% endif %}</p>
+  <p class="suave">Paradas, tipo y «Mapa» (caja en la infografía y rótulo en los mapas) se recalculan al momento; nombre, km, «Control», «Quitar» y los puntos nuevos esperan a «Actualizar los puntos».{% if a.editados %} Los puntos están editados: mandan sobre la hoja de ruta.{% endif %}</p>
   <div class="tabla ver-alto" style="max-height:none">
     <table id="puntos"><thead><tr>
       <th title="Mostrar en el mapa y en las infografías">Mapa</th><th title="Es un control">Control</th><th>Punto</th><th class="num" title="Desde la salida, como en la hoja de ruta">km</th><th class="num">Alt.</th>
       <th class="num" title="Desnivel positivo acumulado desde la salida">Desn. acum.</th><th class="num">Pend.</th><th class="num">km/h</th>
-      <th>Parada (min)</th><th>Tipo</th><th class="num">Llegada</th><th class="num" id="titulo-cierre">Cierre</th><th class="num">Margen</th><th></th>
+      <th>Parada (min)</th><th>Tipo</th><th class="num" id="titulo-llegada">Llegada</th><th class="num cierre" id="titulo-cierre">Cierre</th><th class="num margen">Margen</th><th></th>
     </tr></thead><tbody></tbody></table>
   </div>
 
@@ -157,7 +164,7 @@
     <article class="documento{% if d.gpx %} documento-gpx{% endif %}">
       <h3>{{ d.titulo }}</h3>
       {% if d.imagen %}<a class="vista" href="{{ url_for('plan_fichero', pid=e.id, nombre=d.imagen) }}" target="_blank" rel="noopener" title="Abrir a tamaño completo"><img loading="lazy" src="{{ url_for('plan_fichero', pid=e.id, nombre=d.imagen) }}" alt="{{ d.titulo }}"></a>{% endif %}
-      {% if d.gpx %}<p class="suave">El track de la ruta con todos sus puntos, también los que has añadido a mano (se actualiza al pulsar «Actualizar» en la Previsión), como waypoints con los tipos del creador de rutas de Garmin Connect: control, salida, llegada y genérico. Se importa en Garmin Connect, en el GPS o en otras aplicaciones.</p>
+      {% if d.gpx %}<p class="suave">El track de la ruta con todos sus puntos, también los que has añadido a mano (se actualiza al pulsar «Actualizar los puntos» en la Previsión), como waypoints con los tipos del creador de rutas de Garmin Connect: control, salida, llegada y genérico. Se importa en Garmin Connect, en el GPS o en otras aplicaciones.</p>
       <p><a class="boton" href="{{ url_for('plan_fichero', pid=e.id, nombre=d.ficheros[0][1], descargar=1) }}">Descargar el GPX con waypoints</a></p>
       <p class="suave">{{ d.ficheros[0][1] }}</p>
       {% else %}<p class="formatos">{% for fmt, f in d.ficheros %}<span class="formato"><b>{{ fmt }}</b>
@@ -179,7 +186,7 @@
 <dialog id="dialogo-vel" aria-labelledby="titulo-vel">
   <h2 id="titulo-vel">Cómo se calcula la velocidad</h2>
   <p>Cada tramo entre dos puntos de la hoja tiene una <b>pendiente media</b> = ascenso del tramo / distancia del tramo. Según esa pendiente se toma una velocidad de la tabla. Después se aplica la <b>fatiga</b>: se pierde un porcentaje de velocidad por cada parte de la ruta recorrida, hasta un máximo.</p>
-  <p>La <b>velocidad media</b> que escribes escala toda la tabla por igual: si la tabla da 20 km/h de media en esta ruta y escribes 22, todas las velocidades suben un 10 %. Los valores por defecto proceden de la experiencia en brevets del autor de VenB: ajústalos a tu ritmo.</p>
+  <p>La <b>velocidad media</b> es la media en movimiento de toda la ruta (las paradas y los descansos van aparte) y escala toda la tabla por igual: si la tabla da 20 km/h de media en esta ruta y escribes 22, todas las velocidades suben un 10 %. Los valores por defecto proceden de la experiencia en brevets del autor de VenB: ajústalos a tu ritmo.</p>
   <div class="tabla"><table id="tabla-vel"><thead><tr><th>Pendiente menor que (%)</th><th>km/h</th><th></th></tr></thead><tbody></tbody></table></div>
   <p class="suave">La última fila incluye su propio límite (≤). Por encima de ella:</p>
   <div class="linea-campos">

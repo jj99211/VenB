@@ -12,6 +12,14 @@
     <label>Hoja de ruta (PDF, ODT, ODS, XLSX o CSV; opcional)<input type="file" name="hoja" accept="{{ ext_hoja|replace(' ', '') }}"></label>
     <button>Subir y analizar</button>
   </form>
+  <details class="ver"><summary>¿Y los horarios?</summary>
+    <p>Aquí solo se sube la ruta. En la pantalla siguiente, en «Planificación temporal», decides cómo se temporiza:</p>
+    <ul class="lista">
+      <li>Con las <b>tablas oficiales</b>: en un brevet, una Super Randonnée o un Super Brevet, los cierres y el tiempo límite son los del reglamento (si la hoja del organizador trae horas, mandan las suyas).</li>
+      <li>Con <b>tiempos personalizados</b>: un tiempo objetivo (o el tiempo deseado en un recorrido libre) con el que VenB calcula la velocidad media necesaria.</li>
+      <li><b>Sin tiempos</b>: sin hora de salida concreta (los tiempos se cuentan desde la salida, «+5:40»), sin límite (sin cierres ni márgenes) o sin ninguno de los dos (mapas e infografías sin información de tiempo).</li>
+    </ul>
+  </details>
   <details class="ver"><summary>¿Qué hoja de ruta sirve?</summary>
     <ul class="lista">
       <li>La <b>hoja del organizador</b> de un brevet en PDF u ODT: tablas con columnas como LOCALIDADES, KM TOTAL, ABIERTO y CERRADO (también el impreso del ACP en inglés o francés: LOCATION / LOCALITES, TOTAL, OPEN / Ouverture, CLOSE / Fermeture) o líneas del tipo «km LOCALIDAD abre cierra». De ella salen también la fecha y hora de salida, la distancia y el tiempo límite.</li>
@@ -28,8 +36,8 @@
       <tr><td>Tiempo límite</td>{% for d in reglas.brevet + [1200] %}<td class="num">{{ reglas.limites[d]|tiempo }} h</td>{% endfor %}<td class="num">{{ reglas.sr600 }}:00 h</td></tr>
     </table></div>
     <p>Los controles abren a la velocidad máxima (34 km/h hasta el km 200, 32 hasta el 400, 30 hasta el 600, 28 hasta el 1000 y 26 después) y cierran a la mínima (15 km/h hasta el km 600, 11,428 hasta el 1000 y 13,333 del 1000 al 1300). No es una errata que la mínima suba después del km 1000: así un 1200 cierra en 90 h (75 h hasta el km 1000 más 200 km a 13,333 km/h). Hasta el km 60 el cierre es a 20 km/h más una hora, y la salida cierra una hora después de empezar. La meta cierra siempre en el tiempo límite oficial, aunque la ruta sea algo más larga o la hoja diga otra cosa (VenB lo avisa). En los demás controles, si la hoja del organizador trae las horas, mandan las suyas.</p>
-    <p>Las pruebas de 1200 km o más se planifican como «Super Brevet» (de 1200 a 2000 km): las de 1300 km o más tienen otras medias mínimas para toda la prueba (12 km/h hasta 1899 km y 10 km/h desde 1900 km). El tiempo límite se puede cambiar en cada plan; entonces los cálculos son personales. Reglamentos: <a href="https://www.randonneursmondiaux.org/files/Rules_2019.pdf" target="_blank" rel="noopener">Randonneurs Mondiaux</a> (pruebas de 1200 km o más) y <a href="https://www.audax-club-parisien.com/wp-content/uploads/2026/02/Rules-for-organizer-2026.pdf" target="_blank" rel="noopener">Audax Club Parisien</a> (BRM de hasta 1000 km, reglas para organizadores; en inglés).</p>
-    <p>Después de subir la ruta puedes elegir si es un brevet (con su distancia), una Super Randonnée o un recorrido libre, para el que indicas tú el tiempo que quieres emplear.</p>
+    <p>Las pruebas de 1200 km o más se planifican como «Super Brevet» (de 1200 a 2000 km): las de 1300 km o más tienen otras medias mínimas para toda la prueba (12 km/h hasta 1899 km y 10 km/h desde 1900 km). El tiempo límite oficial no se cambia; para planificar a tu ritmo, pon un tiempo objetivo. Reglamentos: <a href="https://www.randonneursmondiaux.org/files/Rules_2019.pdf" target="_blank" rel="noopener">Randonneurs Mondiaux</a> (pruebas de 1200 km o más) y <a href="https://www.audax-club-parisien.com/wp-content/uploads/2026/02/Rules-for-organizer-2026.pdf" target="_blank" rel="noopener">Audax Club Parisien</a> (BRM de hasta 1000 km, reglas para organizadores; en inglés).</p>
+    <p>Después de subir la ruta puedes elegir si es un brevet (con su distancia), una Super Randonnée, un Super Brevet o un recorrido libre, para el que indicas tú el tiempo que quieres emplear. En las pruebas oficiales el tiempo límite es el del reglamento; para planificar a tu ritmo, pon un tiempo objetivo.</p>
   </details>
 </section>
 <section class="panel">

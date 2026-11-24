@@ -68,14 +68,12 @@ def _tipo(t):
 # ------------------------------------------------------------------ planes guardados
 
 def regla_de(p):
-    """Regla de cierres de unos parámetros: RM (brevet o Super Brevet con su tiempo oficial), proporcional sin las
-    horas de la hoja (tiempo límite cambiado a mano: cálculos personales) o None (SR y libre: proporcional; en el
-    libre mandan las horas de la hoja, si las trae)."""
+    """Regla de cierres de unos parámetros: RM (brevet o Super Brevet, con su tiempo oficial, que desde la 3.58 no se
+    cambia: el ritmo propio va en el tiempo objetivo) o None (SR y libre: proporcional; en el libre mandan las horas de
+    la hoja, si las trae)."""
     modalidad, dist = p.get('modalidad'), p.get('distancia_brm')
     if modalidad == 'brevet' and dist == 1200:      # planes anteriores a la 3.43: el 1200 era un brevet
         modalidad = 'sb'
-    if p.get('limite_personal'):
-        return {'proporcional': True}
     if modalidad in ('brevet', 'sb') and dist:
         return {'distancia': dist, 'prefijo': 'SB' if modalidad == 'sb' else 'BRM'}
     return None
@@ -275,8 +273,63 @@ def analisis(pid):
     return _leer(_carpeta(pid), 'analisis.json')
 
 
+def migrar_parametros(p):
+    """Parámetros guardados antes de la 3.58 al formato nuevo. Devuelve (p, cambiado).
+    - Tiempo límite personal (`limite_personal`) en brevet, SB o SR: el límite vuelve a ser el oficial; si el personal era
+      menor, pasa a tiempo objetivo (recalcula la velocidad); si era mayor, se quita con un aviso.
+    - Llegada prevista de Etapas: pasa a tiempo objetivo (horas desde la salida)."""
+    if not p:
+        return p, False
+    cambiado = False
+    if 'sin_salida' not in p:
+        p.setdefault('sin_salida', False)
+        p.setdefault('sin_limite', False)
+        p.setdefault('objetivo_h', None)
+        p.setdefault('vel_objetivo', False)
+        cambiado = True
+    if p.get('limite_personal'):
+        from generador.datos import LIMITE_SR600, limite_oficial
+        mod, dist = p.get('modalidad'), p.get('distancia_brm')
+        if mod == 'brevet' and dist == 1200:
+            mod = p['modalidad'] = 'sb'
+        oficial = LIMITE_SR600 if mod == 'sr' else limite_oficial(dist) if mod in ('brevet', 'sb') and dist else None
+        lim = p.get('limite_h')
+        if oficial and lim:
+            if lim < oficial - 0.01:
+                p['objetivo_h'], p['vel_objetivo'] = lim, True
+                p['aviso_migracion'] = (f'Este plan tenía un tiempo límite personal de {_hm(lim)}: ahora es el tiempo objetivo, '
+                                        f'y el límite vuelve a ser el oficial ({_hm(oficial)}).')
+            else:
+                p['aviso_migracion'] = (f'Este plan tenía un tiempo límite personal de {_hm(lim)}, mayor que el oficial: '
+                                        f'se ha quitado y el límite vuelve a ser el oficial ({_hm(oficial)}).')
+            p['limite_h'] = oficial
+        p['limite_personal'] = False
+        cambiado = True
+    p.pop('limite_personal', None)
+    e = p.get('etapas') or {}
+    if e.get('llegada'):
+        try:
+            h = (datetime.fromisoformat(e['llegada'][:16]) - datetime.fromisoformat(str(p.get('salida'))[:16])).total_seconds() / 3600
+            if h > 0 and not p.get('objetivo_h'):
+                p['objetivo_h'], p['vel_objetivo'] = round(h, 4), True
+        except (TypeError, ValueError):
+            pass
+        e['llegada'] = None
+        cambiado = True
+    return p, cambiado
+
+
+def _hm(h):
+    m = int(round(h * 60))
+    return f'{m // 60}:{m % 60:02d} h'
+
+
 def parametros(pid):
-    return _leer(_carpeta(pid), 'parametros.json')
+    d = _carpeta(pid)
+    p, cambiado = migrar_parametros(_leer(d, 'parametros.json'))
+    if cambiado and not en_marcha(d):
+        _escribir(d, 'parametros.json', p)
+    return p
 
 
 def ficheros(pid):
@@ -499,13 +552,15 @@ def validar(datos, a, borrador=False):
         if not lo <= x <= hi:
             raise ErrorPlan(f'Valor fuera de rango: {v}')
         return x
+    sin_salida, sin_limite = bool(datos.get('sin_salida')), bool(datos.get('sin_limite'))
     try:
         salida = datetime.fromisoformat(str(datos.get('salida', ''))[:16])
     except ValueError:
-        if not borrador:
-            raise ErrorPlan('Indica la fecha y la hora de salida.')
+        if not borrador and not sin_salida:
+            raise ErrorPlan('Indica la fecha y la hora de salida, o marca «Sin hora de salida concreta».')
         salida = None
-    limite = num(datos.get('limite_h'), 1, 400, None if not borrador else 0) or None
+    limite = num(datos.get('limite_h'), 1, 400, 0) or None
+    objetivo = num(datos.get('objetivo_h'), 0, 400, 0) or None
     from generador.datos import DISTANCIAS_SB, LIMITE_SR600, limite_oficial
     modalidad = datos.get('modalidad') if datos.get('modalidad') in MODALIDADES else 'libre'
     distancia = None
@@ -526,15 +581,21 @@ def validar(datos, a, borrador=False):
         else:
             distancia = None
     oficial = LIMITE_SR600 if modalidad == 'sr' else limite_oficial(distancia) if distancia else None
-    # tiempo límite cambiado a mano: los cálculos son personales (cierres proporcionales), no los del reglamento
-    personal = bool(oficial and limite and abs(limite - oficial) > 0.01)
+    # en las pruebas oficiales el límite es el del reglamento (no se cambia) y el ritmo propio va en el tiempo objetivo,
+    # que no puede pasar de él; en el recorrido libre, el tiempo deseado es a la vez límite (columna «Objetivo») y objetivo
+    if oficial:
+        limite = oficial
+        if objetivo and objetivo > oficial + 0.01:
+            if not borrador:
+                raise ErrorPlan(f'El tiempo objetivo no puede pasar del tiempo límite oficial ({_hm(oficial)}).')
+            objetivo = oficial
+    else:
+        objetivo = limite
+        if not limite and not sin_limite and not borrador:
+            raise ErrorPlan('Indica el tiempo deseado, o marca «Sin límite de tiempo».')
     e = datos.get('etapas') or {}
     etapas = None
     if e.get('activas') and ver_etapas(modalidad, distancia):
-        try:
-            llegada = datetime.fromisoformat(str(e.get('llegada') or '')[:16]).isoformat(timespec='minutes')
-        except ValueError:
-            llegada = None
         descanso = num(e.get('descanso_h'), 0, 48, 8)
         # cada parada con su descanso (horas); sin él, el descanso diario
         des = e.get('descansos') or []
@@ -542,7 +603,7 @@ def validar(datos, a, borrador=False):
         for j, k in enumerate(e.get('paradas') or []):
             pares[round(num(k, 0, 5000), 3)] = num(des[j] if j < len(des) else None, 0, 48, descanso)
         kms = sorted(pares)[:MAX_ETAPAS - 1]
-        etapas = {'activas': True, 'llegada': llegada, 'descanso_h': descanso, 'paradas': kms, 'descansos': [pares[k] for k in kms]}
+        etapas = {'activas': True, 'llegada': None, 'descanso_h': descanso, 'paradas': kms, 'descansos': [pares[k] for k in kms]}
     puntos = datos.get('puntos') or []
     if len(puntos) != n:
         raise ErrorPlan('La lista de puntos no coincide con el análisis.')
@@ -562,7 +623,8 @@ def validar(datos, a, borrador=False):
     return {'nombre': ' '.join(str(datos.get('nombre') or a['nombre']).split())[:80] or 'Ruta',
             'subtitulo': ' '.join(str(datos.get('subtitulo') or '').split())[:120],
             'salida': salida.isoformat(timespec='minutes') if salida else None, 'limite_h': limite, 'modalidad': modalidad, 'distancia_brm': distancia,
-            'limite_personal': personal, 'etapas': etapas,
+            'sin_salida': sin_salida, 'sin_limite': sin_limite, 'objetivo_h': objetivo,
+            'vel_objetivo': bool(datos.get('vel_objetivo')) and bool(objetivo), 'etapas': etapas,
             'puntos': pts, 'velocidades': vel,
             'salidas': salidas, 'paleta': datos.get('paleta') if datos.get('paleta') in PALETAS else 'verde',
             'estilo_infografia': datos.get('estilo_infografia') if datos.get('estilo_infografia') in ESTILOS_INFOGRAFIA else 'ign_mtn',
@@ -662,7 +724,7 @@ def _analizar(d):
         except Exception as ex:   # hoja ilegible: se sigue con el track y los puntos se ponen a mano
             print(f'  no se ha podido leer: {ex}', flush=True)
             avisos.append(f'No se ha podido leer la hoja de ruta ({ex}). Se ha empezado con la salida y la meta del track: '
-                          'añade los puntos en la tabla de Previsión («Añadir punto» y «Actualizar») o sube la ruta con una hoja de cálculo sencilla.')
+                          'añade los puntos en la tabla de Previsión («Añadir punto» y «Actualizar los puntos») o sube la ruta con una hoja de cálculo sencilla.')
     editados = _leer(d, 'puntos.json')
     if editados:
         puntos = puntos_de_lista(editados)
@@ -673,7 +735,7 @@ def _analizar(d):
     if not puntos:
         puntos = [Punto('Salida', 0.0, 'C1'), Punto('Llegada', round(float(track.total_km), 1), 'C2')]
         if not e.get('hoja'):
-            avisos.append('Sin hoja de ruta: el plan empieza con la salida y la meta del track. Añade los puntos y controles en la tabla de Previsión («Añadir punto» y «Actualizar»).')
+            avisos.append('Sin hoja de ruta: el plan empieza con la salida y la meta del track. Añade los puntos y controles en la tabla de Previsión («Añadir punto» y «Actualizar los puntos»).')
     salida = meta.get('salida')
     limite = meta.get('limite_horas')
     plan = calcular(track, puntos, salida or datetime.combine(date.today() + timedelta(days=7), datetime.min.time()).replace(hour=8),
@@ -749,7 +811,7 @@ def _aviso_mapas(fallos, motivo):
 def _generar(d):
     e = _leer(d, 'estado.json', {})
     a = _leer(d, 'analisis.json')
-    p = _leer(d, 'parametros.json')
+    p, _ = migrar_parametros(_leer(d, 'parametros.json'))
     aj = R.ajustes()
     marca = dict(aj.get('planificador_marca') or {})
     if marca.get('logo') and not os.path.isabs(os.path.expanduser(marca['logo'])):
@@ -774,11 +836,26 @@ def _generar(d):
     estilos = [s for s in ('alballut', 'personal', 'tronos') if s in p['salidas']]
     from generador.datos import limite_oficial
     regla = regla_de(p)
+    # Horario de los documentos: sin hora de salida, los tiempos se cuentan desde la salida (+H:MM) y los días son de
+    # 24 h; sin límite, sin cierres ni márgenes. El cálculo necesita una salida y un límite: sin ellos se usan la salida
+    # de la hoja (sus horas de cierre siguen valiendo) o una cualquiera, y un límite que no se muestra.
+    con_salida = bool(p.get('salida')) and not p.get('sin_salida')
+    limite = limite_oficial(regla['distancia']) if regla and regla.get('distancia') else p.get('limite_h')
+    con_limite = bool(limite) and not p.get('sin_limite')
+    puntos = a['puntos']
+    if p.get('salida'):         # la escrita, aunque no se muestre
+        salida = datetime.fromisoformat(p['salida'])
+    elif a.get('salida'):
+        salida = datetime.fromisoformat(a['salida'][:16])
+    else:                       # ninguna: una cualquiera, y las horas de la hoja no se pueden situar
+        salida = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        puntos = [dict(x, cierre_hoja=None, apertura_hoja=None) for x in puntos]
     cfg = {'nombre': p['nombre'], 'subtitulo': p['subtitulo'], 'gpx': f"entrada/{e['gpx']}", 'hoja': None,
-           'puntos': a['puntos'], 'meta': a.get('meta') or {},   # los del análisis (leídos o editados): la hoja no se relee
-           'salida': datetime.fromisoformat(p['salida']), 'carpeta_salida': 'salida', 'ajuste_km': 'auto',
+           'puntos': puntos, 'meta': a.get('meta') or {},   # los del análisis (leídos o editados): la hoja no se relee
+           'salida': salida, 'carpeta_salida': 'salida', 'ajuste_km': 'auto',
            # con la regla de RM, el límite es siempre el oficial (planes guardados antes con el de la hoja)
-           'limite_horas': limite_oficial(regla['distancia']) if regla and regla.get('distancia') else p['limite_h'],
+           'limite_horas': limite or 400,
+           'horario': {'salida': con_salida, 'limite': con_limite},
            'regla': regla,
            'destacados': destacados, 'paradas': paradas, 'tipos_parada': tipos, 'velocidades': p['velocidades'],
            'altitud': {'fuente': 'gpx' if p.get('altitud_gpx') else 'mdt'},
@@ -796,7 +873,8 @@ def _generar(d):
     for pt in plan.puntos:
         m = mostrar.get(f'{pt.nombre}@{pt.km_hoja:g}')
         pt.extra['mostrar'] = True if m else (None if p['auto_lugares'] else False)
-    print(f'  {plan.total_km:.1f} km · +{plan.total_asc:.0f} m · llegada {plan.llegada_final:%d/%m %H:%M}', flush=True)
+    print(f'  {plan.total_km:.1f} km · +{plan.total_asc:.0f} m · ' + (f'llegada {plan.llegada_final:%d/%m %H:%M}' if con_salida
+          else f'tiempo previsto {_hm((plan.llegada_final - plan.salida).total_seconds() / 3600)}'), flush=True)
     from generador.proyecto import exportar_excel
     if 'tabla' in p['salidas']:
         print('Tabla de tiempos…', flush=True)
