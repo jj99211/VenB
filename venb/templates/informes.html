@@ -42,21 +42,20 @@
 <details class="plegable" id="informes" open>
   <summary><h2>Informes</h2></summary>
   <section class="panel">
-    <p class="suave">Cada lunes, VenB prepara el informe de la semana anterior (de lunes a domingo): volumen, carga, descanso y gráficas, en PDF. Si has añadido actividades después, rehazlo con el botón.</p>
+    <p class="suave">Cada lunes, VenB prepara el informe de la semana anterior (de lunes a domingo) en PDF: resumen de actividades, gráficas y las notas del Diario de esa semana. Si has añadido actividades o notas después, rehazlo con el botón.</p>
     {% if informe_hecho %}<p class="suave">Informe rehecho.</p>{% elif error_informe %}<div class="aviso medio">No se ha podido preparar el informe: todavía no hay actividades.</div>{% endif %}
     <form method="post" action="{{ url_for('informes_generar') }}"><button>Rehacer el informe de la última semana</button></form>
   </section>
   {% for i in informes %}<details class="panel informe" {% if loop.first %}open{% endif %}>
     <summary><b>{{ i.titulo }}</b></summary>
     {% for p in i.pdf %}<p><a href="/informes/{{ i.carpeta }}/{{ p }}" target="_blank" rel="noopener">Abrir el informe en PDF</a>{% if i.pdf|length > 1 %} ({{ p }}){% endif %}</p>{% endfor %}
-    {% if i.consejo %}<h3>Consejo</h3>
-      <p>{{ i.consejo.lectura }}</p>
-      {% if i.consejo.plan %}<ol>{% for p in i.consejo.plan %}<li>{{ p }}</li>{% endfor %}</ol>{% endif %}{% endif %}
-    {% for r in i.revisiones %}<h3>{{ r.titulo }}</h3>
-      <ul class="lista">{% for p in r.puntos %}<li>{{ p }}</li>{% endfor %}</ul>{% endfor %}
     {% if i.svg %}<details><summary>Gráficas</summary><div class="graficas">
       {% for s in i.svg %}<a href="/informes/{{ i.carpeta }}/{{ s }}" target="_blank" rel="noopener"><img loading="lazy" src="/informes/{{ i.carpeta }}/{{ s }}" alt="Gráfica {{ s }}"></a>{% endfor %}
     </div></details>{% endif %}
+    {% if i.notas %}<h3>Notas de la semana</h3>
+      {% for n in i.notas %}<article class="nota-diario"><div class="nota-cab"><b class="f">{{ n.fecha|iso_fecha }}</b></div><p>{{ n.texto }}</p></article>{% endfor %}{% endif %}
+    {% for r in i.revisiones %}<h3>{{ r.titulo }}</h3>
+      <ul class="lista">{% for p in r.puntos %}<li>{{ p }}</li>{% endfor %}</ul>{% endfor %}
   </details>{% else %}<p class="suave">Todavía no hay informes: el primero aparecerá el lunes siguiente a tus primeras actividades.</p>{% endfor %}
 </details>
 {% endblock %}

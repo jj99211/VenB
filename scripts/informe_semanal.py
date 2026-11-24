@@ -1,8 +1,7 @@
-"""Informe semanal en PDF (volumen, carga, descanso y gráficas) de la semana de lunes a domingo.
-VenB lo genera solo cada semana (venb/datos_venb.py: informe_en_segundo_plano) en VenB-datos/informes/<domingo>_semanal/.
-Uso: python3 informe_semanal.py <domingo AAAA-MM-DD> [<notas.json>] [<carpeta_salida>]
-notas.json (opcional): {"lectura": "...", "plan": ["...", "..."]}; añade «Lectura» y «Próxima semana»."""
-import json
+"""Informe semanal en PDF de la semana de lunes a domingo: resumen de actividades (volumen, carga, descanso), gráficas
+y las notas del Diario de esa semana. VenB lo genera solo cada semana (venb/datos_venb.py: informe_en_segundo_plano)
+en VenB-datos/informes/<domingo>_semanal/.
+Uso: python3 informe_semanal.py <domingo AAAA-MM-DD> [<carpeta_salida>]"""
 import math
 import os
 import sqlite3
@@ -13,6 +12,9 @@ import pandas as pd  # noqa: E402
 
 import graficos  # noqa: E402
 import rutas  # noqa: E402
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'venb'))
+import diario  # noqa: E402
 
 NOMBRE = 'informe_semanal_{}.pdf'
 
@@ -74,7 +76,13 @@ def _en(pmc, dia):
     return p.iloc[-1] if len(p) else None
 
 
-def generar(fin, salida=None, notas=None, df=None, pmc=None):
+def notas_semana(fin):
+    """Notas del Diario del lunes al domingo `fin`, de la más antigua a la más reciente."""
+    ini = (pd.Timestamp(fin) - pd.Timedelta(days=6)).strftime('%Y-%m-%d')
+    return list(reversed([n for n in diario.todas() if ini <= n['fecha'] <= pd.Timestamp(fin).strftime('%Y-%m-%d')]))
+
+
+def generar(fin, salida=None, df=None, pmc=None):
     """PDF de la semana que acaba el domingo `fin` y sus gráficas en `salida` (por defecto, informes/<fin>_semanal).
     df y pmc: los de carga.cargar (se recortan a `fin`). Devuelve la ruta del PDF."""
     from reportlab.lib import colors
@@ -123,15 +131,18 @@ def generar(fin, salida=None, notas=None, df=None, pmc=None):
     fecha = lambda x: f'{x.day:02d}/{x.month:02d}/{x.year}'  # noqa: E731
     E = [Paragraph(f'Informe semanal: {fecha(ini)} a {fecha(fin)}', T),
          Paragraph('Actividades de VenB (Garmin e importadas)', S), t]
-    if notas:
-        E += [Paragraph('Lectura', H), Paragraph(notas.get('lectura', ''), N)]
-        if notas.get('plan'):
-            E += [Paragraph('Próxima semana (orientativo)', H), Paragraph('<br/>'.join(f'{i}. {p}' for i, p in enumerate(notas['plan'], 1)), N)]
     if len(pmc):
         graficos.generar(salida, df, pmc)
         E.append(Spacer(1, .4 * cm))
         for nombre, alto in (('carga_ctl_atl_tsb', 4.6), ('horas_semanales', 2.8)):
             E.append(Image(os.path.join(salida, nombre + '.png'), width=16 * cm, height=16 * cm * alto / 8))
+    notas = notas_semana(fin)
+    if notas:
+        from xml.sax.saxutils import escape
+        E.append(Paragraph('Notas de la semana', H))
+        for n in notas:
+            d = pd.Timestamp(n['fecha'])
+            E.append(Paragraph(f'<b>{fecha(d)}</b><br/>' + escape(n['texto']).replace('\n', '<br/>'), ParagraphStyle('nd', parent=N, spaceAfter=6)))
     ruta = os.path.join(salida, NOMBRE.format(f'{fin:%Y-%m-%d}'))
     tmp = ruta + '.tmp'
     SimpleDocTemplate(tmp, pagesize=A4, leftMargin=1.9 * cm, rightMargin=1.9 * cm, topMargin=1.6 * cm, bottomMargin=1.5 * cm,
@@ -142,5 +153,4 @@ def generar(fin, salida=None, notas=None, df=None, pmc=None):
 
 if __name__ == '__main__':
     fin = pd.Timestamp(sys.argv[1])
-    notas = json.load(open(sys.argv[2], encoding='utf-8')) if len(sys.argv) > 2 and sys.argv[2] != '-' else None
-    print(generar(fin, sys.argv[3] if len(sys.argv) > 3 else None, notas))
+    print(generar(fin, sys.argv[2] if len(sys.argv) > 2 else None))

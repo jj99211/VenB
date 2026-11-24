@@ -552,7 +552,7 @@ def informes():
 
 @app.post('/informes/generar')
 def informes_generar():
-    """Rehace el informe de la última semana completa con los datos de ahora (conserva el consejo, si lo hay)."""
+    """Rehace el informe de la última semana completa con los datos y las notas de ahora."""
     try:
         D.generar_informe(forzar=True)
     except Exception:
