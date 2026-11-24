@@ -68,7 +68,7 @@ Resume lo que necesitas saber hoy:
 - **Avisos:** datos de Garmin atrasados, peso sin anotar, fechas clave próximas, meses por cerrar y sesiones con un sensor sin datos (ver [Sensores sin datos](#sensores-sin-datos)). Sus umbrales se cambian en Ajustes. La **×** cierra un aviso para siempre; si vuelve a darse la situación otro día u otro mes, aparece un aviso nuevo. El del cierre del mes enlaza con la página Bicis.
 - **Tu estado:** forma, fatiga y frescura, horas de la semana, km de bici del mes, sueño, VFC, FC en reposo, mejor potencia de 20 minutos de los últimos 30 días y peso.
 - **Forma y fatiga** de los últimos 3 meses.
-- **Último consejo**, si hay alguna revisión con consejo (consulta [Informes](#informes)).
+- **Últimas notas:** la nota más reciente de tu diario (los primeros renglones; **Seguir leyendo** lleva a las [Notas del Diario](#informes)) y **Escribir una nota**, para anotar sin salir de Inicio.
 - **Próximos eventos** y el formulario para **anotar tu peso**. Lo que anotas a mano manda sobre el peso de Garmin de ese día. Si en Ajustes el peso viene de Garmin, también se envía a Garmin Connect (con la hora actual si es de hoy, o a las 12:00 si es de otro día).
 - **Últimas actividades:** las 5 más recientes y, en el desplegable, las 20 anteriores. VenB trae lo nuevo de Garmin Connect al abrirse y cada pocas horas; **Traer lo nuevo de Garmin** lo hace en el momento (ver [Abrir VenB](garmin.md#4-abrir-venb)). Un asterisco junto al TSS indica que está estimado por duración. Con **✎** cambias el nombre de una actividad (ver [Histórico](#historico)).
 
@@ -189,15 +189,16 @@ Si una actividad es de un mes que ya cerraste en Bicis, sus km no se suman solos
 
 ## Informes
 
-Reúne tu diario y tus informes. Arriba, cuatro tarjetas llevan a cada sección; cada una se pliega y despliega con el triángulo de su título, y VenB recuerda en ese navegador las que dejaste plegadas.
+Reúne tu diario y tus informes. Arriba, tres tarjetas llevan a cada sección; cada una se pliega y despliega con el triángulo de su título, y VenB recuerda en ese navegador las que dejaste plegadas.
 
-- **Escribir una nota** y **Notas:** el diario, un sitio opcional para escribir lo que quieras sobre tus sesiones, tus sensaciones o tus rutas: fecha y texto libre. Puedes editar y borrar cada nota. Si no escribes nada, no cambia ningún cálculo. Se guarda en `VenB-datos/datos/diario.csv`.
+- **Escribir una nota** y **Notas del Diario:** un sitio opcional para escribir lo que quieras sobre tus sesiones, tus sensaciones o tus rutas: fecha y texto libre. Puedes editar y borrar cada nota. Si no escribes nada, no cambia ningún cálculo. La última nota aparece también en Inicio, donde puedes escribir otra. Se guarda en `VenB-datos/datos/diario.csv`.
+- **Informes:** cada lunes, VenB prepara el informe de la semana anterior (de lunes a domingo) en un PDF de una página: horas, km y salidas de bici frente a la semana anterior y a la media de cuatro semanas; forma, fatiga y frescura (CTL, ATL y TSB); TSS; sueño, FC en reposo y VFC si tu reloj los registra; y las gráficas de carga y de horas por semana. Se hace al abrir VenB (si se está descargando de Garmin, espera a que termine, para que entren las actividades del domingo) y solo si has tenido actividades en las cuatro semanas anteriores. Si añades actividades después, **Rehacer el informe de la última semana** lo prepara de nuevo. Cada informe se despliega con su título («Semana del … al …»), con el enlace al PDF y sus gráficas, y se guarda en `VenB-datos/informes/AAAA-MM-DD_semanal/` (la fecha es la del domingo).
 
-Las otras dos secciones muestran lo que haya en la carpeta `VenB-datos`. VenB no crea estos ficheros: es un espacio para guardar tus propios informes y revisiones.
+En la misma carpeta puedes guardar informes y revisiones propios, que aparecen junto al de su semana:
 
-- **Informes:** cada subcarpeta de `VenB-datos/informes/` aparece con sus PDF y sus gráficas SVG.
-- **Revisiones:** cada fichero `VenB-datos/estado/estado_AAAA-MM-DD.md`. La primera línea es el título, y las que empiezan por `- `, sus puntos.
-- **Último consejo de Inicio:** el `notas.json` más reciente de `VenB-datos/informes/`, con este formato:
+- **Otros informes:** cualquier subcarpeta de `VenB-datos/informes/` cuyo nombre empiece por una fecha (`AAAA-MM-DD`) aparece con sus PDF y sus gráficas SVG.
+- **Revisiones:** un fichero `VenB-datos/estado/estado_AAAA-MM-DD.md` se muestra dentro del informe de la semana anterior a esa fecha. La primera línea es el título, y las que empiezan por `- `, sus puntos.
+- **Consejo:** un `notas.json` en la carpeta de un informe se muestra en él y se añade a su PDF al rehacerlo, con este formato:
 
 ```json
 {"lectura": "Texto de la revisión", "plan": ["Primera pauta", "Segunda pauta"]}

@@ -714,6 +714,7 @@ def estado_recientes():
         if not _reciente['motivo']:
             FR.registrar(True)
             nombres_en_segundo_plano()
+            informe_en_segundo_plano()
         elif FR.clasificar(_reciente['motivo']) == 'bloqueo' and FR.estado()['tipo'] != 'bloqueo':
             FR.registrar(False, _reciente['motivo'])
     motivo = _reciente.get('motivo') if hecho else None
@@ -1181,32 +1182,120 @@ def proximos_eventos(meses=12):
     return salida, ' '.join(errores) or None
 
 
-# ---------- Informes y consejos ----------
+# ---------- Informes ----------
+def _fecha_de(nombre):
+    m = re.match(r'(\d{4}-\d{2}-\d{2})', nombre)
+    try:
+        return date.fromisoformat(m.group(1)) if m else None
+    except ValueError:
+        return None
+
+
+def _leer_estado(f):
+    with open(f, encoding='utf-8') as fh:
+        lineas = fh.read().splitlines()
+    return {'titulo': lineas[0].lstrip('# ') if lineas else os.path.basename(f), 'puntos': [l[2:] for l in lineas[1:] if l.startswith('- ')]}
+
+
 def informes():
+    """Una entrada por carpeta de informes/ (PDF, gráficas, consejo de notas.json) con las revisiones de estado/ de esa
+    semana: la del domingo anterior más cercano (o del mismo día si la carpeta no es semanal), a 7 días como mucho.
+    Las revisiones sin carpeta van como entrada propia. De la más reciente a la más antigua."""
     salida = []
-    for d in sorted(glob.glob(os.path.join(INFORMES, '*')), reverse=True):
-        if os.path.isdir(d):
-            nombres = sorted(os.listdir(d))
-            salida.append({'carpeta': os.path.basename(d), 'pdf': [n for n in nombres if n.endswith('.pdf')], 'svg': [n for n in nombres if n.endswith('.svg')]})
-    return salida
+    for d in glob.glob(os.path.join(INFORMES, '*')):
+        if not os.path.isdir(d):
+            continue
+        nombre, nombres = os.path.basename(d), sorted(os.listdir(d))
+        f = _fecha_de(nombre)
+        semanal = nombre.endswith('_semanal') and f
+        consejo = None
+        if 'notas.json' in nombres:
+            try:
+                with open(os.path.join(d, 'notas.json'), encoding='utf-8') as fh:
+                    consejo = json.load(fh)
+            except (OSError, ValueError):
+                pass
+        titulo = (f'Semana del {f - timedelta(days=6):%d/%m/%Y} al {f:%d/%m/%Y}' if semanal else f'Informe del {f:%d/%m/%Y}' if f else nombre)
+        salida.append({'carpeta': nombre, 'titulo': titulo, 'fecha': f or date.min, 'semanal': bool(semanal), 'consejo': consejo, 'revisiones': [],
+                       'pdf': [n for n in nombres if n.endswith('.pdf')], 'svg': [n for n in nombres if n.endswith('.svg')]})
+    for ruta in sorted(glob.glob(os.path.join(ESTADO, 'estado_*.md'))):
+        d = _fecha_de(os.path.basename(ruta)[len('estado_'):])
+        cand = [e for e in salida if d and e['fecha'] != date.min and 0 <= (d - e['fecha']).days <= 7 and (not e['semanal'] or d > e['fecha'])]
+        if cand:
+            min(cand, key=lambda e: ((d - e['fecha']).days, e['semanal'])) ['revisiones'].append(_leer_estado(ruta))
+        else:
+            salida.append({'carpeta': None, 'titulo': f'Revisión del {d:%d/%m/%Y}' if d else os.path.basename(ruta), 'fecha': d or date.min,
+                           'semanal': False, 'consejo': None, 'revisiones': [_leer_estado(ruta)], 'pdf': [], 'svg': []})
+    for e in salida:
+        e['revisiones'].reverse()   # la última revisión de esa semana, primero
+    return sorted(salida, key=lambda e: (e['fecha'], e['semanal']), reverse=True)
 
 
-def estados():
-    salida = []
-    for f in sorted(glob.glob(os.path.join(ESTADO, 'estado_*.md')), reverse=True):
-        with open(f, encoding='utf-8') as fh:
-            lineas = fh.read().splitlines()
-        salida.append({'titulo': lineas[0].lstrip('# ') if lineas else os.path.basename(f), 'puntos': [l[2:] for l in lineas[1:] if l.startswith('- ')]})
-    return salida
+# Informe semanal automático: cada semana (lunes a domingo) que acaba, VenB deja su PDF y sus gráficas en
+# informes/<domingo>_semanal/. Una carpeta que ya tiene PDF (por ejemplo, una revisión con consejo) no se toca.
+_informe = {}
 
 
-def ultimo_consejo():
-    for d in sorted(glob.glob(os.path.join(INFORMES, '*')), reverse=True):
-        ruta = os.path.join(d, 'notas.json')
-        if os.path.exists(ruta):
-            with open(ruta, encoding='utf-8') as f:
-                return {**json.load(f), 'carpeta': os.path.basename(d)}
-    return None
+def semana_pendiente():
+    """Domingo de la última semana completa."""
+    hoy = date.today()
+    return hoy - timedelta(days=hoy.weekday() + 1)
+
+
+def _informe_hecho(fin):
+    import informe_semanal as IS
+    d = IS.carpeta(pd.Timestamp(fin))
+    return os.path.isdir(d) and any(n.endswith('.pdf') for n in os.listdir(d))
+
+
+def _descarga_en_curso():
+    p = _reciente.get('proceso')
+    return bool(p and p.poll() is None) or estado_descarga()['en_curso']
+
+
+def generar_informe(fin=None, forzar=False):
+    """Genera (o, con forzar, rehace) el informe de la semana que acaba en `fin` (por defecto, la última completa).
+    Sin forzar, solo si falta y ha habido actividades en las 4 semanas anteriores. Conserva el consejo (notas.json)."""
+    import threading
+    import informe_semanal as IS
+    fin = fin or semana_pendiente()
+    candado = _informe.setdefault('candado', threading.Lock())
+    with candado:
+        if not forzar and _informe_hecho(fin):
+            return None
+        df, pmc = carga()
+        t = pd.Timestamp(fin)
+        if not forzar and not ((df.Fecha >= t - pd.Timedelta(days=27)) & (df.Fecha < t + pd.Timedelta(days=1))).any():
+            return None
+        carpeta = IS.carpeta(t)
+        notas = None
+        if os.path.exists(os.path.join(carpeta, 'notas.json')):
+            with open(os.path.join(carpeta, 'notas.json'), encoding='utf-8') as f:
+                notas = json.load(f)
+        return IS.generar(t, carpeta, notas, df, pmc)
+
+
+def informe_en_segundo_plano():
+    """Al abrir Inicio y tras cada descarga de Garmin: el informe de la semana pasada, si falta. Espera a que termine una
+    descarga en curso, para que entren las actividades del domingo."""
+    import threading
+    h = _informe.get('hilo')
+    if (h and h.is_alive()) or _descarga_en_curso() or _informe_hecho(semana_pendiente()):
+        return
+
+    def tarea():
+        try:
+            generar_informe()
+        except Exception as e:   # sin actividades o sin datos: no es un error para quien usa VenB
+            _informe['error'] = str(e)
+    _informe['hilo'] = threading.Thread(target=tarea, daemon=True)
+    _informe['hilo'].start()
+
+
+def ultima_nota():
+    import diario as DI
+    notas = DI.todas()
+    return notas[0] if notas else None
 
 
 # ---------- Cortes de potencia ----------

@@ -151,6 +151,7 @@ label.casilla { flex-direction:row; align-items:center; gap:6px; color:var(--tex
 .nota-diario { border-top:1px solid var(--borde); padding:10px 0; } .nota-diario:first-of-type { border-top:0; padding-top:0; }
 .nota-cab { display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
 .nota-diario p { margin:4px 0 0; white-space:pre-wrap; overflow-wrap:anywhere; }
+.nota-recorte { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:6; line-clamp:6; overflow:hidden; }
 .editar-bici { font-size:.8rem; font-weight:400; margin-left:8px; }
 label.casilla[hidden] { display:none; }
 footer { max-width:1200px; margin:auto; padding:0 16px 24px; color:var(--suave); font-size:.85rem; }

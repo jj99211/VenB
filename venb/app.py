@@ -186,6 +186,7 @@ def leer_km(txt):
 def inicio():
     D.descargar_recientes(horas=R.ajustes().get('horas_descarga_garmin', 3))  # cada pocas horas mientras VenB está abierta
     AC.en_segundo_plano()
+    D.informe_en_segundo_plano()  # el informe de la semana pasada, si falta
     aviso_carga, m, sem, ant, ultimas, sp = None, None, None, None, [], {}
     try:
         sp = D.tendencias(D.graficas())
@@ -201,10 +202,11 @@ def inicio():
     meses, _ = D.proximos_eventos(12)
     prox = [e for x in meses for e in x['eventos']][:5]
     p = D.pesos()
-    return render_template('inicio.html', sp=sp, m=m, sem=sem, ant=ant, s=D.salud(), avisos=D.avisos(), consejo=D.ultimo_consejo(), prox=prox,
+    return render_template('inicio.html', sp=sp, m=m, sem=sem, ant=ant, s=D.salud(), avisos=D.avisos(), nota=D.ultima_nota(), prox=prox,
                            peso=(date.fromisoformat(p[-1][0]), p[-1][1]) if p else None, ultimas=ultimas, hoy=fecha(date.today()), error_carga=aviso_carga,
                            error_peso=request.args.get('error_peso'), peso_enviado=request.args.get('peso_enviado'), peso_desde_garmin=D.peso_desde_garmin(),
-                           garmin_listo=D.usar_garmin() and bool(D.usuario_garmin()), recientes=D.estado_recientes(), aviso_garmin=request.args.get('aviso_garmin'))
+                           garmin_listo=D.usar_garmin() and bool(D.usuario_garmin()), recientes=D.estado_recientes(), aviso_garmin=request.args.get('aviso_garmin'),
+                           nota_guardada=request.args.get('nota_guardada'))
 
 
 @app.post('/garmin/actualizar')
@@ -304,6 +306,8 @@ def diario_guardar():
         DI.anotar(f.isoformat(), texto, request.form.get('id') or None)
     except KeyError:
         abort(404)
+    if request.form.get('volver') == 'inicio':
+        return redirect(url_for('inicio', nota_guardada=1, _anchor='ultimas-notas'))
     return redirect(url_for('informes', _anchor='notas'))
 
 
@@ -537,7 +541,23 @@ def informes():
     """Informes: el diario (escribir y leer notas), los informes y las revisiones."""
     notas = DI.todas()
     e = next((n for n in notas if n['id'] == request.args.get('editar')), None)
-    return render_template('informes.html', informes=D.informes(), estados=D.estados(), notas=notas, e=e, hoy=fecha(date.today()))
+    if not D._descarga_en_curso():
+        try:
+            D.generar_informe()   # el de la semana pasada, si falta (unos segundos)
+        except Exception:
+            pass
+    return render_template('informes.html', informes=D.informes(), notas=notas, e=e, hoy=fecha(date.today()),
+                           informe_hecho=request.args.get('informe_hecho'), error_informe=request.args.get('error_informe'))
+
+
+@app.post('/informes/generar')
+def informes_generar():
+    """Rehace el informe de la última semana completa con los datos de ahora (conserva el consejo, si lo hay)."""
+    try:
+        D.generar_informe(forzar=True)
+    except Exception:
+        return redirect(url_for('informes', error_informe=1, _anchor='informes'))
+    return redirect(url_for('informes', informe_hecho=1, _anchor='informes'))
 
 
 @app.route('/informes/<carpeta>/<nombre>')

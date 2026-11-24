@@ -4,8 +4,6 @@
 venb/README.md export-ignore
 .gitignore export-ignore
 .gitattributes export-ignore
-scripts/informe_semanal.py export-ignore
-scripts/graficos.py export-ignore
 scripts/validar_garmin.py export-ignore
 scripts/empaquetar.py export-ignore
 scripts/manual.py export-ignore

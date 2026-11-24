@@ -33,12 +33,24 @@
 </section>{% elif error_carga %}<div class="aviso">Tu carga de entrenamiento aparecerá aquí cuando haya actividades: de Garmin (<a href="{{ url_for('ayuda', capitulo='garmin') }}">cómo incorporarlas</a>) o <a href="{{ url_for('importar') }}">subidas en ficheros GPX, FIT o TCX</a>.</div>{% endif %}
 
 <div class="rejilla bloque">
-  {% if consejo %}<section class="panel">
-    <h2>Último consejo</h2>
-    <p>{{ consejo.lectura }}</p>
-    <ol>{% for p in consejo.plan %}<li>{{ p }}</li>{% endfor %}</ol>
-    <p class="suave">De la revisión {{ consejo.carpeta }}.</p>
-  </section>{% endif %}
+  <section class="panel" id="ultimas-notas">
+    <h2>Últimas notas</h2>
+    {% if nota_guardada %}<p class="suave">Nota guardada.</p>{% endif %}
+    {% if nota %}<article class="nota-diario nota-reciente">
+      <div class="nota-cab"><b class="f">{{ nota.fecha|iso_fecha }}</b></div>
+      <p class="nota-recorte">{{ nota.texto }}</p>
+    </article>
+    <p><a href="{{ url_for('informes', _anchor='notas') }}">Seguir leyendo en las Notas del Diario</a></p>
+    {% else %}<p class="suave">Todavía no hay notas. Escribe cómo te has sentido, cuando quieras: es opcional.</p>{% endif %}
+    <details class="ver"><summary>Escribir una nota</summary>
+      <form method="post" action="{{ url_for('diario_guardar') }}">
+        <input type="hidden" name="volver" value="inicio">
+        <label>Fecha <input name="fecha" value="{{ hoy }}" placeholder="DD/MM/AAAA" pattern="\d{2}/\d{2}/\d{4}" size="11" required></label>
+        <label>Nota <textarea class="nota" name="texto" rows="4" maxlength="20000" required></textarea></label>
+        <p><button>Guardar</button></p>
+      </form>
+    </details>
+  </section>
   <section class="panel">
     <h2>Próximos eventos</h2>
     {% if prox %}<ul class="lista">{% for e in prox %}<li><b>{{ e.fecha|fecha }}</b>: {{ e.nombre }}</li>{% endfor %}</ul>{% else %}<p class="suave">Sin eventos próximos.</p>{% endif %}

@@ -56,7 +56,9 @@
     const paso = [1, 2, 2.5, 5, 10].map(p => p * pot).find(p => p >= bruto);
     const ini = Math.floor(min / paso) * paso, fin = Math.ceil(max / paso) * paso, t = [];
     for (let v = ini; v <= fin + paso / 2; v += paso) t.push(Math.round(v * 1e6) / 1e6);
-    return { min: ini, max: fin, marcas: t };
+    // Decimales que pide el paso entre marcas (0,2 → 1; 2,5 → 1; 0,25 → 2), para no rotular 87, 87, 88
+    const dec = ((Math.round(paso * 1e6) / 1e6).toString().split('.')[1] || '').length;
+    return { min: ini, max: fin, marcas: t, dec };
   }
   function leyenda(cont, series, tipo) {
     if (series.length < 2) return;
@@ -81,7 +83,7 @@
     for (const v of e.marcas) {
       const py = y(v);
       svgEl(svg, 'line', { x1: M.i, x2: W - md, y1: py, y2: py, class: v === 0 ? 'eje' : 'rejilla' });
-      svgEl(svg, 'text', { x: M.i - 6, y: py + 4, 'text-anchor': 'end', class: 'marca-eje' }).textContent = num(v, dec);
+      svgEl(svg, 'text', { x: M.i - 6, y: py + 4, 'text-anchor': 'end', class: 'marca-eje' }).textContent = num(v, Math.max(dec, e.dec));
     }
   }
   function marcasFecha(t0, t1, plotW, soloMes) {
@@ -211,7 +213,7 @@
     const svg = svgEl(cont, 'svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: 'img', tabindex: 0, 'aria-label': o.nombre + '. Usa las flechas para recorrer los valores; la tabla está en Ver datos.' });
     for (const v of e.marcas) {
       svgEl(svg, 'line', { x1: M.i, x2: W - der, y1: py(v), y2: py(v), class: v === 0 ? 'eje' : 'rejilla' });
-      svgEl(svg, 'text', { x: M.i - 6, y: py(v) + 4, 'text-anchor': 'end', class: 'marca-eje' }).textContent = num(v);
+      svgEl(svg, 'text', { x: M.i - 6, y: py(v) + 4, 'text-anchor': 'end', class: 'marca-eje' }).textContent = num(v, e.dec);
     }
     const cx = i => M.i + banda * (i + 0.5);
     const barras = o.v.map((v, i) => {
@@ -250,7 +252,7 @@
     const svg = svgEl(cont, 'svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: 'img', tabindex: 0, 'aria-label': o.nombre + '. Usa las flechas para recorrer los valores; la tabla está en Ver datos.' });
     for (const v of e.marcas) {
       svgEl(svg, 'line', { x1: M.i, x2: W - der, y1: py(v), y2: py(v), class: v === 0 ? 'eje' : 'rejilla' });
-      svgEl(svg, 'text', { x: M.i - 6, y: py(v) + 4, 'text-anchor': 'end', class: 'marca-eje' }).textContent = num(v);
+      svgEl(svg, 'text', { x: M.i - 6, y: py(v) + 4, 'text-anchor': 'end', class: 'marca-eje' }).textContent = num(v, e.dec);
     }
     const cx = i => M.i + banda * (i + 0.5);
     const grupos = o.cats.map((c, i) => {

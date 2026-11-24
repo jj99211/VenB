@@ -2,6 +2,13 @@
 
 Novedades de cada versión de VenB y VenB Rutas (las dos ediciones comparten número de versión).
 
+## 3.55
+
+- **Informe semanal automático:** cada lunes, al abrir VenB, se prepara el informe de la semana anterior (de lunes a domingo) en un PDF de una página: horas, km y salidas de bici frente a la semana anterior y a la media de cuatro semanas; forma, fatiga y frescura (CTL, ATL y TSB); TSS; sueño, FC en reposo y VFC si el reloj los registra; y las gráficas de carga y de horas por semana. Si se está descargando de Garmin, espera a que termine para que entren las actividades del domingo. Solo se hace si ha habido actividades en las cuatro semanas anteriores. **Rehacer el informe de la última semana** lo prepara de nuevo tras añadir actividades.
+- **Informes, una entrada por semana:** la sección **Revisiones** desaparece. Cada informe se despliega con su título («Semana del 16/11/2026 al 22/11/2026»), el enlace al PDF, sus gráficas y, si los hay, el consejo y las revisiones propias de esa semana.
+- **Inicio, Últimas notas:** sustituye a «Último consejo». Muestra la nota más reciente del Diario, con un enlace para seguir leyendo, y permite escribir una nota sin salir de Inicio. En la página Informes, «Notas» pasa a llamarse **Notas del Diario**.
+- **Gráficas, eje vertical con decimales:** cuando el paso entre marcas no es entero (por ejemplo, el peso en 3 meses o las horas de sueño), las marcas llevan los decimales necesarios. Antes salían valores repetidos, como 87, 87, 87, 88.
+
 ## 3.54
 
 - **VenB Rutas, varios clubes u organizadores:** en **Ajustes > Perfiles de club u organizador**, el alta va en su propio bloque, **Añadir un club u organizador**, con un botón destacado que despliega el formulario. Tras guardar un perfil, VenB recuerda que se pueden tener todos los que se necesiten; mientras editas uno, un enlace lleva al alta de otro. Al generar, el Planificador propone en cada ruta nueva el último club usado.
