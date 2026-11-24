@@ -27,7 +27,7 @@ CACHE = os.path.join(R.INTERNO, 'mapas', 'cache')
 os.environ.setdefault('GENERADOR_CACHE', CACHE)
 EXT_GPX = ('.gpx',)
 EXT_HOJA = ('.pdf', '.odt', '.ods', '.xlsx', '.xlsm', '.csv')
-SALIDAS = {'tabla': 'Tabla de tiempos (Excel)', 'infografia': 'Infografías', 'alballut': 'Mapa ilustrado (estilo Al-Ballut)',
+SALIDAS = {'tabla': 'Tabla de tiempos (Excel)', 'infografia': 'Infografía - Plan de Ruta', 'alballut': 'Mapa ilustrado (estilo Al-Ballut)',
            'personal': 'Mapa personal', 'tronos': 'Mapa «Juego de Tronos»', 'web': 'Página interactiva'}
 MODALIDADES = {'brevet': 'Brevet (BRM)', 'sr': 'Super Randonnée', 'sb': 'Super Brevet (1.200 km o más)', 'libre': 'Recorrido libre'}
 DISTANCIAS_BREVET = [200, 300, 400, 600, 1000]
@@ -50,6 +50,7 @@ class EnMarcha(ErrorPlan):
 
 LATIDO_S = 15       # el proceso de análisis o generación marca que sigue vivo cada LATIDO_S segundos
 DETENER = 'detener.txt'     # si aparece en la carpeta del plan, el proceso en marcha termina enseguida
+GENERAR_DESPUES = 'generar_despues.json'   # parámetros para generar al terminar el análisis (puntos actualizados desde «Generar»)
 
 
 def _latir(d):
@@ -188,6 +189,10 @@ def detener(pid):
         raise ErrorPlan('No hay ningún proceso en marcha en este plan.')
     with open(os.path.join(d, DETENER), 'w', encoding='utf-8') as f:
         f.write(datetime.now().isoformat(timespec='seconds'))
+    try:     # detenido el análisis, no se genera después
+        os.remove(os.path.join(d, GENERAR_DESPUES))
+    except OSError:
+        pass
     p = _procesos.get(d)
     if p is not None and p.poll() is None:
         p.terminate()
@@ -344,7 +349,7 @@ def _orden_fichero(f):
     return next((i for i, o in enumerate(orden) if f.startswith(o)), 9), f
 
 
-TITULOS_DOC = [('tabla', 'Tabla de tiempos'), ('infografia', 'Infografía'), ('mapa_ilustrado', 'Mapa ilustrado (Al-Ballut)'),
+TITULOS_DOC = [('tabla', 'Tabla de tiempos'), ('infografia', 'Infografía - Plan de Ruta'), ('mapa_ilustrado', 'Mapa ilustrado (Al-Ballut)'),
                ('mapa_personal', 'Mapa personal'), ('mapa_tronos', 'Mapa «Juego de Tronos»'), ('ruta_interactiva', 'Página interactiva')]
 FORMATOS = {'.png': 'PNG', '.pdf': 'PDF', '.xlsx': 'Excel', '.html': 'HTML', '.gpx': 'GPX'}
 
@@ -357,10 +362,11 @@ def documentos(pid):
         base, ext = os.path.splitext(f)
         grupos.setdefault(base, []).append((FORMATOS.get(ext.lower(), ext[1:].upper()), f))
     docs = []
+    n_info = sum(b.startswith('infografia_') for b in grupos)
     for base, fs in grupos.items():
         titulo = next((t for k, t in TITULOS_DOC if base.startswith(k)), base)
-        if base.startswith('infografia_'):
-            titulo += ' ' + base.split('_', 1)[1].replace('_', ' ')
+        if base.startswith('infografia_') and n_info > 1:     # solo si ocupa varias hojas (ida y vuelta)
+            titulo += f" (hoja {base.split('_', 1)[1]} de {n_info})"
         gpx = base.endswith('_WP') and any(n.endswith('.gpx') for _, n in fs)
         if gpx:
             titulo = 'Ruta con waypoints (GPX)'
@@ -457,12 +463,20 @@ def carpeta_web(pid):
     return re.sub(r'[^a-z0-9]+', '-', base).strip('-')[:60] or 'ruta'
 
 
+SCRIPT_INSERTAR = 'venb-insertar.js'     # en generador/; va en la raíz del ZIP de «Ruta para una web»
+
+
 def codigo_iframe(pid, base_url=None):
     """Código para insertar la ruta en otra web. Sin dirección base (ajuste plan_web_base), con un marcador."""
     base_url = (R.ajustes().get('plan_web_base') if base_url is None else base_url) or ''
-    url = (base_url.rstrip('/') + '/' if base_url else 'https://TU-WEB/CARPETA/') + carpeta_web(pid) + '/'
-    return (f'<iframe src="{url}" title="Ruta" style="width:100%;height:1200px;border:0" loading="lazy" '
-            f'allow="fullscreen"></iframe>\n<p><a href="{url}" target="_blank" rel="noopener">Abrir la ruta a pantalla completa</a></p>')
+    # venb-insertar.js (en la carpeta de rutas, junto a las de cada ruta) ajusta el alto del iframe al de la página, que se lo
+    # envía con postMessage: sin desplazamiento interno. Una sola línea de script por página sirve para todas sus rutas;
+    # las mejoras llegan al sustituir el fichero, sin tocar la web. Si la web no admite scripts, queda el alto fijo.
+    base = base_url.rstrip('/') + '/' if base_url else 'https://TU-WEB/CARPETA/'
+    url = base + carpeta_web(pid) + '/'
+    return (f'<iframe src="{url}" title="Ruta" class="venb-ruta" style="width:100%;height:1600px;border:0" loading="lazy" '
+            f'allow="fullscreen"></iframe>\n<p><a href="{url}" target="_blank" rel="noopener">Abrir la ruta a pantalla completa</a></p>\n'
+            f'<script src="{base}{SCRIPT_INSERTAR}" defer></script>')
 
 
 def exportar_web(pid, ficha=True):
@@ -485,12 +499,17 @@ def exportar_web(pid, ficha=True):
              f'2. Comprueba que se abre en el navegador: https://tu-web/rutas/{carpeta}/\n'
              '3. Para insertarla en una página o entrada, pega este código en un bloque HTML (en WordPress, bloque «HTML personalizado»), '
              'cambiando la dirección si hace falta:\n\n' + codigo_iframe(pid) + '\n\n'
+             f'4. Sube también «{SCRIPT_INSERTAR}» a la misma carpeta «rutas» (una sola vez para todas las rutas; con cada versión '
+             'nueva de VenB, sustitúyelo). Ajusta el alto de cada ruta en la página para que no haya que desplazarse dentro de ella. '
+             'Si en una página hay varias rutas, basta con una línea <script>; repetirla no hace daño. Sin él, la ruta se ve igual, '
+             'con el alto fijo del código.\n\n'
              'La página es un único fichero: el track, los puntos y el logo van dentro. El mapa base se carga de los servidores '
              'del IGN (España) o de OpenStreetMap/OpenTopoMap, que piden no abusar: para mucho tráfico, mejor el mapa del IGN.\n')
     ruta = os.path.join(d, f'web_{carpeta}.zip')
     with zipfile.ZipFile(ruta, 'w', zipfile.ZIP_DEFLATED) as z:
         z.writestr(f'{carpeta}/index.html', html)
         z.writestr(f'{carpeta}/LEEME.txt', leeme)
+        z.write(os.path.join(os.path.dirname(__file__), 'generador', SCRIPT_INSERTAR), SCRIPT_INSERTAR)
     return ruta
 
 
@@ -678,6 +697,14 @@ def editar_puntos(pid, datos):
         q['control'] = f'C{base + n}'
     _escribir(d, 'puntos.json', [q for q, _ in puntos])
     borrador = dict(datos, puntos=[pp for _, pp in puntos])
+    borrador.pop('lista', None)
+    # «Generar» con puntos sin actualizar: al terminar el análisis se genera con lo que había en la página
+    ruta_despues = os.path.join(d, GENERAR_DESPUES)
+    if datos.get('generar'):
+        borrador.pop('generar', None)
+        _escribir(d, GENERAR_DESPUES, borrador)
+    elif os.path.exists(ruta_despues):
+        os.remove(ruta_despues)
     try:
         _escribir(d, 'parametros.json', validar(borrador, {'puntos': puntos, 'nombre': a['nombre']}, borrador=True))
     except ErrorPlan:                            # sin parámetros válidos se usan los de partida
@@ -692,7 +719,7 @@ def quitar_edicion(pid):
     d = _carpeta(pid)
     if en_marcha(d):
         raise ErrorPlan('Este plan se está procesando: espera a que termine.')
-    for f in ('puntos.json', 'parametros.json'):
+    for f in ('puntos.json', 'parametros.json', GENERAR_DESPUES):
         if os.path.exists(os.path.join(d, f)):
             os.remove(os.path.join(d, f))
     _estado(d, fase='analizando', error=None, detenido=None, inicio_analizar=datetime.now().isoformat(timespec='seconds'))
@@ -772,8 +799,38 @@ def _analizar(d):
         _escribir_gpx(d, plan)
     except Exception as ex:
         print(f'  aviso: no se ha podido preparar el GPX con waypoints ({ex})', flush=True)
-    _estado(d, fase='listo', nombre=a['nombre'], error=None)
     print(f'Hecho: {plan.total_km:.1f} km, +{plan.total_asc:.0f} m', flush=True)
+    if not _generar_despues(d, a):     # sin pasar por «listo»: la página sigue de analizar a generar
+        _estado(d, fase='listo', nombre=a['nombre'], error=None)
+
+
+def _generar_despues(d, a):
+    """Tras actualizar los puntos desde «Generar», genera en el mismo proceso con los parámetros de la página."""
+    ruta = os.path.join(d, GENERAR_DESPUES)
+    datos = _leer(d, GENERAR_DESPUES)
+    if not datos:
+        return False
+    os.remove(ruta)
+    try:
+        if len(datos.get('puntos') or []) != len(a['puntos']):
+            raise ErrorPlan('la lista de puntos ha cambiado al analizar la ruta')
+        p = validar(datos, a)
+    except ErrorPlan as ex:
+        _estado(d, fase='listo', nombre=a['nombre'], error=f'Puntos actualizados, pero no se ha podido generar: {ex}. Revisa los datos y pulsa «Generar».')
+        return True
+    _escribir(d, 'parametros.json', p)
+    _estado(d, fase='generando', nombre=p['nombre'], error=None, aviso_mapas=None, detenido=None,
+            inicio_generar=datetime.now().isoformat(timespec='seconds'))
+    with open(os.path.join(d, 'registro.txt'), 'a', encoding='utf-8') as log:
+        log.write(f'\n== generar {datetime.now():%d/%m/%Y %H:%M:%S}\n')
+    try:
+        _generar(d)
+    except Exception as ex:      # el análisis está bien: el plan queda listo, con el error de la generación
+        import traceback
+        traceback.print_exc()
+        _estado(d, fase='listo', error=str(ex) or ex.__class__.__name__)
+        sys.exit(1)
+    return True
 
 
 def _perfil(track, n=400):
@@ -897,7 +954,7 @@ def _generar(d):
         if aviso_mapas:
             print(f'  aviso: {aviso_mapas}', flush=True)
     if 'infografia' in p['salidas']:
-        print('Infografías…', flush=True)
+        print('Infografía - Plan de Ruta…', flush=True)
         from generador.infografia import generar as g
         g(proyecto, plan, osm)
     if estilos:

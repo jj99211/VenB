@@ -268,11 +268,18 @@ dialog#resumen-actividad { width:min(860px, calc(100vw - 32px)); max-width:none;
 /* Ajustes: tarjetas en dos columnas; en cada campo, etiqueta a la izquierda y control a la derecha */
 .ajustes-rejilla { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:16px; align-items:start; margin-bottom:12px; }
 .ajustes-rejilla .panel { margin:0; }
+/* Con JS, rejilla compacta: filas de 8 px y cada tarjeta abarca las que mide (ajustes_rejilla en ajustes.html) */
+.ajustes-rejilla.compacta { grid-auto-rows:8px; row-gap:0; grid-auto-flow:row dense; }
+.ajustes-rejilla.compacta > .panel { margin-bottom:16px; }
 .campo { display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:3px 14px; align-items:center; padding:8px 0; border-top:1px solid color-mix(in oklab, var(--borde) 70%, transparent); }
 .panel h2 + .campo, .panel .aviso + .campo { border-top:0; }
 .campo > .control { justify-self:end; text-align:right; }
 .campo input[type=number] { width:6.5em; text-align:right; }
 .campo .casillas { display:flex; flex-direction:column; align-items:flex-start; gap:2px; text-align:left; }
+/* Campo con un control ancho (una dirección): etiqueta encima y control a todo el ancho */
+.campo.apilado { grid-template-columns:minmax(0, 1fr); }
+.campo.apilado > .control { justify-self:stretch; text-align:left; }
+.campo.apilado input { width:100%; box-sizing:border-box; }
 .campo .ayuda { grid-column:1 / -1; color:var(--suave); font-size:.84rem; line-height:1.35; }
 p.botones { display:flex; gap:10px; flex-wrap:wrap; }
 @media (max-width: 820px) { .ajustes-rejilla { grid-template-columns:1fr; } }

@@ -17,45 +17,52 @@ PLANTILLA = r"""<!doctype html>
 <style>
   :root { --tinta:#1f2328; --gris:#6b7280; --linea:#e5e7eb; --fondo:#f7f7f5; --ok:#16855f; --mal:#c62828; }
   * { box-sizing:border-box; }
-  body { margin:0; font:24px/1.4 system-ui, "Segoe UI", Roboto, sans-serif; color:var(--tinta); background:var(--fondo); }
+  body { margin:0; font:19px/1.4 system-ui, "Segoe UI", Roboto, sans-serif; color:var(--tinta); background:var(--fondo); }
   header { padding:14px 20px 10px; background:#fff; border-bottom:1px solid var(--linea); position:relative; }
   .marca { position:absolute; top:12px; right:20px; display:flex; flex-direction:column; align-items:center; gap:6px; }
-  .marca img { height:110px; }
-  .marca a { color:#b8322a; font-weight:600; font-size:22px; text-decoration:none; }
+  .marca img { height:80px; }
+  .marca a { color:#b8322a; font-weight:600; font-size:17px; text-decoration:none; }
   .marca a:hover { text-decoration:underline; }
-  @media (max-width: 1500px) { .marca { position:static; flex-direction:row; justify-content:flex-start; margin-bottom:8px; } .marca img { height:70px; } }
-  h1 { margin:0; font-size:44px; letter-spacing:.3px; }
-  h1 small { font-weight:500; color:var(--gris); font-size:28px; margin-left:8px; }
+  @media (max-width: 1500px) { .marca { position:static; flex-direction:row; justify-content:flex-start; margin-bottom:8px; } .marca img { height:50px; } }
+  h1 { margin:0; font-size:20px; letter-spacing:.2px; }
+  h1 small { font-weight:500; color:var(--gris); font-size:15px; margin-left:8px; }
   .datos { display:flex; flex-wrap:wrap; gap:6px 18px; margin-top:6px; color:#333; }
   .datos b { font-variant-numeric:tabular-nums; }
   .controles { display:flex; flex-wrap:wrap; gap:10px 18px; align-items:end; margin-top:10px; }
   .controles label[hidden] { display:none; }
-  .controles label { display:flex; flex-direction:column; font-size:20px; color:var(--gris); gap:2px; }
+  .controles label { display:flex; flex-direction:column; font-size:16px; color:var(--gris); gap:2px; }
   .controles input, .controles select { font:inherit; padding:4px 6px; border:1px solid #ccc; border-radius:4px; }
   .controles input[type=number] { width:120px; }
-  .controles button { font:inherit; font-size:20px; padding:5px 12px; border:1px solid #888; border-radius:4px; background:#fff; cursor:pointer; }
+  .controles button { font:inherit; font-size:16px; padding:5px 12px; border:1px solid #888; border-radius:4px; background:#fff; cursor:pointer; }
   .dias { display:flex; gap:6px; flex-wrap:wrap; }
-  .chip { color:#fff; padding:5px 12px; border-radius:4px; font-weight:600; font-size:22px; }
+  .chip { color:#fff; padding:4px 10px; border-radius:4px; font-weight:600; font-size:17px; }
   main { display:grid; grid-template-columns:minmax(0, 1.25fr) minmax(0, 1fr); gap:14px; padding:14px 20px; }
   @media (max-width: 1500px) { main { grid-template-columns:1fr; } }
+  .insertada #mapa { height:560px; min-height:0; }
+  .insertada .tabla { max-height:none; }
   #mapa { height:62vh; min-height:420px; border-radius:6px; border:1px solid var(--linea); }
   #perfil { width:100%; height:340px; background:#fff; border:1px solid var(--linea); border-radius:6px; margin-top:10px; }
   .tabla { overflow:auto; max-height:calc(62vh + 350px); background:#fff; border:1px solid var(--linea); border-radius:6px; }
   table { border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums; }
-  th, td { padding:6px 10px; border-bottom:1px solid var(--linea); text-align:right; white-space:nowrap; }
-  th { position:sticky; top:0; background:#2c5aa0; color:#fff; font-weight:600; font-size:20px; z-index:1; }
+  table { font-size:16px; }
+  th, td { padding:5px 7px; border-bottom:1px solid var(--linea); text-align:right; white-space:nowrap; }
+  th { position:sticky; top:0; background:#2c5aa0; color:#fff; font-weight:600; font-size:14px; line-height:1.15; white-space:normal; z-index:1; }
+  /* Sin sitio para todas las columnas (blog, móvil, iframe): fuera las secundarias; si aún no cabe, la tabla se desplaza */
+  @media (max-width: 1100px) { .c2 { display:none; } }
+  @media (min-width: 1501px) and (max-width: 2100px) { .c2 { display:none; } }
+  @media (max-width: 640px) { .c3 { display:none; } th, td { padding:4px 5px; } table { font-size:15px; } td.n { white-space:normal; } td input { width:3.2em; } }
   td.n { text-align:left; }
   tr.ctrl td { font-weight:650; background:#fafafa; }
-  td input { width:90px; font:inherit; padding:1px 3px; border:1px solid #ccc; border-radius:3px; text-align:right; }
+  td input { width:4.2em; font:inherit; padding:1px 3px; border:1px solid #ccc; border-radius:3px; text-align:right; }
   .pos { color:var(--ok); } .neg { color:var(--mal); font-weight:700; }
   .dia { display:inline-block; width:16px; height:16px; border-radius:2px; margin-right:5px; vertical-align:middle; }
-  .caja { color:#fff; padding:10px 14px; border:3px solid #000; font-weight:600; line-height:1.3; font-size:22px; }
-  .caja b { font-size:26px; }
-  .leaflet-tooltip { font-size:20px; }
+  .caja { color:#fff; padding:10px 14px; border:3px solid #000; font-weight:600; line-height:1.3; font-size:18px; }
+  .caja b { font-size:21px; }
+  .leaflet-tooltip { font-size:16px; }
   .leaflet-control-attribution { font-size:14px; }
   .leaflet-bar a { width:44px !important; height:44px !important; line-height:44px !important; font-size:28px !important; }
   .leaflet-popup-content { margin:0; } .leaflet-popup-content-wrapper { padding:0; border-radius:0; overflow:hidden; }
-  footer { color:var(--gris); font-size:20px; padding:0 20px 16px; }
+  footer { color:var(--gris); font-size:15px; padding:0 20px 16px; }
 </style>
 </head>
 <body>
@@ -66,7 +73,7 @@ PLANTILLA = r"""<!doctype html>
   <div class="controles">
     <label>Salida <input type="datetime-local" id="salida"></label>
     <label><span id="etiqueta-limite">Límite (h)</span> <input type="number" id="limite" step="0.5" min="1"></label>
-    <label>Parada por defecto en controles (min) <input type="number" id="defecto" step="5" min="0"></label>
+    <label title="Se aplica a los controles intermedios que no tienen una parada propia; los demás puntos llevan la parada indicada en la tabla">Tiempo de parada por defecto en los controles (min) <input type="number" id="defecto" step="5" min="0"></label>
     <label>Mapa base
       <select id="base"><option value="ign_mtn">IGN: topográfico (MTN)</option><option value="ign_base">IGN Base</option><option value="ign_orto">IGN: ortofoto con rótulos</option><option value="topo">OpenTopoMap</option><option value="osm">OpenStreetMap</option></select>
     </label>
@@ -163,7 +170,8 @@ selBase.value = capas[D.base] ? D.base : "topo";
 let capa = capas[selBase.value].addTo(mapa);
 document.getElementById("base").onchange = e => { mapa.removeLayer(capa); capa = capas[e.target.value].addTo(mapa); };
 const grupoTrack = L.layerGroup().addTo(mapa), grupoPuntos = L.layerGroup().addTo(mapa);
-mapa.fitBounds(L.latLngBounds(D.track.map(t => [t[0], t[1]])), { padding: [20, 20] });
+const TRAZO = D.trazo || D.track.map(t => [t[0], t[1], t[3]]);   // por si faltara el trazo
+mapa.fitBounds(L.latLngBounds(TRAZO.map(t => [t[0], t[1]])), { padding: [20, 20] });
 
 function horaEnKm(res, km) {
   let i = 1; while (i < res.length - 1 && res[i].km < km) i++;
@@ -184,11 +192,11 @@ function dibujarMapa(res) {
   grupoTrack.clearLayers(); grupoPuntos.clearLayers();
   let tramo = [], diaAct = null;
   const cerrar = () => { if (tramo.length > 1) L.polyline(tramo, { color: color(diaAct), weight: 7, opacity: .9 }).addTo(grupoTrack); };
-  const halo = L.polyline(D.track.map(t => [t[0], t[1]]), { color: "#111", weight: 11, opacity: .45 }).addTo(grupoTrack);
+  const halo = L.polyline(TRAZO.map(t => [t[0], t[1]]), { color: "#111", weight: 11, opacity: .45 }).addTo(grupoTrack);
   let j = 1;
-  for (const t of D.track) {
-    while (j < res.length - 1 && res[j].km < t[3]) j++;
-    const a = res[j-1], b = res[j], f = Math.max(0, Math.min(1, (t[3] - a.km) / Math.max(b.km - a.km, 1e-9)));
+  for (const t of TRAZO) {
+    while (j < res.length - 1 && res[j].km < t[2]) j++;
+    const a = res[j-1], b = res[j], f = Math.max(0, Math.min(1, (t[2] - a.km) / Math.max(b.km - a.km, 1e-9)));
     const d = diaDe(new Date(a.salida.getTime() + f * (b.llegada - a.salida)), estado.salida);
     if (d !== diaAct) { if (tramo.length) { tramo.push([t[0], t[1]]); cerrar(); } tramo = [[t[0], t[1]]]; diaAct = d; }
     else tramo.push([t[0], t[1]]);
@@ -244,20 +252,22 @@ function dibujarPerfil(res) {
 function dibujarTabla(res) {
   const cab = ["", "Lugar", "km", "Tramo", "Alt.", "Asc. tramo", "Asc. total", "% medio", "Vel.", "Parada (min)", "Llegada", "Salida"]
     .concat(CON_LIMITE ? [OBJETIVO ? "Objetivo" : "Cierre", "Margen", "Apertura"] : []);
-  let s = "<thead><tr>" + cab.map(c => `<th>${c}</th>`).join("") + "</tr></thead><tbody>";
+  const CLASE = {"Tramo": "c2", "Asc. tramo": "c2", "% medio": "c2", "Vel.": "c2", "Alt.": "c3", "Salida": "c3", "Apertura": "c3"};
+  const cls = c => CLASE[c] ? ` class="${CLASE[c]}"` : "";
+  let s = "<thead><tr>" + cab.map(c => `<th${cls(c)}>${c}</th>`).join("") + "</tr></thead><tbody>";
   res.forEach((r, i) => {
     const valor = estado.paradas[i] === null ? "" : estado.paradas[i];
     const marcador = r.control ? (r.parada || "") : "";
     s += `<tr class="${r.control ? "ctrl" : ""}"><td class="n">${r.control}</td>
       <td class="n"><span class="dia" style="background:${color(r.dia)}"></span>${icono(r)}${esc(r.nombre)}</td>
-      <td>${r.km.toFixed(1)}</td><td>${r.km_tramo.toFixed(1)}</td><td>${r.alt.toFixed(0)}</td>
-      <td>${r.asc_tramo.toFixed(0)}</td><td>${r.asc_total.toFixed(0)}</td><td>${(r.pendiente*100).toFixed(1)}%</td>
-      <td>${r.vel ? r.vel.toFixed(1) : ""}</td>
+      <td>${r.km.toFixed(1)}</td><td class="c2">${r.km_tramo.toFixed(1)}</td><td class="c3">${r.alt.toFixed(0)}</td>
+      <td class="c2">${r.asc_tramo.toFixed(0)}</td><td>${r.asc_total.toFixed(0)}</td><td class="c2">${(r.pendiente*100).toFixed(1)}%</td>
+      <td class="c2">${r.vel ? r.vel.toFixed(1) : ""}</td>
       <td>${i ? `<input type="number" min="0" step="5" data-i="${i}" value="${valor}" placeholder="${marcador}">` : ""}</td>
-      <td>${momento(r.llegada)}</td><td>${momento(r.salida)}</td>` + (!CON_LIMITE ? "</tr>" : `
+      <td>${momento(r.llegada)}</td><td class="c3">${momento(r.salida)}</td>` + (!CON_LIMITE ? "</tr>" : `
       <td>${momento(r.cierre)}</td>
       <td class="${r.margen < -TOLERANCIA ? "neg" : "pos"}">${i ? dur(r.margen, true) : ""}</td>
-      <td class="${r.antes ? "neg" : ""}">${r.apertura ? hora(r.apertura) + (r.antes ? " ⚠" : "") : ""}</td></tr>`);
+      <td class="c3 ${r.antes ? "neg" : ""}">${r.apertura ? hora(r.apertura) + (r.antes ? " ⚠" : "") : ""}</td></tr>`);
   });
   document.getElementById("tabla").innerHTML = s + "</tbody>";
   document.querySelectorAll("#tabla input").forEach(inp => inp.onchange = e => {
@@ -307,6 +317,9 @@ window.addEventListener("resize", () => dibujarPerfil(calcular()));
 // en la ficha (o sin hora de salida) no hay fecha; en la ficha (o sin límite), tampoco tiempo límite
 if (!CON_SALIDA) inSalida.closest("label").hidden = true;
 if (!CON_LIMITE) inLimite.closest("label").hidden = true;
+// la parada por defecto en los controles solo se muestra en una ruta oficial (con tiempo límite y cierres, no objetivo)
+// que tenga controles de paso intermedios; en las demás (y en la ficha para una web) no aparece
+if (!(CON_LIMITE && !OBJETIVO && D.puntos.some((p, i) => p.control && i > 0 && i < D.puntos.length - 1))) inDefecto.closest("label").hidden = true;
 if (OBJETIVO) document.getElementById("etiqueta-limite").textContent = "Objetivo (h)";
 if (!CON_SALIDA) document.querySelector("footer").insertAdjacentHTML("beforeend", "<br>Tiempos en horas:minutos desde la salida, con las paradas previstas; cambia las paradas en la tabla.");
 // GPX hecho aquí mismo (la página se comparte suelta, sin servidor): track y puntos como waypoints
@@ -318,6 +331,25 @@ document.getElementById("descargar-gpx").onclick = () => {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 };
 todo();
+// Insertada en otra web (iframe): envía su altura a la página que la contiene; venb-insertar.js (cargado en esa página)
+// ajusta el iframe y no hay desplazamiento dentro. Formato fijo y con versión: {tipo: "venb-ruta", version: 1, altura};
+// si venb-insertar.js carga después, pide la altura con {tipo: "venb-ruta", version: 1, pedir: "altura"}.
+// Sin venb-insertar.js, el mensaje no hace nada.
+if (window.self !== window.top) {
+  document.documentElement.classList.add("insertada");
+  let ultima = 0;
+  const avisar = () => {
+    const h = Math.ceil(document.documentElement.scrollHeight);
+    if (Math.abs(h - ultima) > 2) { ultima = h; window.parent.postMessage({tipo: "venb-ruta", version: 1, altura: h}, "*"); }
+  };
+  new ResizeObserver(avisar).observe(document.body);
+  window.addEventListener("load", avisar);
+  // venb-insertar.js puede cargarse después que la ruta: al cargar, pide la altura y aquí se vuelve a enviar
+  window.addEventListener("message", e => {
+    if (e.source === window.parent && e.data && e.data.tipo === "venb-ruta" && e.data.pedir === "altura") { ultima = 0; avisar(); }
+  });
+  avisar();
+}
 </script>
 </body>
 </html>
@@ -367,6 +399,35 @@ def _mayus(texto, fichero=False):
     return re.sub(r"\s+", " ", t).strip()
 
 
+def _trazo(tr):
+    """Puntos para dibujar el track en el mapa interactivo: [[lat, lon, km]]. Los del GPX original
+    simplificados a 1,5 m (antes, uno cada 250 m: las curvas salían cortadas en recta)."""
+    idx = tr.trazado(1.5)
+    if idx is None:   # track sin los puntos originales: el remuestreado cada 25 m
+        from .datos import simplificar
+        lat, lon, km = tr.lat, tr.lon, tr.km
+        idx = simplificar(lat, lon, 1.5)
+    else:
+        lat, lon, km = tr.orig_lat, tr.orig_lon, tr.orig_km
+    return [[round(float(lat[i]), 6), round(float(lon[i]), 6), round(float(km[i]), 3)] for i in idx]
+
+
+def _puntos_gpx(tr):
+    """Track del GPX descargable: los vértices del GPX original (simplificados a 1,5 m) más un punto cada
+    25 m, para que la geometría sea la del original y el perfil de altitud conserve su detalle."""
+    if tr.orig_lat is None:
+        return tr.lat, tr.lon, tr.ele, tr.km
+    idx = tr.trazado(1.5)
+    km = np.r_[tr.km, tr.orig_km[idx]]
+    lat, lon = np.r_[tr.lat, tr.orig_lat[idx]], np.r_[tr.lon, tr.orig_lon[idx]]
+    orden = np.argsort(km, kind="stable")
+    km, lat, lon = km[orden], lat[orden], lon[orden]
+    # fuera duplicados (mismo km y posición, p. ej. el primer y el último punto)
+    nuevo = np.r_[True, (np.diff(km) > 1e-6) | (np.abs(np.diff(lat)) > 1e-7) | (np.abs(np.diff(lon)) > 1e-7)]
+    km, lat, lon = km[nuevo], lat[nuevo], lon[nuevo]
+    return lat, lon, np.interp(km, tr.km, tr.ele), km
+
+
 def gpx_waypoints(proyecto, plan):
     """(nombre de fichero, texto) del GPX de la ruta con todos sus puntos (los de la hoja y los añadidos a mano)
     como waypoints con los tipos del creador de rutas de Garmin Connect: CHECKPOINT en los controles,
@@ -390,9 +451,9 @@ def gpx_waypoints(proyecto, plan):
             texto = f"{p.control}_{texto}"
         wpts.append(f'  <wpt lat="{p.lat:.6f}" lon="{p.lon:.6f}"><ele>{p.alt:.1f}</ele><name>{escape(texto)}</name>'
                     f"<type>{tipo}</type></wpt>")
-    tr = plan.track
-    trk = "\n".join(f'      <trkpt lat="{a:.5f}" lon="{b:.5f}"><ele>{c:.1f}</ele></trkpt>'
-                    for a, b, c in zip(tr.lat, tr.lon, tr.ele))
+    lat, lon, ele, _ = _puntos_gpx(plan.track)
+    trk = "\n".join(f'      <trkpt lat="{a:.6f}" lon="{b:.6f}"><ele>{c:.1f}</ele></trkpt>'
+                    for a, b, c in zip(lat, lon, ele))
     titulo = escape(nombre[:-4])
     texto = ('<?xml version="1.0" encoding="UTF-8"?>\n'
              '<gpx version="1.1" creator="VenB" xmlns="http://www.topografix.com/GPX/1/1">\n'
@@ -411,7 +472,7 @@ def generar_gpx(proyecto, plan):
 
 def generar(proyecto, plan):
     tr = plan.track
-    paso = max(1, int(round(0.25 / (tr.km[1] - tr.km[0]))))   # un punto cada ~250 m
+    paso = max(1, int(round(0.25 / (tr.km[1] - tr.km[0]))))   # perfil: un punto cada ~250 m
     idx = np.r_[np.arange(0, len(tr.km), paso), len(tr.km) - 1]
     track = [[round(float(tr.lat[i]), 5), round(float(tr.lon[i]), 5), round(float(tr.ele[i]), 1),
               round(float(tr.km[i]), 3)] for i in idx]
@@ -436,6 +497,7 @@ def generar(proyecto, plan):
              "salida": plan.salida.isoformat(), "limite_h": plan.limite_h, "parada_defecto": defecto,
              "horario": getattr(plan, "horario", {"salida": True, "limite": True}),
              "total_km": plan.total_km, "total_asc": plan.total_asc, "track": track, "puntos": puntos,
+             "trazo": _trazo(tr),   # geometría del mapa; "track" (cada ~250 m) queda para el perfil
              "velocidades": plan.velocidades, "base": _base(tr),
              # «Descargar GPX»: el mismo fichero que genera el Planificador (track completo y waypoints)
              "gpx": dict(zip(("nombre", "texto"), gpx_waypoints(proyecto, plan)))}

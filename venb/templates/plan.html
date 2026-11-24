@@ -109,7 +109,7 @@
   <p class="suave">Paradas, tipo y «Mapa» (caja en la infografía y rótulo en los mapas) se recalculan al momento; nombre, km, «Control», «Quitar» y los puntos nuevos esperan a «Actualizar los puntos».{% if a.editados %} Los puntos están editados: mandan sobre la hoja de ruta.{% endif %}</p>
   <div class="tabla ver-alto" style="max-height:none">
     <table id="puntos"><thead><tr>
-      <th title="Mostrar en el mapa y en las infografías">Mapa</th><th title="Es un control">Control</th><th>Punto</th><th class="num" title="Desde la salida, como en la hoja de ruta">km</th><th class="num">Alt.</th>
+      <th title="Mostrar en los mapas y en la infografía">Mapa</th><th title="Es un control">Control</th><th>Punto</th><th class="num" title="Desde la salida, como en la hoja de ruta">km</th><th class="num">Alt.</th>
       <th class="num" title="Desnivel positivo acumulado desde la salida">Desn. acum.</th><th class="num">Pend.</th><th class="num">km/h</th>
       <th>Parada (min)</th><th>Tipo</th><th class="num" id="titulo-llegada">Llegada</th><th class="num cierre" id="titulo-cierre">Cierre</th><th class="num margen">Margen</th><th></th>
     </tr></thead><tbody></tbody></table>
@@ -123,7 +123,7 @@
     <p>Marca lo que quieres y pulsa <b>Generar</b>. Los documentos aparecen debajo, en «Ficheros generados», cada uno con sus formatos para abrirlo o descargarlo por separado, o todos juntos en un ZIP. Siempre se genera además la <b>ruta con waypoints</b> (GPX).</p>
     <ul class="lista">
       <li><b>Tabla de tiempos:</b> hoja de cálculo con la hora de paso, el cierre y el margen en cada punto.</li>
-      <li><b>Infografías:</b> el mapa de la ruta con una caja por control (horas, km y margen) y el perfil con los días. El fondo es, por defecto, el topográfico del IGN; en «Mapa de las infografías» puedes elegir otro. Los del IGN solo cubren España: si la ruta sale de España, se usa el topográfico de OpenStreetMap.</li>
+      <li><b>Infografía - Plan de Ruta:</b> el mapa de la ruta con una caja por control (horas, km y margen) y el perfil con los días. El fondo es, por defecto, el topográfico del IGN; en «Mapa de la infografía» puedes elegir otro. Los del IGN solo cubren España: si la ruta sale de España, se usa el topográfico de OpenStreetMap.</li>
       <li><b>Mapas ilustrados</b> (Al-Ballut, personal y «Juego de Tronos»): mapas dibujados para imprimir o publicar, con pueblos, ríos y sierras.</li>
       <li><b>Página interactiva:</b> un mapa para abrir en el navegador o el móvil, en el que se cambian la hora de salida y las paradas.</li>
     </ul>
@@ -135,7 +135,7 @@
   <div class="linea-campos">
     {% if rutas %}<label>Club u organizador (marca de los documentos)<select id="club"><option value="">— Solo VenB —</option>{% for c in clubes %}<option value="{{ c.id }}">{{ c.nombre }}</option>{% endfor %}</select>
       <a class="suave" href="{{ url_for('ajustes', _anchor='clubes') }}">Gestionar los perfiles de club</a></label>{% endif %}
-    <label>Mapa de las infografías<select id="estilo-infografia">{% for k, t in estilos.items() %}<option value="{{ k }}" {% if k == aj.plan_mapa_base %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></label>
+    <label>Mapa de la infografía<select id="estilo-infografia">{% for k, t in estilos.items() %}<option value="{{ k }}" {% if k == aj.plan_mapa_base %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></label>
     <label>Colores del mapa personal<select id="paleta">{% for x in paletas %}<option>{{ x }}</option>{% endfor %}</select></label>
     <label class="casilla"><input type="checkbox" id="auto-lugares" checked> Rotular también otras localidades bien repartidas</label>
     <label class="casilla"><input type="checkbox" id="track-pendiente"> Colorear el track de la infografía según la pendiente</label>
@@ -178,6 +178,7 @@
     <p><a class="boton" href="{{ url_for('plan_web', pid=e.id) }}">Descargar como ficha de ruta (ZIP)</a> <a href="{{ url_for('plan_web', pid=e.id, modo='horario') }}">Descargar con horario</a></p>
     <p class="suave" id="web-codigo-ayuda">Código para insertarla en una página, una vez subida la carpeta <code>{{ carpeta_web }}/</code>{% if not aj.plan_web_base %} (pon la dirección de tu web en <a href="{{ url_for('ajustes') }}">Ajustes</a> para que salga completa){% endif %}:</p>
     <textarea readonly rows="3" aria-labelledby="web-codigo-ayuda" onclick="this.select()">{{ iframe }}</textarea>
+    <p class="suave">Sube también <code>venb-insertar.js</code> (viene en el ZIP) a la misma carpeta que las rutas, una sola vez: hace que la ruta ocupe en la página el alto que necesita, sin barra de desplazamiento dentro. Con cada versión nueva de VenB, sustitúyelo.</p>
   </article>
   {% endif %}
   {% endif %}

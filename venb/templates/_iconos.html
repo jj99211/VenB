@@ -3,7 +3,7 @@
 {% macro tarjetas_analisis(actual='') -%}
 <nav class="tarjetas-seccion" aria-label="Secciones de Análisis">
   {% for r, t, d in [('brevets','Brevets','Homologaciones, series y estadísticas'),
-                     ('planificador','Planificador de rutas','Horarios, mapas e infografías de una ruta') if actual == 'historico' else ('historico','Histórico','Todas tus actividades desde el principio'),
+                     ('planificador','Planificador de rutas','Horarios, mapas e infografía de una ruta') if actual == 'historico' else ('historico','Histórico','Todas tus actividades desde el principio'),
                      ('importar','Importar','Actividades de ficheros GPX, FIT o TCX'),('bicis','Bicis','Kilómetros, piezas y mecánico'),('informes','Informes','Diario e informes')] %}
   <a class="tarjeta-seccion t-{{ r }}" href="{{ url_for(r) }}">
     <span class="tarjeta-icono">{{ icono(r) }}</span>

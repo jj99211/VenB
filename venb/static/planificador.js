@@ -228,7 +228,7 @@
     $('explica-horario').textContent = cs && cl ? 'Los documentos llevan la hora de paso por cada punto y, con el límite, los cierres y los márgenes.'
       : cl ? 'Sin hora de salida: los documentos cuentan el tiempo desde la salida («+5:40»), también los cierres, y los días son de 24 h.'
       : cs ? 'Sin límite de tiempo: los documentos llevan la hora de paso prevista por cada punto, sin cierres ni márgenes.'
-      : 'Sin hora de salida ni límite: los mapas y las infografías no llevan información de tiempo; la tabla de tiempos y la página interactiva cuentan el tiempo desde la salida.';
+      : 'Sin hora de salida ni límite: los mapas y la infografía no llevan información de tiempo; la tabla de tiempos y la página interactiva cuentan el tiempo desde la salida.';
   }
   $('nombre').value = P ? P.nombre : A.nombre;
   $('subtitulo').value = P ? P.subtitulo : '';
@@ -240,8 +240,9 @@
   const mostrarVel = () => { vel.value = ent(mediaTabla() * V.factor, 1); };
   mostrarVel();
   // ¿la velocidad sigue al tiempo objetivo? ¿la escribió el usuario? (para avisar antes de sustituirla)
-  let velObj = !!(P && P.vel_objetivo && objetivo() > 0);
   let velManual = !!(P && !P.vel_objetivo && Math.abs((P.velocidades.factor || 1) - 1) > 1e-6);
+  // en un plan nuevo (o guardado sin decirlo) con tiempo deseado, la velocidad lo sigue desde el principio
+  let velObj = objetivo() > 0 && (P ? !!P.vel_objetivo || (m0 === 'libre' && P.vel_objetivo === undefined && !velManual) : true);
   // plan sin generar: el último club u organizador usado (si sigue existiendo)
   if ($('club') && (!P || P.club === undefined)) {
     const ultimo = localStorage.getItem('venb-ultimo-club');
@@ -313,7 +314,9 @@
   // valiendo, o una cualquiera) y se muestra el tiempo desde la salida
   // (la escrita, aunque no se use, o la de la hoja); sin ninguna, una cualquiera y sin las horas de la hoja
   const salidaRef = () => { const v = new Date(salida.value); return isFinite(v) ? v : A.salida ? new Date(A.salida) : null; };
-  const inicio = () => conSalida() ? new Date(salida.value) : salidaRef() || new Date(2000, 0, 1, 0, 0);
+  // con salida pero aún sin escribir (ruta nueva sin hoja), la Previsión cuenta desde la salida, como sin salida concreta
+  const horaReal = () => conSalida() && isFinite(new Date(salida.value));
+  const inicio = () => horaReal() ? new Date(salida.value) : salidaRef() || new Date(2000, 0, 1, 0, 0);
   function calcular() {
     const t0 = inicio(), lim = limiteH(), par = paradas(), horasHoja = conSalida() || !!salidaRef();
     let ant = null;
@@ -339,7 +342,7 @@
     });
   }
   // hora del reloj o, sin hora de salida, tiempo desde la salida
-  const momento = (d, t0) => !d || !isFinite(d) ? '–' : conSalida() ? fechaHora(d) : '+' + dur((d - t0) / 60e3);
+  const momento = (d, t0) => !d || !isFinite(d) ? '–' : horaReal() ? fechaHora(d) : '+' + dur((d - t0) / 60e3);
 
   function cifra(t, v, s = '') { return `<div class="cifra"><h3>${t}</h3><b>${v}</b><span>${s}</span></div>`; }
   // Velocidad para cumplir el tiempo objetivo: horas de la tabla sin escalar / (objetivo − paradas y descansos)
@@ -376,7 +379,7 @@
     let t = 'Es la media en movimiento de toda la ruta: en cada tramo, la velocidad varía con la pendiente y la fatiga, y las paradas y los descansos se suman aparte. ';
     t += cs ? 'Con ella, VenB calcula la hora de paso por cada punto' : 'Con ella, VenB calcula el tiempo desde la salida («+5:40») hasta cada punto';
     t += cl ? (libre() ? ' y el margen frente al tiempo deseado.' : ' y el margen frente a los cierres. El tiempo límite no cambia la velocidad: si es baja, la Previsión marca en rojo los controles a los que llegas fuera de cierre (más de 5 min tarde).') : '.';
-    if (!cs && sinLimite.checked) t += ' Sin hora de salida ni límite, los mapas y las infografías no llevan tiempos: la velocidad sirve para esta Previsión, la tabla de tiempos y la página interactiva.';
+    if (!cs && sinLimite.checked) t += ' Sin hora de salida ni límite, los mapas y la infografía no llevan tiempos: la velocidad sirve para esta Previsión, la tabla de tiempos y la página interactiva.';
     if (c && !c.error) t += ` Para cambiarla sin escribirla, cambia el ${nombre}.`;
     $('vel-nota').textContent = t;
   }
@@ -393,7 +396,7 @@
     ajustarAObjetivo();
     const res = calcular(), fin = res[N - 1], t0 = res[0].llegada, cl = conLimite();
     document.getElementById('puntos').classList.toggle('sin-limite', !cl);
-    $('titulo-llegada').textContent = conSalida() ? 'Llegada' : 'Llegada (desde la salida)';
+    $('titulo-llegada').textContent = horaReal() ? 'Llegada' : 'Llegada (desde la salida)';
     res.forEach((r, i) => {
       const f = filas[i], ctrl = A.puntos[i].control;
       f.querySelector('.vel').textContent = i ? fmt(r.vel, 1) : '';
@@ -414,7 +417,7 @@
     $('resumen').innerHTML = cifra('Distancia', fmt(TOTAL, 1) + ' km', A.meta.distancia ? `oficial ${fmt(A.meta.distancia)} km` : '')
       + cifra('Desnivel', fmt(A.total_asc) + ' m', A.meta.desnivel ? `oficial ${fmt(A.meta.desnivel)} m` : 'modelo del terreno')
       + cifra('Tiempo total', dur((fin.llegada - t0) / 60e3), `${dur(mov * 60)} en movimiento`)
-      + (conSalida() ? cifra('Llegada', fechaHora(fin.llegada), `media ${fmt(TOTAL / ((fin.llegada - t0) / 36e5), 1)} km/h con paradas`)
+      + (horaReal() ? cifra('Llegada', fechaHora(fin.llegada), `media ${fmt(TOTAL / ((fin.llegada - t0) / 36e5), 1)} km/h con paradas`)
         : cifra('Media', fmt(TOTAL / ((fin.llegada - t0) / 36e5), 1) + ' km/h', 'con paradas'))
       + (cl ? cifra('Margen en meta', dur(fin.margen, true), peor && iPeor >= 0 ? `mínimo ${dur(peor.margen, true)} en ${esc(A.puntos[iPeor].control)}` : '') : '');
     $('aviso-generar').textContent = fuera ? (libre() ? `Llegas más de ${TOLERANCIA} min después del objetivo a ${fuera} control${fuera > 1 ? 'es' : ''}.`
@@ -568,10 +571,15 @@
     };
   }
   boton.addEventListener('click', () => {
-    if (pendiente) { $('aviso-generar').textContent = 'Antes de generar, pulsa «Actualizar los puntos» para aplicar los cambios en los puntos.'; return; }
     const datos = recoger();
     if (!sinSalida.checked && !salida.value) { $('aviso-generar').textContent = 'Indica la fecha y la hora de salida, o marca «Sin hora de salida concreta» en Planificación temporal.'; return; }
     if (libre() && !sinLimite.checked && !(objetivo() > 0)) { $('aviso-generar').textContent = 'Indica el tiempo deseado, o marca «Sin límite de tiempo» en Planificación temporal.'; return; }
+    // Puntos cambiados sin «Actualizar»: se actualizan (VenB vuelve a analizar la ruta) y después se genera
+    if (pendiente) {
+      if (!confirm('Has cambiado los puntos y aún no se han actualizado.\n\nVenB los actualizará (vuelve a analizar la ruta, normalmente en pocos segundos) y después generará los documentos con ellos.\n\n¿Actualizar los puntos y generar?')) return;
+      enviarPuntos(listaFilas(), $('aviso-generar'), boton, true);
+      return;
+    }
     boton.disabled = true;
     fetch(X.urlGenerar, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos) })
       .then(r => r.json().then(j => ({ ok: r.ok, j })))
@@ -616,11 +624,11 @@
         tipo: f.querySelector('.tipo').value };
     });
   }
-  function enviarPuntos(lista, avisoEn, boton) {
+  function enviarPuntos(lista, avisoEn, boton, generar = false) {
     if (lista.length < 2) { avisoEn.textContent = 'La ruta necesita al menos la salida y la meta.'; return; }
     if (lista.some(x => !x.nombre || !isFinite(num(x.km)))) { avisoEn.textContent = 'Cada punto necesita un nombre y un km.'; return; }
     boton.disabled = true; avisoEn.textContent = 'Actualizando…';
-    fetch(X.urlPuntos, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...recoger(), lista }) })
+    fetch(X.urlPuntos, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...recoger(), lista, generar }) })
       .then(r => r.json().then(j => ({ ok: r.ok, j })))
       .then(({ ok, j }) => { if (ok) location.reload(); else { boton.disabled = false; avisoEn.textContent = j.error || 'No se han podido actualizar los puntos.'; } })
       .catch(() => { boton.disabled = false; avisoEn.textContent = 'No se ha podido contactar con VenB.'; });

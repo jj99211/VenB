@@ -2,6 +2,17 @@
 
 Novedades de cada versión de VenB y VenB Rutas (las dos ediciones comparten número de versión).
 
+## 3.60
+
+- **Página interactiva, trazado exacto:** el mapa dibuja el track con los puntos del GPX original, de modo que las curvas de carreteras y calles salen completas. Antes usaba un punto cada 250 m y las curvas cerradas quedaban cortadas en recta. En las rectas se quitan los puntos que no aportan nada (los que se desvían menos de 1,5 m), para que la página no pese de más. Las páginas ya generadas hay que volver a generarlas.
+- **GPX con waypoints, más fiel:** lleva los puntos del GPX original y uno cada 25 m, así que el trazado es exacto y el perfil de altitud conserva su detalle.
+- **Página interactiva más compacta:** títulos, texto, botones, tabla y pie más pequeños. El tiempo de parada por defecto en los controles lleva una explicación y solo aparece en las rutas oficiales, con límite, cierres y controles intermedios.
+- **Ruta insertada en otra web:** la tabla ya no se sale por la derecha (columnas que se ocultan según el ancho). El ZIP de **Ruta para una web** trae `venb-insertar.js`, que se sube una vez a la carpeta de las rutas: con él, cada ruta ocupa en la página justo el alto que necesita, sin barra de desplazamiento dentro. El código para insertarla ya lo carga.
+- **Generar con puntos sin actualizar:** VenB pregunta si quieres actualizarlos y, si aceptas, los actualiza y genera los documentos sin volver a pulsar nada.
+- **Sin hora de salida:** la Previsión cuenta el tiempo desde la salida («+H:MM») en lugar de dejar la columna vacía. En los planes nuevos, la velocidad sigue al tiempo deseado desde el principio.
+- **«Infografía - Plan de Ruta»:** nombre único de la infografía en el Planificador, los Ajustes, Acerca de y el manual.
+- **Ajustes sin huecos:** las tarjetas se encajan sin dejar espacios en blanco entre ellas.
+
 ## 3.59
 
 - **Fuera de cierre, solo con retraso real:** el aviso «¡FUERA DE CIERRE!» y el margen en rojo salen solo si llegas más de 5 minutos tarde. Con menos, suele ser cosa del redondeo. Se aplica a la infografía, la tabla de tiempos, la Previsión y la página interactiva.

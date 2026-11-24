@@ -3,7 +3,7 @@
 {% block cuerpo %}
 {% if rutas %}{% include '_nueva_version.html' %}{% endif %}
 <h1>Planificador</h1>
-<p class="suave">Sube el track y la hoja de ruta de una prueba: VenB calcula a qué hora pasarás por cada punto según la pendiente de cada tramo y tus paradas, y genera la tabla de tiempos, las infografías, los mapas ilustrados y una página interactiva.</p>
+<p class="suave">Sube el track y la hoja de ruta de una prueba: VenB calcula a qué hora pasarás por cada punto según la pendiente de cada tramo y tus paradas, y genera la tabla de tiempos, la infografía «Plan de Ruta», los mapas ilustrados y una página interactiva.</p>
 {% if error %}<div class="aviso alto">{{ error }}</div>{% endif %}
 <section class="panel">
   <h2>Nueva ruta</h2>
@@ -17,7 +17,7 @@
     <ul class="lista">
       <li>Con las <b>tablas oficiales</b>: en un brevet, una Super Randonnée o un Super Brevet, los cierres y el tiempo límite son los del reglamento (si la hoja del organizador trae horas, mandan las suyas).</li>
       <li>Con <b>tiempos personalizados</b>: un tiempo objetivo (o el tiempo deseado en un recorrido libre) con el que VenB calcula la velocidad media necesaria.</li>
-      <li><b>Sin tiempos</b>: sin hora de salida concreta (los tiempos se cuentan desde la salida, «+5:40»), sin límite (sin cierres ni márgenes) o sin ninguno de los dos (mapas e infografías sin información de tiempo).</li>
+      <li><b>Sin tiempos</b>: sin hora de salida concreta (los tiempos se cuentan desde la salida, «+5:40»), sin límite (sin cierres ni márgenes) o sin ninguno de los dos (mapas e infografía sin información de tiempo).</li>
     </ul>
   </details>
   <details class="ver"><summary>¿Qué hoja de ruta sirve?</summary>

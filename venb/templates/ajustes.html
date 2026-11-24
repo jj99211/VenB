@@ -58,10 +58,10 @@
 {% endif %}
   <section class="panel">
     <h2>Planificador</h2>
-    <div class="campo"><label for="c-base">Mapa de las infografías</label>
+    <div class="campo"><label for="c-base">Mapa de la infografía</label>
       <span class="control"><select id="c-base" name="plan_mapa_base">{% for k, t in estilos_infografia.items() %}<option value="{{ k }}" {% if a.plan_mapa_base == k %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></span></div>
     {{ numero('plan_parada_min', 'Parada en cada control', min=0, max=600, unidad='min') }}
-    <div class="campo"><label for="c-web">Dirección para publicar rutas en una web</label>
+    <div class="campo apilado"><label for="c-web">Dirección para publicar rutas en una web</label>
       <span class="control"><input id="c-web" name="plan_web_base" type="url" size="40" placeholder="https://tu-web/rutas/" value="{{ a.plan_web_base or '' }}"></span>
       <span class="ayuda">Opcional. Carpeta de tu web donde subes las rutas exportadas («Ruta para una web» en cada plan): así el código para insertarlas sale con la dirección final.</span></div>
     <div class="campo"><span class="etiqueta-campo">Documentos marcados al generar</span>
@@ -100,7 +100,7 @@
 {% if rutas %}
 <section class="panel" id="clubes">
   <h2>Perfiles de club u organizador</h2>
-  <p>Cada perfil guarda el nombre, la web, el texto de la marca y uno o varios logotipos de un club u organizador. Puedes tener <b>todos los perfiles que quieras</b>: al generar los documentos de una ruta, en el Planificador, eliges cuál usar. Su marca va en los mapas, las infografías y la página interactiva, siempre junto a la de VenB.</p>
+  <p>Cada perfil guarda el nombre, la web, el texto de la marca y uno o varios logotipos de un club u organizador. Puedes tener <b>todos los perfiles que quieras</b>: al generar los documentos de una ruta, en el Planificador, eliges cuál usar. Su marca va en los mapas, la infografía y la página interactiva, siempre junto a la de VenB.</p>
   {% if error_club %}<div class="aviso medio">{{ error_club }}</div>{% endif %}
   {% if ok_club %}<div class="aviso">{{ ok_club }}</div>{% endif %}
   {% for x in avisos_club or [] %}<div class="aviso medio">{{ x }}</div>{% endfor %}
@@ -233,6 +233,21 @@
 {% endif %}
 <script>
 (function () {
+  // Tarjetas de Ajustes sin huecos verticales: cada una abarca tantas filas de 8 px como mide y la rejilla
+  // la coloca en el primer hueco libre de cualquier columna. Sin JS queda la rejilla normal de dos columnas.
+  var rej = document.querySelector('.ajustes-rejilla');
+  if (rej) {
+    var compactar = function () {
+      rej.classList.add('compacta');
+      rej.querySelectorAll(':scope > .panel').forEach(function (p) {
+        p.style.gridRowEnd = 'span ' + Math.ceil((p.getBoundingClientRect().height + 16) / 8);
+      });
+    };
+    compactar();
+    window.addEventListener('resize', compactar);
+    window.addEventListener('load', compactar);
+    if (document.fonts) document.fonts.ready.then(compactar);
+  }
   // Esperas largas: el botón dice qué está pasando mientras VenB habla con Garmin
   document.querySelectorAll('#garmin form').forEach(function (f) {
     f.addEventListener('submit', function () {

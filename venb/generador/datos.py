@@ -23,6 +23,17 @@ class Track:
     km: np.ndarray           # distancia acumulada (km)
     nombre: str = ""
     fuente_altitud: str = ""  # de dónde salen las altitudes, para el registro
+    # puntos del GPX tal cual (sin remuestrear): el trazado exacto para el mapa interactivo y el GPX descargable
+    orig_lat: np.ndarray = None
+    orig_lon: np.ndarray = None
+    orig_km: np.ndarray = None
+
+    def trazado(self, tolerancia_m=1.5):
+        """Índices de los puntos originales que bastan para dibujar el track con un error
+        menor que `tolerancia_m` (Douglas-Peucker): curvas completas, rectas con pocos puntos."""
+        if self.orig_lat is None:
+            return None
+        return simplificar(self.orig_lat, self.orig_lon, tolerancia_m)
 
     @property
     def total_km(self):
@@ -128,6 +139,37 @@ def _elegir_altitud(gpx, mdt, paso_m, ventana_m):
                     else "las del modelo del terreno")
 
 
+def simplificar(lat, lon, tolerancia_m):
+    """Douglas-Peucker sobre lat/lon (proyección local en metros): índices que se conservan, en orden."""
+    n = len(lat)
+    if n < 3:
+        return np.arange(n)
+    lat0 = math.radians(float(np.mean(lat)))
+    x = np.radians(lon) * RADIO_TIERRA * math.cos(lat0)
+    y = np.radians(lat) * RADIO_TIERRA
+    quedan = np.zeros(n, bool)
+    quedan[[0, -1]] = True
+    pila = [(0, n - 1)]
+    while pila:
+        a, b = pila.pop()
+        if b - a < 2:
+            continue
+        dx, dy = x[b] - x[a], y[b] - y[a]
+        largo = math.hypot(dx, dy)
+        px, py = x[a + 1:b] - x[a], y[a + 1:b] - y[a]
+        if largo < 1e-9:
+            d = np.hypot(px, py)
+        else:
+            t = np.clip((px * dx + py * dy) / largo ** 2, 0, 1)
+            d = np.hypot(px - t * dx, py - t * dy)
+        k = int(np.argmax(d))
+        if d[k] > tolerancia_m:
+            m = a + 1 + k
+            quedan[m] = True
+            pila += [(a, m), (m, b)]
+    return np.flatnonzero(quedan)
+
+
 def leer_gpx(ruta, paso_m=25.0, ventana_m=150.0, altitud="mdt", paso_mdt_m=50.0):
     """Lee los puntos del track, remuestrea cada `paso_m` y suaviza la altitud.
 
@@ -192,7 +234,8 @@ def leer_gpx(ruta, paso_m=25.0, ventana_m=150.0, altitud="mdt", paso_mdt_m=50.0)
         fuente = "las del GPX (elegido en el plan)"
     ele_r = _suavizar(ele_r, ventana_m, paso_m)
     return Track(lat_r, lon_r, ele_r, dr / 1000.0,
-                 nombre_el.text if nombre_el is not None else Path(ruta).stem, fuente)
+                 nombre_el.text if nombre_el is not None else Path(ruta).stem, fuente,
+                 lat, lon, d / 1000.0)
 
 
 def leer_waypoints(ruta):
