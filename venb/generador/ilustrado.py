@@ -620,6 +620,8 @@ def _puertos(lz, puertos):
 
 def _lugares(plan, separacion_km=1.5):
     """Agrupa los puntos de la hoja que son el mismo sitio (ida y vuelta)."""
+    if getattr(plan, "puerto", None) is not None:     # un puerto mide pocos km: sus puntos están cerca y son distintos
+        separacion_km = 0.25
     lugares = []
     for p in plan.puntos:
         num = p.control[1:] if p.control else ""
@@ -1225,7 +1227,7 @@ def _cartucho(lz, esquina, plan, marca, base):
     datos = ([("Salida", f"{plan.salida:%d/%m/%Y · %H:%M} h")] if con_salida(plan) else []) + [
              ("Distancia", f"{plan.total_km:.0f} km"),
              ("Desnivel", f"+{plan.total_asc:,.0f} m".replace(",", " ")),
-             ("Controles", f"{controles}")] + (
+             ("Coeficiente", f"{plan.puerto['coef']}") if getattr(plan, "puerto", None) else ("Controles", f"{controles}")] + (
              [("Tiempo objetivo" if es_objetivo(plan) else "Tiempo límite",
                f"{fmt_dur(timedelta(hours=plan.limite_h))} h")] if con_limite(plan) else [])
     # con el perfil dentro del A4 el mapa es más bajo que la hoja: el cartucho se reduce en la misma proporción
@@ -1344,15 +1346,24 @@ def _perfil(lz, plan, lugares_ctrl, solo_medir=False):
     """
     F, c, tr = lz.F, lz.c, plan.track
     esc = float(lz.cfg_mapa.get("escala_perfil", 3.0))     # título, leyenda y km del perfil
+    if getattr(plan, "puerto", None):
+        esc = min(esc, 1.8)
     kw_tit = dict(**lz.letra("perfil_titulo", 16 * F * esc), color=c["tinta"])
     kw_ley = dict(**lz.letra("perfil", 11 * F * esc), color=c["tinta"])
     kw_km = dict(**lz.letra("perfil", 11 * F * esc), color=c["tinta"])
     titulo = f"PERFIL  ·  {plan.total_km:.0f} KM  ·  +{plan.total_asc:,.0f} M".replace(",", " ")
     partes = [f"{_numeros_texto(l['numeros'])}: {l['nombre']}"
               for l in sorted(lugares_ctrl, key=lambda l: l["km"])]
+    puerto = getattr(plan, "puerto", None)      # perfil de puerto: bloques por km, más alto y con sus cifras
+    if puerto:
+        from .altimetria import num
+        cat = puerto.get("categoria") or "Sin categoría"
+        titulo = (f"{cat}  ·  {num(puerto['longitud'], 1)} km al {num(puerto['pendiente_media'], 1)} %  ·  "
+                  f"+{num(puerto['desnivel'])} m  ·  coeficiente {puerto['coef']} ({puerto['coef_100']}*)").upper()
+        partes = []
     if partes:
         partes[0] = "Controles:  " + partes[0]      # sin título, la lista no se entendía
-    x_izq = 0.06 * lz.W
+    x_izq = (0.10 if puerto else 0.06) * lz.W
     w_num = lz.medir(f"{tr.total_km:.0f}", **kw_km)[0]
     w_unidad = lz.medir("km", **kw_km)[0]
     x_der = 0.96 * lz.W - w_unidad - w_num * 0.6 - 12 * F    # sitio para "km" tras el último número
@@ -1360,8 +1371,10 @@ def _perfil(lz, plan, lugares_ctrl, solo_medir=False):
     h_tit = lz.medir(titulo, **kw_tit)[1]
     h_ley = lz.medir("Ág", **kw_ley)[1] * 1.15
     h_km = lz.medir("0", **kw_km)[1]
-    h_graf = 0.13 * min(lz.W, lz.H)
-    if E.puntos_con_icono(plan):
+    h_graf = (0.42 if puerto else 0.13) * min(lz.W, lz.H)
+    if puerto:
+        h_km *= 2.6                                     # km, «km desde el pie» y la escala de pendientes
+    elif E.puntos_con_icono(plan):
         h_graf += 52 * F                                # fila de iconos sobre el perfil
     margen = 24 * F
     alto_pie = int(margen + h_tit + margen * 0.5 + len(lineas) * h_ley + margen * 0.6 + h_graf
@@ -1385,6 +1398,16 @@ def _perfil(lz, plan, lugares_ctrl, solo_medir=False):
     y -= margen * 0.6
     y_graf0 = margen + h_km + margen * 0.5
     ax = fig.add_axes([x_izq / lz.W, fy(y_graf0), (x_der - x_izq) / lz.W, fy(h_graf)])
+    if puerto:
+        from .altimetria import dibujar_perfil, leyenda_pendientes
+        fam = lz.letra("perfil", 10)["family"]
+        pts = [{"n": None, "nombre": p.nombre, "km": p.km, "alt": p.alt} for p in plan.puntos]
+        ax.set_facecolor("none")
+        dibujar_perfil(ax, tr.km, tr.ele, puerto, pts, F * 0.75, ancho_px=x_der - x_izq, alto_px=h_graf,
+                       tinta=c["tinta"], familia=fam)
+        leyenda_pendientes(fig, 0.04, fy(margen * 0.9), F * 0.7, ancho_caja=0.06, familia=fam)
+        fig.add_artist(plt.Line2D([0.03, 0.97], [fy(alto_pie)] * 2, color=c["tinta"], lw=1.2, alpha=0.6))
+        return
     paso = max(1, len(tr.km) // 1500)
     km, ele = tr.km[::paso], tr.ele[::paso]
     base = max(0, ele.min() - (ele.max() - ele.min()) * 0.25)
@@ -1584,7 +1607,7 @@ def _generar_estilo(proyecto, plan, osm, estilo):
     tr = plan.track
     rng = np.random.default_rng(cfg.get("semilla", 7))
     W, H, xmin, ymin, xmax, ymax = _encuadre(tr, cfg)
-    con_perfil = personal and cfg.get("perfil", True)
+    con_perfil = (personal or getattr(plan, "puerto", None) is not None) and cfg.get("perfil", True)
     lz = Lienzo(W, H, xmin, ymin, xmax, ymax, _colores(cfg, estilo), F, 0, estilo,
                 float(cfg.get("escala_toponimos", 2.0)) if personal else 1.0)
     lz.cfg_mapa = cfg

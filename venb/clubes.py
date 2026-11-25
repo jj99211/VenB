@@ -212,4 +212,7 @@ def marca(cid):
     ruta = os.path.join(_carpeta(cid), 'marca_compuesta.png')
     lienzo.save(ruta, 'PNG', optimize=True)
     propio = c['texto'] or ' - '.join(t for t in (c['nombre'], c['web'].removeprefix('https://').removeprefix('http://')) if t)
-    return {'texto': f'{propio} · {MARCA_VENB}', 'logo': ruta}
+    # «club»: lo mismo por separado, para la cabecera de la página interactiva (club destacado; VenB, al pie)
+    return {'texto': f'{propio} · {MARCA_VENB}', 'logo': ruta,
+            'club': {'nombre': c['nombre'], 'web': c['web'],
+                     'logos': [os.path.join(_carpeta(cid), n) for n in c['logos']]}}

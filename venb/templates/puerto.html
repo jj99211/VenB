@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% block titulo %}VenB: puertos de {{ e.nombre or 'la ruta' }}{% endblock %}
+{% block cuerpo %}
+<p><a href="{{ url_for('puertos') }}">← Perfiles de puertos</a></p>
+<h1>{{ e.nombre or 'Ruta' }}</h1>
+{% if a %}<p class="suave">{{ a.total_km|n }} km · +{{ a.total_asc|n }} m · altitudes: {{ a.fuente_altitud }}</p>{% endif %}
+<script type="application/json" id="datos-puertos">{{ {'a': a, 'puertos': puertos, 'fase': e.fase, 'tipos': tipos, 'urlEstado': url_for('puertos_estado', aid=e.id), 'urlGuardar': url_for('puertos_guardar', aid=e.id), 'urlGenerar': url_for('puertos_generar', aid=e.id), 'urlDetener': url_for('puertos_detener', aid=e.id), 'urlTramo': url_for('puertos_tramo', aid=e.id), 'urlProponer': url_for('puertos_proponer', aid=e.id)}|tojson }}</script>
+
+{% if e.fase == 'analizando' or (e.fase == 'error' and not a) %}
+<section class="panel" id="progreso">
+  {% if e.fase == 'analizando' %}
+  <h2>Analizando el track…</h2>
+  <p class="aviso-espera" role="status"><span class="girando" aria-hidden="true">⟳</span> <span class="suave">Altitudes del terreno, subidas y lugares de OpenStreetMap junto al track. Esta página se actualiza sola.</span></p>
+  <p><button type="button" class="discreto" id="detener">Detener proceso</button></p>
+  {% else %}
+  <h2>No se ha podido analizar el track</h2>
+  <div class="aviso alto">{{ e.error }}</div>
+  {% endif %}
+  <pre class="registro">{{ e.registro|join('\n') }}</pre>
+</section>
+{% else %}
+{% if request.args.error %}<div class="aviso alto">{{ request.args.error }}</div>{% endif %}
+{% if a.avisos %}<div class="aviso medio"><ul class="lista">{% for x in a.avisos %}<li>{{ x }}</li>{% endfor %}</ul></div>{% endif %}
+
+<section class="panel">
+  <h2>Perfil de la ruta</h2>
+  <svg id="perfil-ruta" class="perfil-ruta" viewBox="0 0 1000 220" role="img" aria-label="Perfil de la ruta con los puertos marcados"></svg>
+  <p class="suave">Las subidas marcadas son las que tienen categoría de puerto. Pasa el ratón por el perfil para ver el km y la altitud: te ayuda a elegir el pie y la cima de un tramo.</p>
+</section>
+
+<section class="panel" id="lista-puertos">
+  <h2>Puertos</h2>
+  {% if not puertos %}<p class="suave">No hay subidas con categoría de puerto (coeficiente 15 o más) en este track. Puedes añadir un tramo a mano.</p>{% endif %}
+  <p class="suave">Marca los puertos de los que quieres documentos. Puedes cambiar el nombre, el pie y la cima (en km del track) y los puntos de paso; al guardar se recalculan las cifras. Los puntos de cada puerto salen numerados en el mapa y en el perfil.</p>
+  {% for p in puertos %}
+  <article class="puerto-tramo" data-id="{{ p.id }}">
+    <div class="puerto-cabecera">
+      <label class="casilla"><input type="checkbox" class="p-incluir" {% if p.incluir %}checked{% endif %}> Generar</label>
+      <span class="categoria cat-{{ p.cat or 'no' }}">{% if p.cat == 'E' %}Especial{% elif p.cat %}{{ p.cat }}.ª{% else %}Sin cat.{% endif %}</span>
+      <input type="text" class="p-nombre" value="{{ p.nombre }}" aria-label="Nombre del puerto" maxlength="80">
+    </div>
+    <p class="cifras-puerto"><b>{{ p.longitud|n(1) }} km</b> al <b>{{ p.pendiente_media|n(1) }} %</b> · {{ p.alt_pie|n }} → {{ p.alt_cima|n }} m (+{{ p.desnivel|n }} m) · máxima {{ p.pendiente_max_km|n(1) }} % (1 km) y {{ p.pendiente_max_100|n(1) }} % (100 m) · <b>coeficiente {{ p.coef }}</b> ({{ p.coef_100 }}*){% if p.categoria %} · {{ p.categoria }}{% endif %}</p>
+    <div class="linea-campos">
+      <label>Subtítulo<input type="text" class="p-subtitulo" value="{{ p.subtitulo }}" maxlength="120" placeholder="Desde…"></label>
+      <label>Pie (km del track)<input type="number" class="p-km0" value="{{ p.km0 }}" step="0.05" min="0"></label>
+      <label>Cima (km del track)<input type="number" class="p-km1" value="{{ p.km1 }}" step="0.05" min="0"></label>
+    </div>
+    <details class="ver puntos-puerto"{% if p.incluir %} open{% endif %}><summary>Puntos de paso ({{ p.puntos|length }})</summary>
+      <div class="tabla"><table class="tabla-puntos">
+        <thead><tr><th>N.º</th><th>Nombre</th><th class="num">km del track</th><th>Tipo</th><th class="num">Altitud</th><th></th></tr></thead>
+        <tbody>{% for x in p.puntos %}<tr>
+          <td class="num">{{ loop.index }}</td>
+          <td><input type="text" class="w-nombre" value="{{ x.nombre }}" maxlength="60" aria-label="Nombre del punto"></td>
+          <td class="num"><input type="number" class="w-km" value="{{ x.km }}" step="0.05" aria-label="km"></td>
+          <td><select class="w-tipo" aria-label="Tipo">{% for k, v in tipos.items() %}<option value="{{ k }}"{% if k == x.tipo %} selected{% endif %}>{{ v }}</option>{% endfor %}</select></td>
+          <td class="num">{{ x.alt|n }} m</td>
+          <td><button type="button" class="discreto w-quitar">Quitar</button></td>
+        </tr>{% endfor %}</tbody>
+      </table></div>
+      <p><button type="button" class="discreto w-anadir">Añadir punto</button>
+         <button type="button" class="discreto p-proponer" title="Sustituye los puntos por los que propone OpenStreetMap para el pie y la cima actuales">Volver a proponer los puntos</button></p>
+    </details>
+    <p><button type="button" class="discreto p-quitar">Quitar este tramo</button></p>
+  </article>
+  {% endfor %}
+  <p><button type="button" id="guardar" class="boton-principal">Guardar cambios y recalcular</button> <span id="guardar-estado" class="suave" role="status"></span></p>
+  <details class="ver"><summary>Añadir un tramo a mano</summary>
+    <p class="suave">Una subida que no ha salido en la lista (por ejemplo, con coeficiente menor de 15) o solo una parte de un puerto. Mira los km en el perfil de arriba.</p>
+    <div class="linea-campos"><label>Pie (km)<input type="number" id="nuevo-km0" step="0.05" min="0"></label><label>Cima (km)<input type="number" id="nuevo-km1" step="0.05" min="0"></label>
+      <button type="button" id="nuevo-tramo">Añadir tramo</button></div>
+  </details>
+  {% include '_coeficiente.html' %}
+</section>
+
+<section class="panel" id="documentos">
+  <h2>Documentos</h2>
+  <p class="suave">Se generan para cada puerto marcado, en una carpeta propia.</p>
+  <fieldset class="casillas">{% for k, v in salidas.items() %}
+    <label class="casilla"><input type="checkbox" class="salida" value="{{ k }}" {% if k in par.salidas %}checked{% endif %}> {{ v }}</label>{% endfor %}
+  </fieldset>
+  <div class="linea-campos">
+    <label>Mapa de la ficha<select id="estilo-mapa">{% for k, v in estilos.items() %}<option value="{{ k }}"{% if k == par.estilo_mapa %} selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>
+    {% if rutas %}<label>Club u organizador (marca de los documentos)<select id="club" data-guardado="{{ '' if par.club is none else 'si' }}"><option value="">— Solo VenB —</option>{% for c in clubes %}<option value="{{ c.id }}"{% if c.id == par.club %} selected{% endif %}>{{ c.nombre }}</option>{% endfor %}</select>
+      <a class="suave" href="{{ url_for('ajustes', _anchor='clubes') }}">Gestionar los perfiles de club</a></label>{% endif %}
+    <label>Colores del mapa Al-Ballut<select id="paleta">{% for k in paletas %}<option value="{{ k }}"{% if k == par.paleta %} selected{% endif %}>{{ k }}</option>{% endfor %}</select></label>
+  </div>
+  <p class="suave">Los mapas ilustrados necesitan datos de OpenStreetMap de la zona: la primera vez pueden tardar varios minutos. La ficha usa el mapa del IGN (solo España; fuera, el topográfico de OpenStreetMap).</p>
+  <p><button type="button" id="generar" class="boton-principal" {% if e.fase == 'generando' %}disabled{% endif %}>Generar</button></p>
+  <div id="progreso-generar" {% if e.fase != 'generando' %}hidden{% endif %}>
+    <p class="aviso-espera" role="status"><span class="girando" aria-hidden="true">⟳</span> Generando… <span id="paso-generar" class="suave"></span></p>
+    <p><button type="button" class="discreto" id="detener-generar">Detener proceso</button></p>
+    <details><summary>Ver el detalle del proceso</summary><pre class="registro">{{ e.registro|join('\n') }}</pre></details>
+  </div>
+  {% if e.error and e.fase != 'error' %}<div class="aviso alto">{{ e.error }}</div>{% endif %}
+  {% if e.aviso_mapas %}<div class="aviso medio">{{ e.aviso_mapas }}</div>{% endif %}
+
+  {% if documentos %}
+  <h2 style="margin-top:16px">Ficheros generados{% if e.generado %} <span class="suave">({{ e.generado[8:10] }}/{{ e.generado[5:7] }}/{{ e.generado[:4] }} {{ e.generado[11:16] }})</span>{% endif %}</h2>
+  <p><a href="{{ url_for('puertos_zip', aid=e.id) }}">Descargar todo (ZIP)</a></p>
+  {% for g in documentos %}
+  <details class="plegable" id="doc-{{ g.carpeta }}" open><summary><h3 class="en-linea">{{ g.nombre }}{% if g.categoria %} <span class="suave">· {{ g.categoria }} · coeficiente {{ g.coef }}</span>{% endif %}</h3></summary>
+    <div class="documentos">{% for d in g.docs %}
+      <article class="documento">
+        <h3>{{ d.titulo }}</h3>
+        {% if d.imagen %}<a class="vista" href="{{ url_for('puertos_fichero', aid=e.id, ruta=d.imagen) }}" target="_blank" rel="noopener" title="Abrir a tamaño completo"><img loading="lazy" src="{{ url_for('puertos_fichero', aid=e.id, ruta=d.imagen) }}" alt="{{ d.titulo }}"></a>{% endif %}
+        <p class="formatos">{% for fmt, f in d.ficheros %}<span class="formato"><b>{{ fmt }}</b>
+          {% if fmt != 'GPX' %}<a href="{{ url_for('puertos_fichero', aid=e.id, ruta=f) }}" target="_blank" rel="noopener">Abrir</a> · {% endif %}<a href="{{ url_for('puertos_fichero', aid=e.id, ruta=f, descargar=1) }}">Descargar</a></span>{% endfor %}</p>
+      </article>{% endfor %}
+    </div>
+  </details>
+  {% endfor %}
+  {% endif %}
+</section>
+{% endif %}
+<script src="{{ url_for('static', filename='puertos.js') }}"></script>
+{% endblock %}

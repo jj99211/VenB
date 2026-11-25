@@ -325,3 +325,20 @@ details[open] > summary.boton-principal { opacity:.75; }
 img.logo-club.cuadros { height:70px; max-width:200px; margin:0; padding:4px;
   background:repeating-conic-gradient(#d8d8d8 0 25%, #fff 0 50%) 0 0 / 14px 14px; }
 tr.actual td { background:var(--bajo); }
+
+/* Perfiles de puertos */
+.perfil-ruta { width:100%; height:auto; display:block; background:var(--panel); border:1px solid var(--borde); border-radius:5px; cursor:crosshair; }
+.perfil-ruta .eje { font-size:11px; fill:var(--suave); }
+.perfil-ruta .etq-puerto { font-size:13px; font-weight:700; fill:var(--texto); }
+.puerto-tramo { border:1px solid var(--borde); border-radius:6px; padding:10px 14px 4px; margin:0 0 14px; background:var(--panel); }
+.puerto-cabecera { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.puerto-cabecera .p-nombre { flex:1; min-width:14rem; font-size:1.1em; font-weight:600; }
+.categoria { display:inline-block; min-width:3.2em; text-align:center; padding:2px 8px; border-radius:5px; color:#fff; font-weight:700; background:#888; }
+.categoria.cat-E { background:#4a0c0c; } .categoria.cat-1 { background:#a51d1d; } .categoria.cat-2 { background:#de4f2a; }
+.categoria.cat-3 { background:#c96f1c; } .categoria.cat-4 { background:#b08a1a; }
+.cifras-puerto { margin:8px 0; }
+.tabla-puntos input[type=text] { width:100%; min-width:12rem; }
+.tabla-puntos input[type=number] { width:6.5rem; }
+.puerto-tramo .linea-campos label:first-child { flex:1; min-width:14rem; }
+.puerto-tramo .linea-campos input[type=text] { width:100%; }
+.puerto-tramo .linea-campos input[type=number] { width:8rem; }

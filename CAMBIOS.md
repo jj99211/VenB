@@ -2,6 +2,13 @@
 
 Novedades de cada versión de VenB y VenB Rutas (las dos ediciones comparten número de versión).
 
+## 3.62
+
+- **Perfiles de puertos (nuevo):** en **Planificador > Perfiles de puertos**, sube un GPX o elige una de tus rutas, y VenB detecta las subidas, calcula su coeficiente de dificultad (método de altimetrias.net, por km y cada 100 m) y su categoría (4.ª, 3.ª, 2.ª, 1.ª o Especial), con la pendiente máxima en 1 km y en 100 m. Para cada puerto, puedes revisar sus puntos y generar una ficha A4 con mapa y perfil, el perfil suelto, el GPX con waypoints, la página interactiva (sin tiempos) y los mapas ilustrados. En VenB Rutas, con la marca del club elegido. Desde la página de un plan, **⛰ Perfiles de puertos de esta ruta** abre el análisis de su track.
+- **Página interactiva, cabecera nueva:** es un panel con el club u organizador destacado arriba (logotipos, nombre en grande y un botón a su web que se abre en otra pestaña). Debajo van el nombre de la ruta, el subtítulo y las cifras principales en tarjetas, y los botones **Descargar GPX con waypoints** y, si está insertada en otra web, **Ver a pantalla completa**. La referencia a VenB pasa al pie. Ya no se monta nada sobre el título cuando la web la muestra a todo lo ancho.
+- **Nombres de los puntos también en el perfil** de la página interactiva. La casilla pasa a llamarse **Ver los nombres de los puntos** y explica qué hace.
+- Las páginas ya publicadas en una web conservan la cabecera anterior hasta que se generen de nuevo y se vuelvan a subir.
+
 ## 3.61
 
 - **Puntos en el mapa interactivo:** cada punto lleva el icono de su tipo (⛰️ puerto, 🏘️ población, ☕ café…) y su nombre al lado. La casilla **Nombres de los puntos** los oculta; sin ella, el nombre aparece al pasar por encima. Si la llegada está en el mismo sitio que la salida, se ve la salida y un solo nombre.

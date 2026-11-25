@@ -3,6 +3,7 @@
 {% block cuerpo %}
 <p><a href="{{ url_for('planificador') }}">← Planificador</a></p>
 <h1>{{ (p.nombre if p else (a.nombre if a else e.nombre)) or 'Ruta' }}</h1>
+{% if a %}<p><a class="boton" href="{{ url_for('plan_puertos', pid=e.id) }}">⛰ Perfiles de puertos de esta ruta</a> <span class="suave">Los puertos de la ruta con su coeficiente y categoría, y una ficha por puerto.</span></p>{% endif %}
 {% if e.evento %}{% set ev = evento_de_plan(e.evento) %}{% if ev %}<p class="suave">Prueba del calendario: <a href="{{ url_for('evento_editar', eid=ev.id) }}">{{ ev.nombre }}</a> ({{ ev.fecha|iso_fecha }}).</p>{% endif %}{% endif %}
 
 {% if e.fase == 'analizando' or (e.fase == 'error' and not a) %}

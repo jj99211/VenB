@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block titulo %}VenB: Perfiles de puertos{% endblock %}
+{% block cuerpo %}
+<h1>Perfiles de puertos</h1>
+<p class="suave">A partir de un track, VenB busca las subidas que pueden considerarse puertos de montaña, calcula su <b>Coeficiente de Dificultad</b> y su <b>categoría</b>, y propone puntos de paso de OpenStreetMap (pueblos, puertos, cimas, fuentes, miradores) que puedes cambiar. Con cada puerto que elijas genera una ficha A4 con mapa y perfil detallado, el perfil suelto, los mapas ilustrados, el GPX y una página interactiva.</p>
+{% if error %}<div class="aviso alto">{{ error }}</div>{% endif %}
+<section class="panel">
+  <h2>Nuevo análisis</h2>
+  <form class="linea" method="post" action="{{ url_for('puertos_nuevo') }}" enctype="multipart/form-data">
+    <label>Track (GPX)<input type="file" name="gpx" accept=".gpx"></label>
+    {% if planes %}<label>o una de tus rutas del Planificador<select name="plan"><option value="">—</option>{% for x in planes %}{% if x.fase != 'error' %}<option value="{{ x.id }}">{{ x.nombre or 'Ruta' }}{% if x.total_km %} ({{ x.total_km|n }} km){% endif %}</option>{% endif %}{% endfor %}</select></label>{% endif %}
+    <button>Analizar</button>
+  </form>
+  <p class="suave">Sirve tanto una ruta completa (VenB encuentra sus puertos) como el track de una sola subida. Si el GPX trae altitudes, se comparan con las del modelo del terreno y se usan las más limpias, como en el Planificador.</p>
+  {% include '_coeficiente.html' %}
+</section>
+<section class="panel">
+  <h2>Tus análisis</h2>
+  {% if analisis %}<div class="tabla"><table>
+    <thead><tr><th>Ruta</th><th class="num">km</th><th class="num">Desnivel</th><th class="num">Puertos</th><th>Estado</th><th></th></tr></thead>
+    <tbody>{% for x in analisis %}<tr>
+      <td><a href="{{ url_for('puertos_ver', aid=x.id) }}">{{ x.nombre or 'Ruta' }}</a><br><span class="suave">{{ x.gpx_original }}</span></td>
+      <td class="num">{% if x.total_km %}{{ x.total_km|n }}{% else %}–{% endif %}</td><td class="num">{% if x.total_asc %}{{ x.total_asc|n }} m{% else %}–{% endif %}</td>
+      <td class="num">{{ x.n_puertos }}</td>
+      <td>{{ {'analizando': 'Analizando…', 'listo': 'Por generar', 'generando': 'Generando…', 'hecho': 'Generado', 'error': 'Error'}[x.fase] or x.fase }}</td>
+      <td class="acciones"><form method="post" action="{{ url_for('puertos_borrar', aid=x.id) }}" onsubmit="return confirm('¿Borrar este análisis y todo lo generado?')"><button class="discreto">Borrar</button></form></td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="suave">Todavía no has analizado ningún track.</p>{% endif %}
+</section>
+{% endblock %}

@@ -21,6 +21,7 @@ import datos_venb as D
 import diario as DI
 import importar as IM
 import planificador as PL
+import puertos as PU
 import red as RED
 import rutas as R
 from version import VERSION
@@ -93,15 +94,15 @@ def salir():
 # Menú: (página, texto, submenú). Brevets va en el primer nivel; Gráficas repite en el submenú la página de Análisis, para que se vea. Cada página secundaria se marca en su sección por el prefijo de su función.
 MENU = [('inicio', 'Inicio', []),
         ('graficas', 'Análisis', [('graficas', 'Gráficas'), ('historico', 'Histórico'), ('importar', 'Importar'), ('bicis', 'Bicis'), ('informes', 'Informes')]),
-        ('brevets', 'Brevets', []), ('planificador', 'Planificador', []), ('calendario', 'Calendario', []), ('ajustes', 'Ajustes', []),
+        ('brevets', 'Brevets', []), ('planificador', 'Planificador', [('planificador', 'Rutas'), ('puertos', 'Perfiles de puertos')]), ('calendario', 'Calendario', []), ('ajustes', 'Ajustes', []),
         ('ayuda', 'Ayuda', [('ayuda', 'Manual de usuario'), ('acerca', 'Acerca de')])]
 # VenB Rutas (solo el Planificador): menú reducido; el resto de páginas no existe en esa edición
 RUTAS = R.RUTAS
 NOMBRE_APP = 'VenB Rutas' if RUTAS else 'VenB'
-MENU_RUTAS = [('planificador', 'Planificador', []), ('ajustes', 'Ajustes', []),
+MENU_RUTAS = [('planificador', 'Planificador', [('planificador', 'Rutas'), ('puertos', 'Perfiles de puertos')]), ('ajustes', 'Ajustes', []),
               ('ayuda', 'Ayuda', [('ayuda', 'Manual del Planificador'), ('acerca', 'Acerca de')])]
-EN_RUTAS = ('planificador', 'plan', 'ajustes', 'club', 'red', 'copia', 'ayuda', 'acerca', 'static', 'entrar', 'salir', 'cerrar', 'actualiza')
-PREFIJOS = {'club': 'ajustes', 'importar': 'importar', 'brevet': 'brevets', 'bici': 'bicis', 'actividad': 'historico', 'informe': 'informes', 'diario': 'informes', 'plan': 'planificador',
+EN_RUTAS = ('planificador', 'plan', 'puerto', 'ajustes', 'club', 'red', 'copia', 'ayuda', 'acerca', 'static', 'entrar', 'salir', 'cerrar', 'actualiza')
+PREFIJOS = {'club': 'ajustes', 'importar': 'importar', 'brevet': 'brevets', 'bici': 'bicis', 'actividad': 'historico', 'informe': 'informes', 'diario': 'informes', 'plan': 'planificador', 'puerto': 'puertos',
             'evento': 'calendario', 'fecha_clave': 'calendario', 'actualiza': 'acerca', 'garmin': 'ajustes', 'copia': 'ajustes', 'red': 'ajustes', 'datos_graficas': 'graficas'}
 
 
@@ -1412,6 +1413,133 @@ def plan_web(pid):
     except PL.ErrorPlan as e:
         return redirect(url_for('plan_ver', pid=pid, error=str(e), _anchor='documentos'))
     return send_file(ruta, as_attachment=True, download_name=os.path.basename(ruta)[4:], mimetype='application/zip')
+
+
+@app.route('/puertos')
+def puertos():
+    return render_template('puertos.html', analisis=PU.lista(), planes=PL.lista(), error=request.args.get('error'))
+
+
+@app.post('/puertos/nuevo')
+def puertos_nuevo():
+    request.max_content_length = 100 * 1024 ** 2
+    try:
+        aid = PU.crear(request.files.get('gpx'), request.form.get('plan') or None)
+    except PL.ErrorPlan as e:
+        return redirect(url_for('puertos', error=str(e)))
+    return redirect(url_for('puertos_ver', aid=aid))
+
+
+def _analisis_puertos(aid):
+    try:
+        return PU.estado(aid)
+    except KeyError:
+        abort(404)
+
+
+@app.route('/puertos/<aid>')
+def puertos_ver(aid):
+    e = _analisis_puertos(aid)
+    a, ps, par = PU.datos(aid)
+    return render_template('puerto.html', e=e, a=a, puertos=ps, par=par, documentos=PU.documentos(aid), tipos=PU.TIPOS,
+                           salidas=PU.SALIDAS, estilos=PU.ESTILOS_FICHA, paletas=PL.PALETAS, clubes=CL.lista() if RUTAS else [])
+
+
+@app.route('/planificador/<pid>/puertos')
+def plan_puertos(pid):
+    """Desde una ruta del Planificador: su análisis de puertos (el último) o uno nuevo."""
+    _plan(pid)
+    try:
+        aid = PU.de_plan(pid)
+    except PL.ErrorPlan as e:
+        return redirect(url_for('puertos', error=str(e)))
+    return redirect(url_for('puertos_ver', aid=aid))
+
+
+@app.route('/puertos/<aid>/estado.json')
+def puertos_estado(aid):
+    e = _analisis_puertos(aid)
+    return jsonify({k: e.get(k) for k in ('fase', 'error', 'registro')})
+
+
+def _puertos_json(aid, fn):
+    _analisis_puertos(aid)
+    request.max_content_length = 2 * 1024 ** 2
+    datos = request.get_json(force=True, silent=True) or {}
+    try:
+        fn(datos)
+    except PL.EnMarcha as e:
+        return jsonify({'error': str(e), 'en_marcha': True}), 409
+    except PL.ErrorPlan as e:
+        return jsonify({'error': str(e)}), 400
+    return jsonify({'ok': True})
+
+
+@app.post('/puertos/<aid>/guardar')
+def puertos_guardar(aid):
+    return _puertos_json(aid, lambda d: PU.guardar(aid, d.get('puertos') or []))
+
+
+def _numero(v, que):
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        raise PL.ErrorPlan(f'Escribe el km {que}.')
+
+
+@app.post('/puertos/<aid>/tramo')
+def puertos_tramo(aid):
+    def fn(d):
+        PU.guardar(aid, d.get('puertos') or [])
+        PU.nuevo_tramo(aid, _numero(d.get('km0'), 'del pie'), _numero(d.get('km1'), 'de la cima'))
+    return _puertos_json(aid, fn)
+
+
+@app.post('/puertos/<aid>/proponer')
+def puertos_proponer(aid):
+    def fn(d):
+        PU.guardar(aid, d.get('puertos') or [])
+        PU.proponer_puntos(aid, str(d.get('id') or ''))
+    return _puertos_json(aid, fn)
+
+
+@app.post('/puertos/<aid>/generar')
+def puertos_generar(aid):
+    return _puertos_json(aid, lambda d: PU.generar(aid, d))
+
+
+@app.post('/puertos/<aid>/detener')
+def puertos_detener(aid):
+    return _puertos_json(aid, lambda d: PU.detener(aid))
+
+
+@app.route('/puertos/<aid>/f/<path:ruta>')
+def puertos_fichero(aid, ruta):
+    _analisis_puertos(aid)
+    try:
+        f = PU.fichero(aid, ruta)
+    except KeyError:
+        abort(404)
+    return send_file(f, as_attachment=request.args.get('descargar') == '1')
+
+
+@app.route('/puertos/<aid>/zip')
+def puertos_zip(aid):
+    _analisis_puertos(aid)
+    if not PU.documentos(aid):
+        abort(404)
+    ruta = PU.zip_salida(aid)
+    return send_file(ruta, as_attachment=True, download_name=os.path.basename(ruta), mimetype='application/zip')
+
+
+@app.post('/puertos/<aid>/borrar')
+def puertos_borrar(aid):
+    _analisis_puertos(aid)
+    try:
+        PU.borrar(aid)
+    except PL.ErrorPlan as e:
+        return redirect(url_for('puertos', error=str(e)))
+    return redirect(url_for('puertos'))
 
 
 @app.post('/planificador/<pid>/borrar')

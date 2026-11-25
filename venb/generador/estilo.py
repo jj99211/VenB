@@ -110,6 +110,18 @@ COLORES_DIA = ["#d62728", "#2c5aa0", "#16855f", "#b0124f", "#c25a00", "#5b3b8c",
 COLORES_PENDIENTE = [(2, "#f3e48a"), (4, "#f2c14e"), (6, "#ee8f35"), (8, "#de4f2a"), (99, "#a51d1d")]
 
 
+# perfiles de puertos: la misma escala, con más tonos en las rampas duras (desde el 8 %)
+COLORES_PENDIENTE_PUERTO = [(2, "#f3e48a"), (4, "#f2c14e"), (6, "#ee8f35"), (8, "#de4f2a"), (10, "#a51d1d"),
+                            (12, "#741313"), (15, "#4a0c0c"), (999, "#1e0505")]
+
+
+def color_pendiente_puerto(pct):
+    for lim, c in COLORES_PENDIENTE_PUERTO:
+        if pct < lim:
+            return c
+    return COLORES_PENDIENTE_PUERTO[-1][1]
+
+
 def color_dia(i):
     return COLORES_DIA[i % len(COLORES_DIA)]
 

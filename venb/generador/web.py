@@ -15,28 +15,66 @@ PLANTILLA = r"""<!doctype html>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
-  :root { --tinta:#1f2328; --gris:#6b7280; --linea:#e5e7eb; --fondo:#f7f7f5; --ok:#16855f; --mal:#c62828; }
+  :root { --acento:#2c5aa0; --tinta:#1f2328; --gris:#6b7280; --linea:#e5e7eb; --fondo:#f7f7f5; --ok:#16855f; --mal:#c62828; }
   * { box-sizing:border-box; }
   body { margin:0; font:19px/1.4 system-ui, "Segoe UI", Roboto, sans-serif; color:var(--tinta); background:var(--fondo); }
-  header { padding:14px 20px 10px; background:#fff; border-bottom:1px solid var(--linea); position:relative; }
-  .marca { position:absolute; top:12px; right:20px; display:flex; flex-direction:column; align-items:center; gap:6px; }
-  .marca img { height:80px; }
-  .marca a { color:#b8322a; font-weight:600; font-size:17px; text-decoration:none; }
-  .marca a:hover { text-decoration:underline; }
-  @media (max-width: 1500px) { .marca { position:static; flex-direction:row; justify-content:flex-start; margin-bottom:8px; } .marca img { height:50px; } }
-  h1 { margin:0; font-size:20px; letter-spacing:.2px; }
-  h1 small { font-weight:500; color:var(--gris); font-size:15px; margin-left:8px; }
-  .datos { display:flex; flex-wrap:wrap; gap:6px 18px; margin-top:6px; color:#333; }
-  .datos b { font-variant-numeric:tabular-nums; }
-  .controles { display:flex; flex-wrap:wrap; gap:10px 18px; align-items:end; margin-top:10px; }
+  /* Cabecera: el promotor arriba y destacado; debajo la ruta (título, subtítulo, cifras en tarjetas), los botones y
+     los ajustes. Todo en el flujo normal: nada se monta sobre nada, sea cual sea el ancho */
+  /* la cabecera es un panel: fondo azulado que se aclara hacia abajo, borde y sombra; separada del mapa */
+  header { margin:14px 20px 0; padding:18px 22px 16px; border:1px solid #d6dfec; border-radius:12px;
+           background:linear-gradient(180deg, #e9f0f9 0%, #f6f9fd 45%, #fff 100%);
+           box-shadow:0 1px 2px rgba(16,40,80,.06), 0 6px 18px rgba(16,40,80,.10); }
+  .promotor { display:flex; flex-wrap:wrap; align-items:center; gap:12px 20px; padding-bottom:14px; margin-bottom:14px;
+              border-bottom:3px solid var(--acento); }
+  .promotor-logos { display:flex; flex-wrap:wrap; align-items:center; gap:14px; }
+  .promotor-logos img { height:72px; max-width:260px; object-fit:contain; }
+  .promotor-texto { display:flex; flex-direction:column; align-items:flex-start; gap:6px; }
+  .promotor-nombre { font-size:28px; font-weight:750; line-height:1.15; letter-spacing:.2px; }
+  .promotor-web { display:inline-flex; align-items:center; gap:6px; padding:4px 14px; border:1.5px solid var(--acento);
+                  border-radius:999px; color:var(--acento); font-size:16px; font-weight:600; text-decoration:none; }
+  .promotor-web:hover { background:var(--acento); color:#fff; }
+  h1 { margin:0; font-size:26px; line-height:1.2; letter-spacing:.2px; }
+  .subtitulo { margin:4px 0 0; color:var(--gris); font-size:18px; }
+  .subtitulo:empty { display:none; }
+  .datos { display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
+  .dato { display:flex; flex-direction:column; min-width:96px; padding:7px 14px; background:#fff;
+          border:1px solid #dbe3ee; border-radius:8px; box-shadow:0 1px 2px rgba(16,40,80,.05); }
+  .dato b { font-size:24px; line-height:1.15; font-variant-numeric:tabular-nums; }
+  .dato span { font-size:14px; color:var(--gris); }
+  .dato.ancho { min-width:0; }
+  .acciones { display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
+  .boton { display:inline-flex; align-items:center; gap:8px; padding:9px 18px; border-radius:8px; font:600 17px/1.2 system-ui, sans-serif;
+           text-decoration:none; cursor:pointer; border:2px solid var(--acento); }
+  .boton.principal { background:var(--acento); color:#fff; }
+  .boton.principal:hover { background:#234a85; border-color:#234a85; }
+  .boton.secundario { background:#fff; color:var(--acento); }
+  .boton.secundario:hover { background:#eef3fb; }
+  .controles { display:flex; flex-wrap:wrap; gap:10px 18px; align-items:end; margin-top:14px; padding-top:12px; border-top:1px solid #dbe3ee; }
   .controles label[hidden] { display:none; }
-  .controles label.casilla { flex-direction:row; align-items:center; gap:6px; padding-bottom:7px; }
+  .controles label.casilla { flex-direction:row; align-items:flex-start; gap:8px; padding-bottom:4px; color:var(--tinta); }
+  .controles label.casilla input { margin-top:5px; }
+  .controles label.casilla small { display:block; color:var(--gris); font-size:14px; }
   .controles label { display:flex; flex-direction:column; font-size:16px; color:var(--gris); gap:2px; }
   .controles input, .controles select { font:inherit; padding:4px 6px; border:1px solid #ccc; border-radius:4px; }
   .controles input[type=number] { width:120px; }
-  .controles button { font:inherit; font-size:16px; padding:5px 12px; border:1px solid #888; border-radius:4px; background:#fff; cursor:pointer; }
-  .dias { display:flex; gap:6px; flex-wrap:wrap; }
+  .dias { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+  .dias:empty { display:none; }
   .chip { color:#fff; padding:4px 10px; border-radius:4px; font-weight:600; font-size:17px; }
+  @media (max-width: 640px) {
+    header { margin:8px 8px 0; padding:12px 14px; border-radius:10px; }
+    .promotor-logos img { height:56px; }
+    .promotor-nombre { font-size:23px; }
+    h1 { font-size:22px; }
+    .datos { gap:6px; }
+    .dato { min-width:0; padding:5px 10px; }
+    .dato b { font-size:19px; }
+    .dato span { font-size:13px; }
+    .boton { padding:8px 14px; font-size:16px; }
+  }
+  .credito { margin-top:10px; }
+  .credito a { display:inline-flex; align-items:center; gap:6px; color:var(--gris); text-decoration:none; font-size:14px; }
+  .credito a:hover { text-decoration:underline; }
+  .credito img { height:20px; opacity:.75; }
   main { display:grid; grid-template-columns:minmax(0, 1.25fr) minmax(0, 1fr); gap:14px; padding:14px 20px; }
   @media (max-width: 1500px) { main { grid-template-columns:1fr; } }
   .insertada #mapa { height:560px; min-height:0; }
@@ -75,7 +113,12 @@ PLANTILLA = r"""<!doctype html>
 <header>
   __MARCA__
   <h1 id="titulo"></h1>
+  <p class="subtitulo" id="subtitulo"></p>
   <div class="datos" id="resumen"></div>
+  <div class="dias" id="dias"></div>
+  <div class="acciones" id="acciones">
+    <button type="button" class="boton principal" id="descargar-gpx" title="Track con los controles, la salida, la llegada y los demás puntos como waypoints (tipos de Garmin Connect)"><span aria-hidden="true">⬇</span> Descargar GPX con waypoints</button>
+  </div>
   <div class="controles">
     <label>Salida <input type="datetime-local" id="salida"></label>
     <label><span id="etiqueta-limite">Límite (h)</span> <input type="number" id="limite" step="0.5" min="1"></label>
@@ -83,9 +126,7 @@ PLANTILLA = r"""<!doctype html>
     <label>Mapa base
       <select id="base"><option value="ign_mtn">IGN: topográfico (MTN)</option><option value="ign_base">IGN Base</option><option value="ign_orto">IGN: ortofoto con rótulos</option><option value="topo">OpenTopoMap</option><option value="osm">OpenStreetMap</option></select>
     </label>
-    <label class="casilla" title="Muestra junto a cada punto su nombre; sin marcar, el nombre aparece al pasar por encima"><input type="checkbox" id="nombres" checked> Nombres de los puntos</label>
-    <button type="button" id="descargar-gpx" title="Track con los controles, la salida, la llegada y los demás puntos como waypoints (tipos de Garmin Connect)">Descargar GPX con waypoints</button>
-    <div class="dias" id="dias"></div>
+    <label class="casilla"><input type="checkbox" id="nombres" checked><span>Ver los nombres de los puntos<small>en el mapa y en el perfil; sin marcar, al pasar el ratón por encima</small></span></label>
   </div>
 </header>
 <main>
@@ -96,7 +137,9 @@ PLANTILLA = r"""<!doctype html>
   <section class="tabla"><table id="tabla"></table></section>
 </main>
 <footer>Mapa: © OpenStreetMap contributors · OpenTopoMap (CC-BY-SA) · Altitudes: EU-DEM 25 m (OpenTopoData).
-Velocidad según la pendiente media del tramo (ascenso/distancia), con pérdida por fatiga a lo largo de la ruta.</footer>
+<span id="nota-velocidad">Velocidad según la pendiente media del tramo (ascenso/distancia), con pérdida por fatiga a lo largo de la ruta.</span>
+<span id="nota-pie"></span>
+__CREDITO__</footer>
 <script>
 // FICHA = true en la copia para publicar en una web (Planificador, «Ruta para una web»): tiempos desde la salida, sin fecha, cierres ni márgenes
 const FICHA = false;
@@ -104,6 +147,9 @@ const D = __DATOS__;
 // horario del plan (Planificador): sin hora de salida, tiempos desde la salida; sin límite, sin cierres ni márgenes
 const CON_SALIDA = !FICHA && (!D.horario || D.horario.salida !== false);
 const CON_LIMITE = !FICHA && (!D.horario || D.horario.limite !== false);
+// Perfiles de puertos: la página de un puerto no habla de tiempos (sin velocidad, paradas, llegada ni salida)
+const PUERTO = !!D.puerto;
+if (PUERTO && document.getElementById("nota-velocidad")) document.getElementById("nota-velocidad").remove();
 // ruta libre: el límite es un objetivo, no un cierre; llegar tarde cuenta a partir de 5 min (antes suele ser redondeo)
 const OBJETIVO = !!(D.horario && D.horario.objetivo), TOLERANCIA = 5;
 const tarde = r => CON_LIMITE && r.margen < -TOLERANCIA;
@@ -240,12 +286,17 @@ function dibujarPerfil(res) {
   const R = 13, FILA = 2 * R + 20;
   const W = svg.clientWidth || 800, m = { l: 80, r: 12, t: 26, b: 52 };
   const total = D.total_km, maxTrack = Math.max(...D.track.map(t => t[2]));
-  // fila de cada icono (sube una si toca al anterior); el perfil deja arriba sitio para todas
-  const filaDe = [], puestos = [];
+  // fila de cada icono (sube una si toca a otro); el perfil deja arriba sitio para todas. Con «Nombres de los
+  // puntos», el nombre va junto al disco (a la derecha; a la izquierda si no cabe) y cuenta para los choques.
+  const conNombre = document.getElementById("nombres").checked;
+  const anchoNombre = r => conNombre ? esc(r.nombre).length * 8.2 + 8 : 0;
+  const filaDe = [], ladoDe = [], puestos = [];
   for (const r of conIcono) {
-    const x = r.km / total * (W - m.l - m.r);
-    let n = 0; while (puestos.some(([a, b]) => b === n && Math.abs(a - x) < 2 * R + 30)) n++;
-    puestos.push([x, n]); filaDe.push(n);
+    const x = m.l + r.km / total * (W - m.l - m.r), w = anchoNombre(r);
+    const izq = w && x + R + w > W - m.r;
+    const a = izq ? x - R - w : x - R - 15, b = izq ? x + R + 15 : x + R + w;
+    let n = 0; while (puestos.some(([a2, b2, n2]) => n2 === n && a < b2 + 6 && a2 < b + 6)) n++;
+    puestos.push([a, b, n]); filaDe.push(n); ladoDe.push(izq);
   }
   const nFilas = filaDe.length ? Math.max(...filaDe) + 1 : 0;
   // 340 px de alto (como en la hoja de estilo) más lo que ocupen las filas de iconos a partir de la segunda
@@ -276,6 +327,7 @@ function dibujarPerfil(res) {
     if (d !== d0) { banda(ini, km, d0); ini = km; d0 = d; }
   }
   banda(ini, total, d0);
+  if (PUERTO) s = s.replace(/<rect [^>]*height="14"[^>]*\/>/g, "");   // un puerto no tiene días
   // rejilla vertical (cada 10 km; más espaciada en rutas largas) y km rotulados donde caben
   const rej = total <= 300 ? 10 : total <= 1000 ? 50 : 100;
   const rot = [1, 2, 5, 10, 20, 50].map(f => f * rej).find(p => (W - m.l - m.r) * p / total >= 50) || 50 * rej;
@@ -295,15 +347,18 @@ function dibujarPerfil(res) {
     s += `<g><title>${esc(r.nombre)}</title><line x1="${x}" x2="${x}" y1="${Y(0)}" y2="${yk}" stroke="#333" stroke-width="1.2" stroke-dasharray="4 3"/>`
        + `<text x="${x}" y="${yk}" font-size="14" text-anchor="middle" fill="#333" stroke="#fff" stroke-width="4" paint-order="stroke">${kmTexto(r.km)}</text>`
        + `<circle cx="${x}" cy="${y}" r="${R}" fill="#fff" stroke="#333" stroke-width="1.5"/>`
-       + `<text x="${x}" y="${y + 1}" font-size="15" text-anchor="middle" dominant-baseline="central">${ICONOS[r.tipo]}</text></g>`;
+       + `<text x="${x}" y="${y + 1}" font-size="15" text-anchor="middle" dominant-baseline="central">${ICONOS[r.tipo]}</text>`
+       + (conNombre ? `<text x="${ladoDe[i] ? x - R - 5 : x + R + 5}" y="${y + 1}" font-size="14" font-weight="600" text-anchor="${ladoDe[i] ? "end" : "start"}" dominant-baseline="central" fill="#333" stroke="#fff" stroke-width="4" paint-order="stroke">${esc(r.nombre)}</text>` : "")
+       + `</g>`;
   });
   svg.innerHTML = s;
 }
 
 // ---------- tabla
 function dibujarTabla(res) {
-  const cab = ["", "Lugar", "km", "Tramo", "Alt.", "Asc. tramo", "Asc. total", "% medio", "Vel.", "Parada (min)", "Llegada", "Salida"]
-    .concat(CON_LIMITE ? [OBJETIVO ? "Objetivo" : "Cierre", "Margen", "Apertura"] : []);
+  const cab = ["", "Lugar", "km", "Tramo", "Alt.", "Asc. tramo", "Asc. total", "% medio"]
+    .concat(PUERTO ? [] : ["Vel.", "Parada (min)", "Llegada", "Salida"])
+    .concat(CON_LIMITE && !PUERTO ? [OBJETIVO ? "Objetivo" : "Cierre", "Margen", "Apertura"] : []);
   const CLASE = {"Tramo": "c2", "Asc. tramo": "c2", "% medio": "c2", "Vel.": "c2", "Alt.": "c3", "Salida": "c3", "Apertura": "c3"};
   const cls = c => CLASE[c] ? ` class="${CLASE[c]}"` : "";
   let s = "<thead><tr>" + cab.map(c => `<th${cls(c)}>${c}</th>`).join("") + "</tr></thead><tbody>";
@@ -313,13 +368,13 @@ function dibujarTabla(res) {
     s += `<tr class="${r.control ? "ctrl" : ""}"><td class="n">${r.control}</td>
       <td class="n"><span class="dia" style="background:${color(r.dia)}"></span>${icono(r)}${esc(r.nombre)}</td>
       <td>${r.km.toFixed(1)}</td><td class="c2">${r.km_tramo.toFixed(1)}</td><td class="c3">${r.alt.toFixed(0)}</td>
-      <td class="c2">${r.asc_tramo.toFixed(0)}</td><td>${r.asc_total.toFixed(0)}</td><td class="c2">${(r.pendiente*100).toFixed(1)}%</td>
+      <td class="c2">${r.asc_tramo.toFixed(0)}</td><td>${r.asc_total.toFixed(0)}</td><td class="c2">${(r.pendiente*100).toFixed(1)}%</td>` + (PUERTO ? "</tr>" : `
       <td class="c2">${r.vel ? r.vel.toFixed(1) : ""}</td>
       <td>${i ? `<input type="number" min="0" step="5" data-i="${i}" value="${valor}" placeholder="${marcador}">` : ""}</td>
       <td>${momento(r.llegada)}</td><td class="c3">${momento(r.salida)}</td>` + (!CON_LIMITE ? "</tr>" : `
       <td>${momento(r.cierre)}</td>
       <td class="${r.margen < -TOLERANCIA ? "neg" : "pos"}">${i ? dur(r.margen, true) : ""}</td>
-      <td class="c3 ${r.antes ? "neg" : ""}">${r.apertura ? hora(r.apertura) + (r.antes ? " ⚠" : "") : ""}</td></tr>`);
+      <td class="c3 ${r.antes ? "neg" : ""}">${r.apertura ? hora(r.apertura) + (r.antes ? " ⚠" : "") : ""}</td></tr>`));
   });
   document.getElementById("tabla").innerHTML = s + "</tbody>";
   document.querySelectorAll("#tabla input").forEach(inp => inp.onchange = e => {
@@ -329,25 +384,35 @@ function dibujarTabla(res) {
   });
 }
 
+// cifras del resumen en tarjetas: valor grande y qué es debajo
+const dato = (valor, etiqueta, clase = "") => `<div class="dato"><b class="${clase}">${valor}</b><span>${etiqueta}</span></div>`;
+const basicos = () => dato(D.total_km.toFixed(0) + " km", "distancia") + dato("+" + Math.round(D.total_asc).toLocaleString("es") + " m", "desnivel");
 function dibujarResumen(res) {
   const fin = res[res.length - 1];
   const totalMin = (fin.llegada - estado.salida) / 60e3;
   const peor = res.slice(1).filter(r => r.control).reduce((a, b) => b.margen < a.margen ? b : a, fin);
   const dias = [...new Set(res.map(r => r.dia))];
+  if (PUERTO) {
+    const pend = D.total_km ? (res[res.length - 1].alt - res[0].alt) / (D.total_km * 10) : 0;
+    document.getElementById("resumen").innerHTML =
+      dato(D.total_km.toFixed(1).replace(".", ",") + " km", "distancia") + dato("+" + Math.round(res[res.length - 1].alt - res[0].alt).toLocaleString("es") + " m", "desnivel")
+      + dato(pend.toFixed(1).replace(".", ",") + " %", "pendiente media");
+    document.getElementById("dias").innerHTML = "";
+    return;
+  }
   if (!CON_SALIDA) {
     document.getElementById("resumen").innerHTML =
-      `<span><b>${D.total_km.toFixed(0)}</b> km</span><span><b>+${Math.round(D.total_asc).toLocaleString("es")}</b> m</span>
-       <span>tiempo previsto <b>${dur(totalMin)}</b> h</span>` + (dias.length > 1 ? `<span><b>${dias.length}</b> días</span>` : "")
-       + (CON_LIMITE ? `<span>${OBJETIVO ? "objetivo" : "límite"} <b>${dur(estado.limite * 60)}</b> h</span><span>margen en meta <b class="${fin.margen < -TOLERANCIA ? "neg" : "pos"}">${dur(fin.margen, true)}</b> h</span>` : "");
+      basicos() + dato(dur(totalMin) + " h", "tiempo previsto") + (dias.length > 1 ? dato(dias.length, "días") : "")
+       + (CON_LIMITE ? dato(dur(estado.limite * 60) + " h", OBJETIVO ? "objetivo" : "límite")
+                       + dato(dur(fin.margen, true) + " h", "margen en meta", fin.margen < -TOLERANCIA ? "neg" : "pos") : "");
     document.getElementById("dias").innerHTML = dias.length > 1 ? dias.map(d => `<span class="chip" style="background:${color(d)}">Día ${d + 1}</span>`).join("") : "";
     return;
   }
   document.getElementById("resumen").innerHTML =
-    `<span><b>${D.total_km.toFixed(0)}</b> km</span><span><b>+${Math.round(D.total_asc).toLocaleString("es")}</b> m</span>
-     <span>llegada <b>${fin.llegada.getDate()}/${fin.llegada.getMonth()+1} ${hhmm(fin.llegada)}</b></span>
-     <span>tiempo previsto <b>${dur(totalMin)}</b> h</span>` + (!CON_LIMITE ? "" : `
-     <span>margen en meta <b class="${fin.margen < -TOLERANCIA ? "neg" : "pos"}">${dur(fin.margen, true)}</b> h</span>
-     <span>margen mínimo <b class="${peor.margen < -TOLERANCIA ? "neg" : "pos"}">${dur(peor.margen, true)}</b> h (${esc(peor.control)} ${esc(peor.nombre)})</span>`);
+    basicos() + dato(`${fin.llegada.getDate()}/${fin.llegada.getMonth()+1} ${hhmm(fin.llegada)}`, "llegada")
+    + dato(dur(totalMin) + " h", "tiempo previsto") + (!CON_LIMITE ? "" :
+      dato(dur(fin.margen, true) + " h", "margen en meta", fin.margen < -TOLERANCIA ? "neg" : "pos")
+      + dato(dur(peor.margen, true) + " h", `margen mínimo (${esc(peor.control)} ${esc(peor.nombre)})`, peor.margen < -TOLERANCIA ? "neg" : "pos"));
   document.getElementById("dias").innerHTML = dias.map(d => {
     const f = new Date(estado.salida.getFullYear(), estado.salida.getMonth(), estado.salida.getDate() + d);
     return `<span class="chip" style="background:${color(d)}">${f.getDate()} ${MESES_L[f.getMonth()]}</span>`;
@@ -359,7 +424,8 @@ function todo() {
   dibujarResumen(res); dibujarMapa(res); dibujarPerfil(res); dibujarTabla(res);
 }
 
-document.getElementById("titulo").innerHTML = esc(D.nombre) + (D.subtitulo ? `<small>${esc(D.subtitulo)}</small>` : "");
+document.getElementById("titulo").textContent = D.nombre;
+document.getElementById("subtitulo").textContent = D.subtitulo || "";
 const inSalida = document.getElementById("salida"), inLimite = document.getElementById("limite"), inDefecto = document.getElementById("defecto");
 inSalida.value = aLocal(estado.salida); inLimite.value = estado.limite; inDefecto.value = estado.defecto;
 inSalida.onchange = () => { if (inSalida.value) { estado.salida = new Date(inSalida.value); todo(); } };
@@ -373,7 +439,7 @@ if (!CON_LIMITE) inLimite.closest("label").hidden = true;
 // que tenga controles de paso intermedios; en las demás (y en la ficha para una web) no aparece
 if (!(CON_LIMITE && !OBJETIVO && D.puntos.some((p, i) => p.control && i > 0 && i < D.puntos.length - 1))) inDefecto.closest("label").hidden = true;
 if (OBJETIVO) document.getElementById("etiqueta-limite").textContent = "Objetivo (h)";
-if (!CON_SALIDA) document.querySelector("footer").insertAdjacentHTML("beforeend", "<br>Tiempos en horas:minutos desde la salida, con las paradas previstas; cambia las paradas en la tabla.");
+if (!CON_SALIDA) document.getElementById("nota-pie").insertAdjacentHTML("beforeend", "<br>Tiempos en horas:minutos desde la salida, con las paradas previstas; cambia las paradas en la tabla.");
 // GPX hecho aquí mismo (la página se comparte suelta, sin servidor): track y puntos como waypoints
 document.getElementById("nombres").onchange = () => todo();
 document.getElementById("descargar-gpx").onclick = () => {
@@ -390,6 +456,11 @@ todo();
 // Sin venb-insertar.js, el mensaje no hace nada.
 if (window.self !== window.top) {
   document.documentElement.classList.add("insertada");
+  // en un blog con barra lateral el iframe queda estrecho: la misma página en una pestaña nueva
+  const grande = document.createElement("a");
+  grande.className = "boton secundario"; grande.href = location.href; grande.target = "_blank"; grande.rel = "noopener";
+  grande.innerHTML = '<span aria-hidden="true">⛶</span> Ver a pantalla completa'; grande.title = "Abre la ruta en una pestaña nueva, a pantalla completa";
+  document.getElementById("acciones").appendChild(grande);
   let ultima = 0;
   const avisar = () => {
     const h = Math.ceil(document.documentElement.scrollHeight);
@@ -409,27 +480,54 @@ if (window.self !== window.top) {
 """
 
 
-def _marca_html(proyecto):
-    """Logotipo (incrustado) y enlace a la web de la sección [marca]."""
+def _logo_b64(ruta, alto=160):
+    """PNG incrustable (data URL), reducido a `alto` px: los originales de los clubes pueden ser enormes."""
     import base64
+    import io
+    from PIL import Image
+    im = Image.open(ruta).convert("RGBA")
+    if im.height > alto:
+        im = im.resize((max(1, round(im.width * alto / im.height)), alto), Image.LANCZOS)
+    buf = io.BytesIO()
+    im.save(buf, "PNG", optimize=True)
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+
+
+def _marca_html(proyecto):
+    """(cabecera, pie): el promotor (club de VenB Rutas o marca propia de Ajustes) destacado arriba, con su nombre y un
+    botón a su web; el crédito de VenB / Vivir en bici, discreto, al pie. Sin promotor, la cabecera queda vacía."""
     import html as h
     import re
     from pathlib import Path
     marca = proyecto.seccion("marca")
-    texto = marca.get("texto") or " - ".join(t for t in (marca.get("nombre"), marca.get("web")) if t)
-    partes = []
-    if marca.get("logo"):
-        ruta = Path(marca["logo"])
-        ruta = ruta if ruta.is_absolute() else proyecto.base / ruta
-        if ruta.exists():
-            datos = base64.b64encode(ruta.read_bytes()).decode()
-            partes.append(f'<img src="data:image/png;base64,{datos}" alt="logotipo">')
-    if texto:
+    club = marca.get("club")
+    if club:
+        nombre, web, logos = club.get("nombre") or "", club.get("web") or "", list(club.get("logos") or [])
+    else:
+        texto = marca.get("texto") or " - ".join(t for t in (marca.get("nombre"), marca.get("web")) if t)
+        logos = []
+        if marca.get("logo"):
+            ruta = Path(marca["logo"])
+            logos = [ruta if ruta.is_absolute() else proyecto.base / ruta]
         m = re.search(r"https?://\S+", texto)
-        url = m.group(0) if m else ""
-        partes.append(f'<a href="{h.escape(url)}" target="_blank" rel="noopener">{h.escape(texto)}</a>'
-                      if url else f"<span>{h.escape(texto)}</span>")
-    return f'<div class="marca">{"".join(partes)}</div>' if partes else ""
+        web = m.group(0) if m else ""
+        nombre = re.sub(r"\s*[-·|]\s*$", "", texto.replace(web, "")).strip() if web else texto.strip()
+        if "vivirenbici" in texto.lower() or "vivir en bici" in texto.lower():
+            nombre, web, logos = "", "", []      # la marca de VenB no es un promotor: va al pie
+    partes = []
+    imgs = "".join(f'<img src="{_logo_b64(r)}" alt="">' for r in logos if Path(r).exists())
+    if imgs:
+        partes.append(f'<div class="promotor-logos">{imgs}</div>')
+    if nombre or web:
+        dominio = re.sub(r"^https?://(www\.)?", "", web).rstrip("/")
+        enlace = (f'<a class="promotor-web" href="{h.escape(web)}" target="_blank" rel="noopener" '
+                  f'title="Abre la web en una pestaña nueva">{h.escape(dominio)} <span aria-hidden="true">↗</span></a>') if web else ""
+        partes.append(f'<div class="promotor-texto"><div class="promotor-nombre">{h.escape(nombre or dominio)}</div>{enlace}</div>')
+    cabecera = f'<div class="promotor">{"".join(partes)}</div>' if partes else ""
+    pie = ('<div class="credito"><a href="https://www.vivirenbici.es" target="_blank" rel="noopener">'
+           f'<img src="{_logo_b64(Path(__file__).parent / "recursos" / "logo_marca.png", 48)}" alt="">'
+           'Ruta preparada con VenB · vivirenbici.es</a></div>')
+    return cabecera, pie
 
 
 def _base(tr):
@@ -549,6 +647,7 @@ def generar(proyecto, plan):
     datos = {"nombre": plan.nombre, "subtitulo": proyecto.cfg.get("subtitulo", ""),
              "salida": plan.salida.isoformat(), "limite_h": plan.limite_h, "parada_defecto": defecto,
              "horario": getattr(plan, "horario", {"salida": True, "limite": True}),
+             "puerto": bool(getattr(plan, "puerto", None)),
              "total_km": plan.total_km, "total_asc": plan.total_asc, "track": track, "puntos": puntos,
              "trazo": _trazo(tr),   # geometría del mapa; "track" (cada ~250 m) queda para el perfil
              "velocidades": plan.velocidades, "base": _base(tr),
@@ -556,8 +655,9 @@ def generar(proyecto, plan):
              "gpx": dict(zip(("nombre", "texto"), gpx_waypoints(proyecto, plan)))}
     import html as h
     # "</" escapado: un nombre de la hoja no puede cerrar el <script> que lleva los datos
+    cabecera, pie = _marca_html(proyecto)
     html = (PLANTILLA.replace("__TITULO__", h.escape(plan.nombre))
-            .replace("__MARCA__", _marca_html(proyecto))
+            .replace("__MARCA__", cabecera).replace("__CREDITO__", pie)
             .replace("__DATOS__", json.dumps(datos, ensure_ascii=False).replace("</", "<\\/"))
             .replace("__COLORES__", json.dumps(E.COLORES_DIA))
             .replace("__ICONOS__", json.dumps(E.ICONOS, ensure_ascii=False))

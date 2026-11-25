@@ -1,0 +1,13 @@
+<details class="ver"><summary>¿Cómo se calculan el coeficiente y la categoría?</summary>
+  <p>Se usa el <b>Coeficiente de Dificultad</b> de <a href="https://www.altimetrias.net" target="_blank" rel="noopener">altimetrias.net</a> (Juanto Uribarri, «La obtención del Coeficiente de Dificultad»). A cada kilómetro de la subida se le aplica un coeficiente según su pendiente media, y el del puerto es la suma de todos. El llano y las bajadas cuentan 1 por kilómetro, y a partir del 5 % el coeficiente crece cada vez más deprisa (tabla completa en <a href="https://www.altimetrias.net" target="_blank" rel="noopener">altimetrias.net</a>):</p>
+  <div class="tabla"><table class="ejemplo">
+    <tr><th>Pendiente</th>{% for p in [0, 2, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20, 25, 30] %}<th class="num">{{ p }} %</th>{% endfor %}</tr>
+    <tr><td>Coeficiente</td>{% for c in [1, 3, 5, 7, 10, 14, 19, 25, 32, 49, 82, 157, 257, 382] %}<td class="num">{{ c }}</td>{% endfor %}</tr>
+  </table></div>
+  <p>Las pendientes con decimales se interpolan, como en la tabla completa de altimetrias.net. El último tramo, si no llega al kilómetro, cuenta en proporción a lo que mide. Junto al coeficiente se da, con asterisco (*), el que resulta de aplicar la tabla <b>cada 100 m</b>, la variante que usa altimetrias.net para pesar más las rampas. Las pendientes máximas son las del peor kilómetro (y los peores 100 m) seguido en cualquier punto de la subida, así que no dependen de dónde se ponga el pie y pueden superar a la del kilómetro más duro del perfil.</p>
+  <div class="tabla"><table class="ejemplo">
+    <tr><th>Categoría</th><th>4.ª</th><th>3.ª</th><th>2.ª</th><th>1.ª</th><th>Especial</th></tr>
+    <tr><td>Coeficiente</td><td>15 a 29</td><td>30 a 59</td><td>60 a 119</td><td>120 a 240</td><td>más de 240</td></tr>
+  </table></div>
+  <p>Una subida con coeficiente menor de 15 no se considera puerto, aunque puedes añadirla a mano como tramo. Para encontrar las subidas, VenB sigue el perfil del track: un puerto empieza donde la pendiente se mantiene por encima del 2,5 % y acaba en su punto más alto. Los descansillos y las contrapendientes cortas forman parte del puerto; una bajada de más de 25 m (o de más del 12 % de lo subido) o más de 3 km sin ganar altura lo terminan. El pie y la cima propuestos se pueden cambiar.</p>
+</details>

@@ -252,6 +252,8 @@ Calcula a qué hora pasarás por cada punto de una ruta y genera sus documentos.
 - El ZIP trae también `venb-insertar.js`, fuera de la carpeta de la ruta. Súbelo una vez a la misma carpeta `rutas` (con cada versión nueva de VenB, sustitúyelo): el código para insertar lo carga y hace que cada ruta ocupe en la página justo el alto que necesita, sin barra de desplazamiento dentro. Sin él, la ruta se ve igual, con un alto fijo.
 - Si escribes en **Ajustes > Planificador** la dirección de la carpeta donde subes las rutas, el código sale ya con la dirección final.
 
+La cabecera de la página interactiva es un panel: arriba, destacados, los logotipos y el nombre del club u organizador, con un botón a su web que se abre en otra pestaña (en VenB Rutas, los del perfil de club elegido); debajo, el nombre de la ruta, el subtítulo y las cifras principales en tarjetas, y los botones **Descargar GPX con waypoints** y, si la ruta está insertada en otra web, **Ver a pantalla completa**. La casilla **Ver los nombres de los puntos** los muestra junto a cada punto en el mapa y en el perfil; sin marcar, aparecen al pasar el ratón por encima. La referencia a VenB va al pie de la página.
+
 El mapa base se carga de los servidores del IGN (en España) o de OpenStreetMap, que piden no abusar: para una página con muchas visitas, mejor el mapa del IGN, con el que abre por defecto.
 
 Las rutas se guardan en `VenB-datos/planificador/` (una carpeta por ruta, con lo subido y lo generado) y aparecen en **Tus rutas**; desde ahí se abren de nuevo o se borran. Las copias de seguridad las incluyen. La caché de mapas y altitudes está en `.venb/mapas` y puede borrarse sin problema.
@@ -259,6 +261,25 @@ Las rutas se guardan en `VenB-datos/planificador/` (una carpeta por ruta, con lo
 La marca de los documentos (texto y logotipo) es la de `planificador_marca` en `VenB-datos/config/ajustes.json`: `{"texto": "...", "logo": "/ruta/completa/al/logo.png"}` (un PNG; si tiene fondo blanco, se quita solo). Si no la cambias, es la del autor de VenB.
 
 En **VenB Rutas**, la marca se elige al generar, en **Club u organizador**, entre los perfiles de **Ajustes > Perfiles de club u organizador**. Puedes tener todos los que quieras: **Añadir un club u organizador** abre el formulario de alta (nombre, web, texto de la marca y hasta 4 logotipos). Si un logotipo tiene un fondo de un solo color, la casilla **Quitar el fondo de color liso** (al subirlo) o el botón **Quitar el fondo** (en un logotipo ya guardado) lo vuelve transparente sin tocar el interior del dibujo; la vista previa, sobre fondo a cuadros, muestra cómo queda, y **Recuperar el original** lo deshace. El Planificador propone en cada ruta nueva el último club usado.
+
+### Perfiles de puertos
+
+En **Planificador > Perfiles de puertos**, VenB busca en un track las subidas que pueden considerarse puertos de montaña y prepara sus documentos: una ficha A4 con mapa y perfil detallado, el perfil suelto, los mapas ilustrados, el GPX del puerto y una página interactiva.
+
+1. **Elige el track:** sube un GPX o elige una de tus rutas del Planificador. Sirve una ruta completa o el track de una sola subida. VenB consulta las altitudes del terreno (como en el Planificador) y los lugares con nombre de OpenStreetMap a menos de unos cientos de metros del track: pueblos, aldeas, puertos, cimas, fuentes y miradores.
+2. **Puertos encontrados.** Un perfil de toda la ruta marca cada subida con el color de su categoría; al pasar el ratón, muestra el km y la altitud. Debajo, cada puerto con su longitud, pendiente media, altitudes del pie y de la cima, pendiente máxima (por kilómetro y en 100 m), **coeficiente de dificultad** y **categoría**. VenB le pone el nombre del puerto o la cima de OpenStreetMap que haya en lo alto y, en el subtítulo, el pueblo del pie («Desde…»).
+3. **Cambiar lo que quieras:** el nombre, el subtítulo, el pie y la cima (en km del track) y los **puntos de paso**, con su tipo (los mismos que en la Previsión). **Añadir punto** añade uno; **Volver a proponer los puntos** sustituye los de un puerto por los que propone OpenStreetMap para el pie y la cima actuales; **Quitar este tramo** lo saca de la lista. Con **Añadir un tramo a mano** puedes estudiar una subida que no ha salido (por tener un coeficiente menor de 15) o solo una parte de un puerto. Pulsa **Guardar cambios y recalcular**: VenB vuelve a calcular las cifras.
+4. **Documentos.** Marca **Generar** en los puertos que quieras, elige los documentos y pulsa **Generar**. Cada puerto tiene su carpeta en **Ficheros generados**:
+    - **Ficha del puerto** (PDF y PNG, A4 vertical): título, categoría, cifras, el mapa (por defecto, el topográfico del IGN; se puede elegir otro) con el track coloreado por pendiente cada 100 m y los puntos numerados, y el perfil.
+    - **Perfil** (PNG y SVG, apaisado): el perfil con sus cifras, para el blog o los vídeos. El SVG se puede editar en Inkscape.
+    - **Mapas ilustrados** (Al-Ballut, personal y «Juego de Tronos»): los del Planificador, con el tramo del puerto y un perfil detallado al pie.
+    - **GPX con waypoints** («PUERTO_NOMBRE_WP.gpx») y **página interactiva**, como en el Planificador.
+
+    El perfil detallado divide la subida en kilómetros desde el pie: cada bloque lleva el color y el porcentaje de su pendiente media (de amarillo claro, por debajo del 2 %, a casi negro, a partir del 15 %), la altitud al final de cada kilómetro y los puntos de paso numerados, con su nombre y altitud.
+
+**Coeficiente y categoría.** El coeficiente de dificultad es el de [altimetrias.net](https://www.altimetrias.net) (Juanto Uribarri, «La obtención del Coeficiente de Dificultad»): a cada kilómetro se le aplica un coeficiente según su pendiente media y el del puerto es la suma (el llano y las bajadas cuentan 1; un 5 %, 7; un 8 %, 19; un 10 %, 32; un 15 %, 82; un 20 %, 157). Las pendientes con decimales se interpolan, y el último tramo, si no llega al kilómetro, cuenta en proporción. Entre paréntesis, con asterisco, va el coeficiente aplicando la tabla cada 100 m, que pesa más las rampas. Las pendientes máximas son las del peor kilómetro (y los peores 100 m) seguido en cualquier punto de la subida, no las de los kilómetros contados desde el pie: así no dependen de dónde se ponga el pie, y la máxima puede superar a la del kilómetro más duro del perfil. Categorías: **4.ª** de 15 a 29, **3.ª** de 30 a 59, **2.ª** de 60 a 119, **1.ª** de 120 a 240 y **Especial** por encima de 240; por debajo de 15 no se considera puerto. Un puerto empieza donde la pendiente pasa del 2,5 % y acaba en su punto más alto; los descansillos y las contrapendientes cortas forman parte de él, pero una bajada de más de 25 m (o de más del 12 % de lo subido) o más de 3 km sin ganar altura lo terminan.
+
+Los análisis se guardan en `VenB-datos/puertos/` (uno por carpeta) y aparecen en **Tus análisis**, desde donde se abren o se borran.
 
 ## Ajustes
 
