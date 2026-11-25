@@ -1441,7 +1441,7 @@ def _analisis_puertos(aid):
 def puertos_ver(aid):
     e = _analisis_puertos(aid)
     a, ps, par = PU.datos(aid)
-    return render_template('puerto.html', e=e, a=a, puertos=ps, par=par, documentos=PU.documentos(aid), tipos=PU.TIPOS,
+    return render_template('puerto.html', e=e, a=a, puertos=ps, par=par, documentos=PU.documentos(aid), tipos=PU.TIPOS_MENU,
                            salidas=PU.SALIDAS, estilos=PU.ESTILOS_FICHA, paletas=PL.PALETAS, clubes=CL.lista() if RUTAS else [])
 
 
@@ -1473,6 +1473,15 @@ def _puertos_json(aid, fn):
     except PL.ErrorPlan as e:
         return jsonify({'error': str(e)}), 400
     return jsonify({'ok': True})
+
+
+@app.route('/puertos/<aid>/trazado.json')
+def puertos_trazado(aid):
+    _analisis_puertos(aid)
+    try:
+        return jsonify(PU.trazado(aid))
+    except Exception:
+        return jsonify([])
 
 
 @app.post('/puertos/<aid>/guardar')

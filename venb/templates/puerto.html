@@ -4,7 +4,7 @@
 <p><a href="{{ url_for('puertos') }}">← Perfiles de puertos</a></p>
 <h1>{{ e.nombre or 'Ruta' }}</h1>
 {% if a %}<p class="suave">{{ a.total_km|n }} km · +{{ a.total_asc|n }} m · altitudes: {{ a.fuente_altitud }}</p>{% endif %}
-<script type="application/json" id="datos-puertos">{{ {'a': a, 'puertos': puertos, 'fase': e.fase, 'tipos': tipos, 'urlEstado': url_for('puertos_estado', aid=e.id), 'urlGuardar': url_for('puertos_guardar', aid=e.id), 'urlGenerar': url_for('puertos_generar', aid=e.id), 'urlDetener': url_for('puertos_detener', aid=e.id), 'urlTramo': url_for('puertos_tramo', aid=e.id), 'urlProponer': url_for('puertos_proponer', aid=e.id)}|tojson }}</script>
+<script type="application/json" id="datos-puertos">{{ {'a': a, 'puertos': puertos, 'fase': e.fase, 'tipos': tipos, 'urlEstado': url_for('puertos_estado', aid=e.id), 'urlGuardar': url_for('puertos_guardar', aid=e.id), 'urlGenerar': url_for('puertos_generar', aid=e.id), 'urlDetener': url_for('puertos_detener', aid=e.id), 'urlTramo': url_for('puertos_tramo', aid=e.id), 'urlProponer': url_for('puertos_proponer', aid=e.id), 'urlTrazado': url_for('puertos_trazado', aid=e.id)}|tojson }}</script>
 
 {% if e.fase == 'analizando' or (e.fase == 'error' and not a) %}
 <section class="panel" id="progreso">
@@ -31,7 +31,7 @@
 <section class="panel" id="lista-puertos">
   <h2>Puertos</h2>
   {% if not puertos %}<p class="suave">No hay subidas con categoría de puerto (coeficiente 15 o más) en este track. Puedes añadir un tramo a mano.</p>{% endif %}
-  <p class="suave">Marca los puertos de los que quieres documentos. Puedes cambiar el nombre, el pie y la cima (en km del track) y los puntos de paso; al guardar se recalculan las cifras. Los puntos de cada puerto salen numerados en el mapa y en el perfil.</p>
+  <p class="suave">Marca los puertos de los que quieres documentos. Puedes cambiar el nombre, el pie y la cima (en km del track) y los puntos de paso; al guardar se recalculan las cifras. Con 📍 eliges el pie, la cima o un punto pulsando en el mapa; un punto nuevo sin nombre toma el de la localidad. Los puntos de cada puerto salen numerados en el mapa y en el perfil.</p>
   {% for p in puertos %}
   <article class="puerto-tramo" data-id="{{ p.id }}">
     <div class="puerto-cabecera">
@@ -42,8 +42,8 @@
     <p class="cifras-puerto"><b>{{ p.longitud|n(1) }} km</b> al <b>{{ p.pendiente_media|n(1) }} %</b> · {{ p.alt_pie|n }} → {{ p.alt_cima|n }} m (+{{ p.desnivel|n }} m) · máxima {{ p.pendiente_max_km|n(1) }} % (1 km) y {{ p.pendiente_max_100|n(1) }} % (100 m) · <b>coeficiente {{ p.coef }}</b> ({{ p.coef_100 }}*){% if p.categoria %} · {{ p.categoria }}{% endif %}</p>
     <div class="linea-campos">
       <label>Subtítulo<input type="text" class="p-subtitulo" value="{{ p.subtitulo }}" maxlength="120" placeholder="Desde…"></label>
-      <label>Pie (km del track)<input type="number" class="p-km0" value="{{ p.km0 }}" step="0.05" min="0"></label>
-      <label>Cima (km del track)<input type="number" class="p-km1" value="{{ p.km1 }}" step="0.05" min="0"></label>
+      <label>Pie (km del track)<span class="con-mapa"><input type="number" class="p-km0" value="{{ p.km0 }}" step="0.05" min="0"><button type="button" class="discreto ed-mapa" data-campo="km0" title="Elegir el pie en el mapa" aria-label="Elegir el pie en el mapa">📍</button></span></label>
+      <label>Cima (km del track)<span class="con-mapa"><input type="number" class="p-km1" value="{{ p.km1 }}" step="0.05" min="0"><button type="button" class="discreto ed-mapa" data-campo="km1" title="Elegir la cima en el mapa" aria-label="Elegir la cima en el mapa">📍</button></span></label>
     </div>
     <details class="ver puntos-puerto"{% if p.incluir %} open{% endif %}><summary>Puntos de paso ({{ p.puntos|length }})</summary>
       <div class="tabla"><table class="tabla-puntos">
@@ -51,7 +51,7 @@
         <tbody>{% for x in p.puntos %}<tr>
           <td class="num">{{ loop.index }}</td>
           <td><input type="text" class="w-nombre" value="{{ x.nombre }}" maxlength="60" aria-label="Nombre del punto"></td>
-          <td class="num"><input type="number" class="w-km" value="{{ x.km }}" step="0.05" aria-label="km"></td>
+          <td class="num"><span class="con-mapa"><input type="number" class="w-km" value="{{ x.km }}" step="0.05" aria-label="km"><button type="button" class="discreto ed-mapa" title="Elegir el punto en el mapa" aria-label="Elegir {{ x.nombre }} en el mapa">📍</button></span></td>
           <td><select class="w-tipo" aria-label="Tipo">{% for k, v in tipos.items() %}<option value="{{ k }}"{% if k == x.tipo %} selected{% endif %}>{{ v }}</option>{% endfor %}</select></td>
           <td class="num">{{ x.alt|n }} m</td>
           <td><button type="button" class="discreto w-quitar">Quitar</button></td>
@@ -112,5 +112,15 @@
   {% endif %}
 </section>
 {% endif %}
-<script src="{{ url_for('static', filename='puertos.js') }}"></script>
+<dialog id="dialogo-mapa" aria-labelledby="titulo-mapa">
+  <h2 id="titulo-mapa">Elegir en el mapa</h2>
+  <p class="suave">Pulsa sobre el mapa, cerca del track: se marca el punto del recorrido más cercano. El tramo del puerto va resaltado. Acerca el mapa para precisar.</p>
+  <div id="mapa-puntos"></div>
+  <p id="mapa-resultado" role="status"></p>
+  <p id="mapa-alternativas"></p>
+  <p><button type="button" id="mapa-usar" disabled>Usar este punto</button> <button type="button" class="discreto" id="mapa-cancelar">Cancelar</button></p>
+</dialog>
 {% endblock %}
+{% block guiones %}<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="{{ url_for('static', filename='puertos.js') }}"></script>{% endblock %}

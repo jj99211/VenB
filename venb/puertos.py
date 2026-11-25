@@ -30,6 +30,10 @@ SALIDAS = {'ficha': 'Ficha A4 (mapa y perfil)', 'perfil': 'Perfil suelto (PNG y 
 SALIDAS_DEFECTO = ['ficha', 'perfil', 'gpx']
 ESTILOS_FICHA = {k: v for k, v in PL.ESTILOS_INFOGRAFIA.items()}
 TIPOS = PL.TIPOS_PARADA
+# en el desplegable, con el icono de cada tipo (los mismos que en la Previsión del Planificador, static/planificador.js)
+ICONOS_TIPO = {'salida': '🚩', 'cafe': '☕', 'comida': '🍽', 'dormir': '🛏', 'agua': '🚰', 'cruce': '🔀', 'peligro': '⚠️',
+               'interes': '⭐', 'poblacion': '🏘️', 'panoramica': '🏞️', 'puerto': '⛰️', 'llegada': '🏁', 'otra': '✳️'}
+TIPOS_MENU = {k: f'{ICONOS_TIPO[k]} {v}' if k in ICONOS_TIPO else v for k, v in TIPOS.items()}
 MAX_PUNTOS = 30
 # lugares de OSM que se proponen como waypoints: (tipo de VenB, distancia máxima al track en m)
 CLASES_OSM = {'pueblo': ('poblacion', 400), 'aldea': ('poblacion', 250), 'puerto': ('puerto', 200), 'cima': ('interes', 250),
@@ -221,6 +225,19 @@ def parametros(aid):
 
 
 # ------------------------------------------------------------------ perfil y cálculos
+
+def trazado(aid, paso_m=40):
+    """Track del análisis para elegir puntos en el mapa: [[lat, lon, km del track]] cada `paso_m` como mínimo
+    (los mismos km que el perfil, el pie y la cima)."""
+    t = _perfil_npz(_carpeta(aid))
+    km, lat, lon = t['km'], t['lat'], t['lon']
+    salida, ultimo = [], -1.0
+    for i in range(len(km)):
+        if km[i] - ultimo >= paso_m / 1000 or i == len(km) - 1:
+            salida.append([round(float(lat[i]), 5), round(float(lon[i]), 5), round(float(km[i]), 3)])
+            ultimo = km[i]
+    return salida
+
 
 def _perfil_npz(d):
     import numpy as np

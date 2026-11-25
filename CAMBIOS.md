@@ -2,6 +2,11 @@
 
 Novedades de cada versión de VenB y VenB Rutas (las dos ediciones comparten número de versión).
 
+## 3.63
+
+- **Perfiles de puertos, elegir en el mapa:** junto al pie, la cima y cada punto de paso hay un botón 📍 que abre el mapa, como en la Previsión del Planificador, con el tramo del puerto resaltado. Pulsas cerca del track y se marca el punto más cercano con su km; un punto nuevo sin nombre toma el de la localidad.
+- **Iconos en el tipo de punto:** el desplegable de tipo de los puntos de un puerto muestra el icono de cada tipo (☕ Café, ⛰️ Puerto, 🏘️ Población…), igual que en la Previsión.
+
 ## 3.62
 
 - **Perfiles de puertos (nuevo):** en **Planificador > Perfiles de puertos**, sube un GPX o elige una de tus rutas, y VenB detecta las subidas, calcula su coeficiente de dificultad (método de altimetrias.net, por km y cada 100 m) y su categoría (4.ª, 3.ª, 2.ª, 1.ª o Especial), con la pendiente máxima en 1 km y en 100 m. Para cada puerto, puedes revisar sus puntos y generar una ficha A4 con mapa y perfil, el perfil suelto, el GPX con waypoints, la página interactiva (sin tiempos) y los mapas ilustrados. En VenB Rutas, con la marca del club elegido. Desde la página de un plan, **⛰ Perfiles de puertos de esta ruta** abre el análisis de su track.

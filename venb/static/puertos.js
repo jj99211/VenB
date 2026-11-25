@@ -74,7 +74,7 @@
   function filaPunto(nombre, km, tipo) {
     const tr = document.createElement('tr');
     tr.innerHTML = '<td class="num">·</td><td><input type="text" class="w-nombre" maxlength="60" aria-label="Nombre del punto"></td>' +
-      '<td class="num"><input type="number" class="w-km" step="0.05" aria-label="km"></td><td><select class="w-tipo" aria-label="Tipo"></select></td>' +
+      '<td class="num"><span class="con-mapa"><input type="number" class="w-km" step="0.05" aria-label="km"><button type="button" class="discreto ed-mapa" title="Elegir el punto en el mapa" aria-label="Elegir el punto en el mapa">📍</button></span></td><td><select class="w-tipo" aria-label="Tipo"></select></td>' +
       '<td class="num suave">al guardar</td><td><button type="button" class="discreto w-quitar">Quitar</button></td>';
     tr.querySelector('.w-nombre').value = nombre;
     tr.querySelector('.w-km').value = km;
@@ -96,6 +96,108 @@
       const art = b.closest('.puerto-tramo');
       if (confirm(`¿Quitar «${art.querySelector('.p-nombre').value}» de la lista? Se guarda al pulsar «Guardar cambios».`)) art.remove();
     }
+  });
+
+  // ---- elegir en el mapa (como en el Planificador): el punto del track más cercano a donde se pulsa,
+  // dentro del tramo del puerto (con un margen) para no saltar a otro paso de la ruta por el mismo sitio
+  const $ = id => document.getElementById(id);
+  const dm = $('dialogo-mapa');
+  let TR = null, mapa = null, marca = null, resalte = null, elegido = null, alHecho = null, rango = null;
+  const metros = (a, b) => { const k = Math.cos(a[0] * Math.PI / 180); return Math.hypot((a[0] - b[0]) * 111320, (a[1] - b[1]) * 111320 * k); };
+  function cercanos(ll) {
+    const d = TR.map((p, i) => (p[2] >= rango[0] && p[2] <= rango[1]) ? metros(p, ll) : Infinity), mejor = Math.min(...d), pasos = [];
+    if (!isFinite(mejor)) return [];
+    d.forEach((x, i) => {
+      if (x > mejor * 1.5 + 100) return;
+      const u = pasos[pasos.length - 1];
+      if (u && TR[i][2] - TR[u.i][2] < 2) { if (x < u.d) Object.assign(u, {i, d: x}); }
+      else pasos.push({i, d: x});
+    });
+    return pasos.sort((a, b) => a.d - b.d);
+  }
+  function marcar(i, d) {
+    const p = TR[i];
+    elegido = {km: Math.round(p[2] * 100) / 100, nombre: elegido && elegido.nombre};
+    if (marca) marca.setLatLng([p[0], p[1]]); else marca = L.marker([p[0], p[1]]).addTo(mapa);
+    $('mapa-resultado').textContent = `km ${num(elegido.km, 2)} del track` + (d !== undefined ? ` (a ${num(d)} m de donde has pulsado)` : '') + (elegido.nombre ? ` · ${elegido.nombre}` : '');
+    $('mapa-usar').disabled = false;
+  }
+  function localidad(ll) {
+    fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&accept-language=es&lat=${ll[0].toFixed(5)}&lon=${ll[1].toFixed(5)}`)
+      .then(r => r.json()).then(j => {
+        const a = j.address || {}, n = a.village || a.town || a.city || a.hamlet || a.municipality || '';
+        if (n && elegido) { elegido.nombre = n; $('mapa-resultado').textContent += ` · ${n}`; }
+      }).catch(() => {});
+  }
+  function prepararMapa() {
+    mapa = L.map('mapa-puntos');
+    const espana = TR.every(p => p[0] > 35 && p[0] < 44 && p[1] > -10 && p[1] < 4.5);
+    const capas = {
+      'IGN: topográfico': L.tileLayer('https://tms-mapa-raster.ign.es/1.0.0/mapa-raster/{z}/{x}/{y}.jpeg', {tms: true, maxZoom: 17, attribution: '© IGN España (CC BY 4.0)'}),
+      'OpenStreetMap': L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© OpenStreetMap'}),
+    };
+    (espana ? capas['IGN: topográfico'] : capas.OpenStreetMap).addTo(mapa);
+    L.control.layers(capas).addTo(mapa);
+    L.polyline(TR.map(p => [p[0], p[1]]), {color: '#555', weight: 3, opacity: .6}).addTo(mapa);
+    mapa.on('click', ev => {
+      const ll = [ev.latlng.lat, ev.latlng.lng], pasos = cercanos(ll);
+      if (!pasos.length) return;
+      elegido = null;
+      marcar(pasos[0].i, pasos[0].d);
+      $('mapa-alternativas').innerHTML = pasos.length > 1 ? 'El track pasa varias veces por aquí: ' + pasos.map(x =>
+        `<button type="button" class="discreto" data-i="${x.i}" data-d="${Math.round(x.d)}">km ${num(TR[x.i][2], 2)}</button>`).join(' ') : '';
+      if (alHecho && alHecho.nombre) localidad(ll);
+    });
+  }
+  if (dm) {
+    $('mapa-alternativas').addEventListener('click', ev => { const b = ev.target.closest('button'); if (b) marcar(+b.dataset.i, +b.dataset.d); });
+    $('mapa-usar').addEventListener('click', () => { const r = elegido; dm.close(); if (r && alHecho) alHecho.fn(r); });
+    $('mapa-cancelar').addEventListener('click', () => dm.close());
+  }
+  async function elegirEnMapa(kmActual, k0, k1, pedirNombre, hecho) {
+    alHecho = {fn: hecho, nombre: pedirNombre};
+    elegido = null; $('mapa-usar').disabled = true; $('mapa-resultado').textContent = ''; $('mapa-alternativas').innerHTML = '';
+    dm.showModal();
+    if (!window.L) { $('mapa-resultado').textContent = 'No se ha podido cargar el mapa: comprueba la conexión a Internet.'; return; }
+    if (!TR) {
+      $('mapa-resultado').textContent = 'Cargando el track…';
+      try { TR = await fetch(D.urlTrazado).then(r => r.json()); } catch (e) { TR = []; }
+      if (TR.length < 2) { $('mapa-resultado').textContent = 'No se ha podido leer el track.'; TR = null; return; }
+      $('mapa-resultado').textContent = '';
+      prepararMapa();
+    }
+    // margen alrededor del tramo: 2 km o la mitad de su longitud, para poder alargar el pie o la cima
+    const largo = isFinite(k0) && isFinite(k1) ? Math.abs(k1 - k0) : NaN;
+    const mg = isFinite(largo) ? Math.max(2, largo / 2) : Infinity;
+    rango = isFinite(largo) ? [Math.min(k0, k1) - mg, Math.max(k0, k1) + mg] : [-Infinity, Infinity];
+    if (resalte) resalte.remove();
+    const tramo = TR.filter(p => isFinite(largo) && p[2] >= Math.min(k0, k1) && p[2] <= Math.max(k0, k1)).map(p => [p[0], p[1]]);
+    resalte = tramo.length > 1 ? L.polyline(tramo, {color: '#c62828', weight: 5, opacity: .9}).addTo(mapa) : null;
+    mapa.invalidateSize();
+    if (marca) { marca.remove(); marca = null; }
+    const k = parseFloat(kmActual);
+    if (resalte) mapa.fitBounds(resalte.getBounds(), {padding: [30, 30]});
+    else mapa.fitBounds(L.latLngBounds(TR.map(p => [p[0], p[1]])), {padding: [20, 20]});
+    if (isFinite(k)) {
+      const i = TR.reduce((a, x, n) => Math.abs(x[2] - k) < Math.abs(TR[a][2] - k) ? n : a, 0);
+      marcar(i);
+    }
+  }
+  document.addEventListener('click', ev => {
+    const b = ev.target.closest('.ed-mapa');
+    if (!b || !dm) return;
+    const art = b.closest('.puerto-tramo');
+    const k0 = parseFloat(art.querySelector('.p-km0').value), k1 = parseFloat(art.querySelector('.p-km1').value);
+    if (b.dataset.campo) {          // pie o cima
+      const campo = art.querySelector(`.p-${b.dataset.campo}`);
+      elegirEnMapa(campo.value, k0, k1, false, r => { campo.value = r.km.toFixed(2); });
+      return;
+    }
+    const f = b.closest('tr'), nombre = f.querySelector('.w-nombre'), km = f.querySelector('.w-km');
+    elegirEnMapa(km.value, k0, k1, !nombre.value.trim(), r => {
+      km.value = r.km.toFixed(2);
+      if (r.nombre && !nombre.value.trim()) nombre.value = r.nombre;
+    });
   });
 
   function recoger() {
